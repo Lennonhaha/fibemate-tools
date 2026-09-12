@@ -1,12 +1,7 @@
 name: prover-ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    paths:
-      - 'undecryptable-prover/**'
-      - '.github/workflows/prover-ci.yml'
 
 jobs:
   build-and-run:

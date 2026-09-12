@@ -1,12 +1,7 @@
 name: time-machine-ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    paths:
-      - 'crypto-time-machine/**'
-      - '.github/workflows/time-machine-ci.yml'
 
 jobs:
   ci-test:
