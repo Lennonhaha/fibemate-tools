@@ -1,12 +1,7 @@
 name: detector-ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
-    paths:
-      - 'hallucination-detector/**'
-      - '.github/workflows/detector-ci.yml'
 
 jobs:
   test:
