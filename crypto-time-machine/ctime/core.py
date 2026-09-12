@@ -19,7 +19,8 @@ import os
 import re
 from datetime import datetime, timezone
 
-DEFAULT_REPO = r'D:\FIBEMATE\fibemate'
+DEFAULT_REPO = r'D:\FIBEMATE\fibemate'  # 本机默认；CI/其他机器用环境变量 CTM_REPO 覆盖
+REPO = os.environ.get('CTM_REPO', DEFAULT_REPO)
 
 
 def run_git(args, repo):
@@ -125,7 +126,7 @@ def query_impact(db_path, after_sha=None):
 if __name__ == '__main__':
     import argparse
     p = argparse.ArgumentParser(description='crypto-time-machine')
-    p.add_argument('--repo', default=DEFAULT_REPO)
+    p.add_argument('--repo', default=REPO)
     p.add_argument('--pattern', required=True, help='追踪的符号/字符串，如 ml_kem768')
     p.add_argument('--mode', default='-S', choices=['-S', '-G'])
     p.add_argument('--db', default=None, help='SQLite 输出路径')

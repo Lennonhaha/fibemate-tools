@@ -16,8 +16,10 @@ import tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from ctime import core
 
-REPO = r'D:\FIBEMATE\fibemate'
-PATTERN = 'ml_kem768'  # 已知存在于 FIBEMATE（noble-ciphers 的 ml_kem768）
+# 本机默认值；CI 或其他机器用环境变量覆盖（CTM_TEST_REPO / CTM_TEST_PATTERN / CTM_TEST_FILE）
+REPO = os.environ.get('CTM_TEST_REPO', r'D:\FIBEMATE\fibemate')
+PATTERN = os.environ.get('CTM_TEST_PATTERN', 'ml_kem768')  # 已知存在于 FIBEMATE（noble-ciphers 的 ml_kem768）
+HISTORY_FILE = os.environ.get('CTM_TEST_FILE', 'packages/pqc-kem/src/ml-kem-768.js')
 
 
 def main():
@@ -45,8 +47,8 @@ def main():
     finally:
         os.unlink(tmp.name)
 
-    # 3) 文件历史（用真实存在文件）
-    fhist = core.collect_file_history(REPO, 'packages/pqc-kem/src/ml-kem-768.js')
+    # 3) 文件历史（用真实存在文件，路径由环境变量覆盖）
+    fhist = core.collect_file_history(REPO, HISTORY_FILE)
     checks.append(('file history non-empty', len(fhist) > 0))
 
     # 4) 负向：不存在的符号应返回空（不误报）

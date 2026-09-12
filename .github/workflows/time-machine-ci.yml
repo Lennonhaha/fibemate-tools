@@ -9,35 +9,13 @@ on:
       - '.github/workflows/time-machine-ci.yml'
 
 jobs:
-  smoke:
+  ci-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4        # 克隆本仓自身（含真实 .git 历史）
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Smoke test (REPO = this checkout)
+      - name: Run CI test (self-contained temp repo, zero external deps)
         working-directory: crypto-time-machine
-        env:
-          REPO: ${{ github.workspace }}
-          FILEPATH: crypto-time-machine/ctime/core.py
-          NEGPATH: crypto-time-machine/this_file_does_not_exist.py
-        run: |
-          python - <<'PY'
-          import os, sys
-          sys.path.insert(0, '.')
-          from ctime import core
-          repo = os.environ['REPO']
-          fp = os.environ['FILEPATH']
-          negp = os.environ['NEGPATH']
-          # 正向：本仓真实存在的文件，必须有真实 git 历史
-          fh = core.collect_file_history(repo, fp)
-          assert len(fh) > 0, 'file history must be non-empty'
-          assert len(fh[0]['sha']) == 40, 'sha must be 40 hex'
-          assert 'T' in fh[0]['date'], 'date must be ISO'
-          # 负向：不存在的文件必须返回空（不误报）
-          neg = core.collect_file_history(repo, negp)
-          assert len(neg) == 0, 'nonexistent file must be empty'
-          print('SMOKE PASS fh=%d neg=%d' % (len(fh), len(neg)))
-          sys.exit(0)
-          PY
+        run: python test/ci_test.py
