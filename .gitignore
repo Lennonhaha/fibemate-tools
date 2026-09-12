@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Rust
+target/
+**/target/
+
+# Tool artifacts
+evidence.json
+*.db
+timeline.db
+
+# Editor / OS
+.DS_Store
+*.swp

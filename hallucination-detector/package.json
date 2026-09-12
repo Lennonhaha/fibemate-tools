@@ -1,0 +1,12 @@
+{
+  "name": "crypto-hallucination-detector",
+  "version": "0.1.0",
+  "description": "Heuristic static detector for AI-hallucinated or side-channel-unsafe crypto patterns",
+  "main": "src/index.js",
+  "bin": { "crypto-hallucination-detector": "src/cli.js" },
+  "scripts": {
+    "test": "node test/sample.test.js"
+  },
+  "license": "MIT",
+  "engines": { "node": ">=16" }
+}

@@ -1,0 +1,21 @@
+name: detector-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'hallucination-detector/**'
+      - '.github/workflows/detector-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run sample tests (zero-dependency static analysis)
+        working-directory: hallucination-detector
+        run: node test/sample.test.js

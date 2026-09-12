@@ -1,0 +1,22 @@
+name: prover-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'undecryptable-prover/**'
+      - '.github/workflows/prover-ci.yml'
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build (release) and run evidence generation
+        working-directory: undecryptable-prover
+        run: |
+          cargo build --release
+          ./target/release/undecryptable-prover
+          test -f evidence.json && echo "evidence.json produced"

@@ -1,0 +1,15 @@
+[package]
+name = "undecryptable-prover"
+version = "0.1.0"
+edition = "2021"
+
+# 无法解密证明器 — 多轮覆写销毁 + 证据链
+# 定位：证明「某段密钥材料在 N 轮确定性覆写后，原内容不可从存储介质恢复」
+# 对应 FIBEMATE 纪律：不拿推测当事实 —— 用可验证的多轮覆写 + 证据链代替「我想它没了」
+
+[dependencies]
+zeroize = { version = "1", features = ["derive"] }
+
+[profile.release]
+opt-level = 3
+lto = true
