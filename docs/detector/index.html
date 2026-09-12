@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Hallucination Detector</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:#0a0e1a;color:#e8efec;overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif;
+    line-height:1.7;font-size:16px}
+
+  /* Hero canvas */
+  #stage{display:block;width:100vw;height:100vh;position:fixed;top:0;left:0;z-index:0}
+  .hero-overlay{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:center;
+    align-items:center;pointer-events:none;text-align:center;z-index:2}
+  .hero-overlay .en{font-size:13px;letter-spacing:.32em;text-transform:uppercase;color:#6a7a9a;margin:0 0 32px}
+  .hero-overlay .lead{font-size:17px;color:#8a9ab8;max-width:460px;line-height:1.8}
+  .hero-overlay .lead b{color:#f5d76e;font-weight:600}
+  .hero-overlay .badge{margin-top:24px;padding:6px 16px;border:1px solid #1a2440;border-radius:4px;
+    font-size:12px;color:#5a6a8a;letter-spacing:.06em}
+  .scroll-hint{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2;
+    color:#3a4a6a;font-size:11px;letter-spacing:.2em;animation:fade 2.4s ease-in-out infinite}
+  @keyframes fade{0%,100%{opacity:.25}50%{opacity:.7}}
+
+  /* Content sections */
+  .content{position:relative;z-index:3;background:#0a0e1a}
+  .wrap{max-width:880px;margin:0 auto;padding:0 24px}
+  section.block{min-height:80vh;display:flex;flex-direction:column;justify-content:center;padding:80px 0}
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s ease,transform .9s ease}
+  .reveal.in{opacity:1;transform:none}
+  .tag{color:#00E5C3;font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+  h2{font-size:26px;font-weight:600;margin:8px 0 0}
+
+  /* Three anomaly types */
+  .trio{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:44px}
+  .mono{border:1px solid #1a2440;border-radius:14px;padding:28px 20px;text-align:center;
+    background:linear-gradient(160deg,#0e1428,#0a0e1a);transition:transform .4s ease,border-color .4s ease}
+  .mono:hover{transform:translateY(-6px);border-color:#f5d76e}
+  .mono .star{width:36px;height:36px;margin:0 auto 14px;display:block}
+  .mono .nm{font-size:17px;font-weight:600;color:#f0f0e8}
+  .mono .desc{color:#8a9ab8;font-size:13px;margin-top:8px;min-height:54px}
+  .mono .why{color:#00E5C3;font-size:12px;margin-top:10px;opacity:0;transition:opacity .4s ease}
+  .mono:hover .why{opacity:1}
+
+  /* Scan process */
+  .proc p{color:#8a9ab8;max-width:580px}
+  .codeblock{margin-top:28px;border:1px solid #1a2440;border-radius:12px;padding:24px;
+    background:#080c18;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:14px;
+    position:relative;overflow:hidden}
+  .codeblock .ln{opacity:0;transform:translateX(-8px);animation:carve .6s forwards}
+  @keyframes carve{to{opacity:1;transform:none}}
+  .codeblock .hit{color:#f5d76e}
+  .codeblock .safe{color:#00E5C3}
+  .h-scan{position:absolute;left:0;right:0;height:2px;top:0;
+    background:linear-gradient(90deg,transparent,#00E5C3,transparent);
+    box-shadow:0 0 12px #00E5C3;animation:hscan 3.4s linear infinite}
+  @keyframes hscan{0%{top:0}100%{top:100%}}
+
+  /* Result */
+  .inscr{border:1px solid #1a2440;border-radius:12px;padding:32px;background:#080c18;
+    font-family:"SFMono-Regular",Consolas,monospace;text-align:center}
+  .inscr .score{font-size:42px;font-weight:700;color:#f5d76e}
+  .inscr .verdict{color:#5a6a8a;letter-spacing:.14em;margin:8px 0 22px}
+  .rule{height:1px;background:#1a2440;margin:18px 0}
+  .inscr .crack{text-align:left;font-size:14px;color:#e8efec;display:flex;align-items:baseline;gap:10px}
+  .inscr .crack .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;transform:translateY(2px);
+    background:#f5d76e;box-shadow:0 0 8px #f5d76e}
+  .inscr .crack .loc{color:#5a6a8a}
+  .inscr .note{color:#5a6a8a}
+  .inscr .note .dot{background:#00E5C3;box-shadow:0 0 8px #00E5C3}
+
+  footer{border-top:1px solid #1a2440;padding:28px 0 56px;color:#5a6a8a;font-size:13px}
+  footer a{color:#00E5C3;text-decoration:none}
+
+  @media(max-width:680px){.trio{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+<div class="hero-overlay">
+  <p class="en">Crypto Hallucination Detector</p>
+  <p class="lead">One scan — anomalies surface.<br>AI code looks correct — <b>but crypto can't run on looks.</b></p>
+  <span class="badge">Signals, not verdicts &middot; implements no cryptographic algorithms</span>
+</div>
+<div class="scroll-hint">SCROLL</div>
+
+<div class="content">
+
+  <!-- Three anomaly types -->
+  <section class="block reveal" data-reveal>
+    <div class="wrap">
+      <span class="tag">Three Anomaly Types</span>
+      <h2>Three Anomaly Types</h2>
+      <div class="trio">
+        <div class="mono">
+          <svg class="star" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#f5d76e" stroke-width="0.6" opacity="0.4"/>
+            <circle cx="18" cy="18" r="8" fill="#f5d76e" opacity="0.22"/>
+            <circle cx="18" cy="18" r="4" fill="#f5d76e"/>
+            <circle cx="18" cy="18" r="2" fill="#f0f0e8"/>
+          </svg>
+          <div class="nm">Fabricated API</div>
+          <div class="desc">Calls a crypto function or parameter that doesn't exist</div>
+          <div class="why">e.g. noble.mlkem.encaps is not a real export</div>
+        </div>
+        <div class="mono">
+          <svg class="star" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#f5d76e" stroke-width="0.6" opacity="0.4"/>
+            <circle cx="18" cy="18" r="8" fill="#f5d76e" opacity="0.22"/>
+            <circle cx="18" cy="18" r="4" fill="#f5d76e"/>
+            <circle cx="18" cy="18" r="2" fill="#f0f0e8"/>
+          </svg>
+          <div class="nm">Non-constant-time</div>
+          <div class="desc">Branch or array index depends on secret value, leaking timing</div>
+          <div class="why">e.g. if (secret) or arr[secretByte]</div>
+        </div>
+        <div class="mono">
+          <svg class="star" viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#f5d76e" stroke-width="0.6" opacity="0.4"/>
+            <circle cx="18" cy="18" r="8" fill="#f5d76e" opacity="0.22"/>
+            <circle cx="18" cy="18" r="4" fill="#f5d76e"/>
+            <circle cx="18" cy="18" r="2" fill="#f0f0e8"/>
+          </svg>
+          <div class="nm">Fake tests</div>
+          <div class="desc">Tests skip crypto-critical paths, manufacturing false sense of safety</div>
+          <div class="why">e.g. only happy path, no edge cases</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scan process -->
+  <section class="block reveal" data-reveal>
+    <div class="wrap">
+      <span class="tag">Scan Process</span>
+      <h2>Scan</h2>
+      <p>A band of cyan light sweeps top to bottom. Normal lines glow softly; anomalies flash yellow.</p>
+      <div class="codeblock">
+        <div class="h-scan"></div>
+        <div class="ln" style="animation-delay:.1s">1  function encrypt(key, msg) {</div>
+        <div class="ln" style="animation-delay:.3s">2    <span class="safe">// claim: constant-time</span></div>
+        <div class="ln" style="animation-delay:.5s">3    if (key.length !== 32) {</div>
+        <div class="ln hit" style="animation-delay:.7s">4      return encryptSlow(key, msg);  <span class="safe">// branch depends on key length</span></div>
+        <div class="ln" style="animation-delay:.9s">5    }</div>
+        <div class="ln hit" style="animation-delay:1.1s">6    out[i] = state[key[i]];  <span class="safe">// index depends on secret</span></div>
+        <div class="ln" style="animation-delay:1.3s">7    return seal(out);</div>
+        <div class="ln" style="animation-delay:1.5s">8  }</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Result -->
+  <section class="block reveal" data-reveal>
+    <div class="wrap">
+      <span class="tag">Result</span>
+      <h2>Result</h2>
+      <div class="inscr">
+        <div class="score">35 / 100</div>
+        <div class="verdict">needs-human-review</div>
+        <div class="rule"></div>
+        <div class="crack"><span class="dot"></span><div>L4 &middot; branch depends on key length<br><span class="loc">return encryptSlow(key, msg)</span></div></div>
+        <div class="rule"></div>
+        <div class="crack"><span class="dot"></span><div>L6 &middot; index depends on secret<br><span class="loc">out[i] = state[key[i]]</span></div></div>
+        <div class="rule"></div>
+        <div class="crack note"><span class="dot"></span><div>Note: the above is illustrative. The tool outputs signals, not security verdicts.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      Crypto Hallucination Detector (prototype) &middot; <a href="https://github.com/Lennonhaha/fibemate-tools" target="_blank" rel="noopener">Lennonhaha/fibemate-tools</a><br>
+      <a href="/tools/">fibemate.net/tools/</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var cv=document.getElementById('stage'),ctx=cv.getContext('2d');
+  var W,H,cx,cy;
+  var mouse={x:0,y:0,active:false};
+
+  var COL={
+    bg:'#0a0e1a', deepBlue:'#1a2440', yellow:'#f5d76e',
+    cyan:'#00E5C3', white:'#f0f0e8', indigo:'#3a4a6a'
+  };
+
+  var stars=[
+    {x:0.32,y:0.28,r:4,pulse:0},
+    {x:0.68,y:0.42,r:4,pulse:0.5},
+    {x:0.52,y:0.22,r:4,pulse:1.0}
+  ];
+
+  var P=[];
+  var PCOUNT=800;
+
+  function resize(){
+    W=cv.width=innerWidth;
+    H=cv.height=innerHeight;
+    cx=W/2; cy=H/2;
+    initParticles();
+  }
+
+  function initParticles(){
+    P=[];
+    for(var i=0;i<PCOUNT;i++){
+      var r=20+Math.random()*Math.min(W,H)*0.45;
+      var a=Math.random()*Math.PI*2;
+      var spd=0.0008+0.002*(1/r*80);
+      var len=1+Math.random()*2.5;
+      var hue=Math.random();
+      var col = hue<0.55 ? COL.cyan : (hue<0.85 ? COL.indigo : COL.yellow);
+      var op=0.15+Math.random()*0.45;
+      P.push({r:r,a:a,spd:spd,len:len,col:col,op:op});
+    }
+  }
+
+  function tick(){
+    ctx.fillStyle='rgba(10,14,26,0.12)';
+    ctx.fillRect(0,0,W,H);
+
+    var mx=mouse.active?mouse.x:cx;
+    var my=mouse.active?mouse.y:cy;
+    var dx=mx-cx, dy=my-cy;
+    var mDist=Math.sqrt(dx*dx+dy*dy);
+    var mInfluence=Math.min(mDist/200,1);
+
+    ctx.lineCap='round';
+    for(var i=0;i<P.length;i++){
+      var p=P[i];
+      p.a+=p.spd;
+      if(mInfluence>0.01){
+        var pr=p.r;
+        var px=cx+Math.cos(p.a)*pr;
+        var py=cy+Math.sin(p.a)*pr;
+        var ddx=mx-px,ddy=my-py;
+        var dd=Math.sqrt(ddx*ddx+ddy*ddy);
+        if(dd<150){ p.a+=(1-dd/150)*0.0032*mInfluence; }
+      }
+      var x1=cx+Math.cos(p.a)*p.r, y1=cy+Math.sin(p.a)*p.r;
+      var x2=cx+Math.cos(p.a+0.03)*p.r, y2=cy+Math.sin(p.a+0.03)*p.r;
+      ctx.strokeStyle=p.col; ctx.globalAlpha=p.op; ctx.lineWidth=p.len*0.6;
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    var t=Date.now()*0.0004;
+    for(var arm=0;arm<3;arm++){
+      var armAng=t+arm*(Math.PI*2/3);
+      ctx.strokeStyle=COL.cyan; ctx.globalAlpha=0.12; ctx.lineWidth=1.5;
+      ctx.beginPath();
+      for(var s=0;s<60;s++){
+        var rr=8+s*4, aa=armAng+s*0.04;
+        var xx=cx+Math.cos(aa)*rr, yy=cy+Math.sin(aa)*rr;
+        s===0?ctx.moveTo(xx,yy):ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    var pulse=Math.sin(Date.now()*0.003)*0.3+0.7;
+    ctx.fillStyle=COL.cyan;
+    ctx.globalAlpha=0.15*pulse; ctx.beginPath();ctx.arc(cx,cy,18,0,6.283);ctx.fill();
+    ctx.globalAlpha=0.4*pulse;  ctx.beginPath();ctx.arc(cx,cy,9,0,6.283);ctx.fill();
+    ctx.globalAlpha=1; ctx.fillStyle=COL.white;
+    ctx.beginPath();ctx.arc(cx,cy,3,0,6.283);ctx.fill();
+
+    for(var s2=0;s2<stars.length;s2++){
+      var st=stars[s2]; st.pulse+=0.02;
+      var sx=st.x*W, sy=st.y*H;
+      var pulseR=st.r+Math.sin(st.pulse)*2;
+
+      ctx.fillStyle=COL.cyan; ctx.globalAlpha=0.08;
+      ctx.beginPath();ctx.arc(sx,sy,40+Math.sin(st.pulse)*8,0,6.283);ctx.fill();
+      ctx.fillStyle=COL.yellow; ctx.globalAlpha=0.22;
+      ctx.beginPath();ctx.arc(sx,sy,14,0,6.283);ctx.fill();
+      ctx.globalAlpha=0.5;
+      ctx.beginPath();ctx.arc(sx,sy,7,0,6.283);ctx.fill();
+      ctx.globalAlpha=1; ctx.fillStyle=COL.white;
+      ctx.beginPath();ctx.arc(sx,sy,pulseR*0.6,0,6.283);ctx.fill();
+
+      ctx.strokeStyle=COL.yellow; ctx.globalAlpha=0.3+Math.sin(st.pulse)*0.15; ctx.lineWidth=0.8;
+      for(var k=0;k<4;k++){
+        var ka=k*Math.PI/2+st.pulse*0.3;
+        ctx.beginPath();
+        ctx.moveTo(sx+Math.cos(ka)*pulseR, sy+Math.sin(ka)*pulseR);
+        ctx.lineTo(sx+Math.cos(ka)*(pulseR+8), sy+Math.sin(ka)*(pulseR+8));
+        ctx.stroke();
+      }
+    }
+    ctx.globalAlpha=1;
+
+    for(var j=0;j<30;j++){
+      var seed=j*137.5;
+      var fx=(Math.sin(seed)*0.5+0.5)*W, fy=(Math.cos(seed*1.3)*0.5+0.5)*H;
+      var flick=Math.sin(Date.now()*0.001+seed)*0.3+0.5;
+      ctx.fillStyle=COL.cyan; ctx.globalAlpha=0.12*flick;
+      ctx.beginPath();ctx.arc(fx,fy,1,0,6.283);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+
+    requestAnimationFrame(tick);
+  }
+
+  function onMove(e){
+    var t=e.touches?e.touches[0]:e;
+    mouse.x=t.clientX; mouse.y=t.clientY; mouse.active=true;
+  }
+  function onLeave(){mouse.active=false}
+  addEventListener('mousemove',onMove);
+  addEventListener('touchmove',onMove,{passive:true});
+  addEventListener('mouseleave',onLeave);
+  addEventListener('touchend',onLeave);
+  addEventListener('resize',resize);
+
+  resize();
+  tick();
+
+  var io=new IntersectionObserver(function(e){
+    e.forEach(function(x){ if(x.isIntersecting){ x.target.classList.add('in'); io.unobserve(x.target); }});
+  },{threshold:.15});
+  document.querySelectorAll('[data-reveal]').forEach(function(n){ io.observe(n); });
+})();
+</script>
+</body>
+</html>
