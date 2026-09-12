@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FIBEMATE Tools — 三个辅助工具</title>
+<style>
+  :root {
+    --ink: #1a1f1c;
+    --muted: #5b6661;
+    --line: #e2e8e4;
+    --accent: #00a389;
+    --bg: #fbfcfb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    line-height: 1.65;
+    font-size: 16px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 24px 80px; }
+  header h1 { font-size: 28px; margin: 0 0 8px; font-weight: 650; }
+  header p { color: var(--muted); margin: 0 0 4px; }
+  .note { font-size: 14px; color: var(--muted); border-left: 3px solid var(--line); padding: 8px 12px; margin: 24px 0; }
+  .tool { border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin: 18px 0; background: #fff; }
+  .tool h2 { font-size: 19px; margin: 0 0 4px; }
+  .tool .meta { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+  .tool p { margin: 8px 0; }
+  code { background: #f0f3f1; padding: 1px 5px; border-radius: 4px; font-size: 14px; }
+  .ci { display: inline-block; font-size: 12px; color: var(--accent); border: 1px solid var(--accent); border-radius: 20px; padding: 1px 10px; margin-left: 8px; }
+  footer { margin-top: 40px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>FIBEMATE Tools</h1>
+    <p>三个辅助工具，独立仓库，Apache-2.0。</p>
+    <p>它们不实现任何密码学算法，只做一件事：把「看起来对」变成「可复核」。</p>
+  </header>
+
+  <div class="note">
+    这些工具对应一条纪律——对外硬数字必须独立核验，不拿推测当事实。
+    它们给的是信号，不是判决。
+  </div>
+
+  <div class="tool">
+    <h2>密码幻觉检测器 <span class="ci">CI 13s</span></h2>
+    <p class="meta">Node.js · 零依赖 · <a href="https://github.com/Lennonhaha/fibemate-tools/tree/main/hallucination-detector">源码</a></p>
+    <p>扫描 JS/TS 代码里 AI 容易编出来的写法：声称常数时间却按秘密分支、用数组下标索引秘密、调用不存在的加密 API。</p>
+    <p>输出 <code>needs-human-review</code>，不宣判漏洞。样本测试全过，已在真实代码上验证过误报。</p>
+  </div>
+
+  <div class="tool">
+    <h2>密码时间机器 <span class="ci">CI 7s</span></h2>
+    <p class="meta">Python · 仅标准库 · <a href="https://github.com/Lennonhaha/fibemate-tools/tree/main/crypto-time-machine">源码</a></p>
+    <p>把「某个密码学 API 在哪个 commit 引入、何时变更、影响了哪些文件」变成可查询的时间轴。</p>
+    <p>基于 <code>git log -S/-G</code> 的真实历史，不靠记忆。CI 用自建临时仓库跑，零外部依赖。</p>
+  </div>
+
+  <div class="tool">
+    <h2>无法解密证明器 <span class="ci">CI 22s</span></h2>
+    <p class="meta">Rust + Lean4 · <a href="https://github.com/Lennonhaha/fibemate-tools/tree/main/undecryptable-prover">源码</a></p>
+    <p>多轮覆写销毁密钥材料，每轮记录覆写前后的非零字节计数与指纹，落盘成证据链供人工复核。</p>
+    <p>用 <code>zeroize</code> 而非 <code>fill(0)</code>（防止编译器把覆写优化掉）。Lean 模板是骨架，诚实标注「非完整证明」。</p>
+  </div>
+
+  <footer>
+    仓库：<a href="https://github.com/Lennonhaha/fibemate-tools">Lennonhaha/fibemate-tools</a> ·
+    许可：Apache-2.0 · 与主仓（GPL-3.0）分离，避免传染性。
+    <br>这些工具是「证据生成器」，不是「保证器」。结论由人基于证据判定。
+  </footer>
+</div>
+</body>
+</html>
