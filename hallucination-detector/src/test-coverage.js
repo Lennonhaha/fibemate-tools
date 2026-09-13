@@ -15,7 +15,14 @@ function findTestFor(srcPath, rootDir) {
     path.join(rootDir, 'test', base + '.test' + path.extname(srcPath)),
     path.join(rootDir, 'test', base + path.extname(srcPath)),
   ];
-  return candidates.find((c) => fs.existsSync(c)) || null;
+  // Exclude self-match: when srcPath itself sits under a candidate path
+  // (e.g. source lives in test/), candidate 4 (`rootDir/test/base+ext`)
+  // resolves to srcPath itself, so fs.existsSync always returns true and
+  // `uncovered` is never populated. Drop that before the existence check.
+  // The bare `test/foo.js` candidate is intentionally kept: it matches
+  // Mocha-style default discovery (test/*.js); removing it would cause
+  // false negatives.
+  return candidates.filter((c) => c !== srcPath).find((c) => fs.existsSync(c)) || null;
 }
 
 function analyzeTestCoverage(srcPaths, rootDir) {
