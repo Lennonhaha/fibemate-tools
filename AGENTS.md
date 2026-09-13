@@ -75,6 +75,7 @@ Future showcase pages (time-machine, prover) will follow the same
 | `scripts/create-pr.js` | Open a PR via GitHub REST API | When `gh pr create` fails on Windows |
 | `scripts/merge-pr.js`  | Squash-merge a PR via GitHub REST API | When `gh pr merge` fails on Windows |
 | `scripts/server-sync.sh` | `chattr -i` → `git pull --ff-only` → `chattr +i` SOP | When deploying to a server with locked working tree |
+| `scripts/pilotB_run_gpt.py` | **PARKED** runner that calls a real GPT endpoint (transport-only, model string taken from API response, never impersonates Claude) | **Do NOT run by default** — needs `OPENAI_API_KEY` + egress to `api.openai.com`, both absent in this sandbox; archived here for future use only |
 
 **Token discipline:** all three scripts read `$GITHUB_TOKEN` (or `$GH_TOKEN`)
 from the environment. Never hardcode a token, and never commit a token.

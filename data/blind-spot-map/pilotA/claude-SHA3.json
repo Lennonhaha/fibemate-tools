@@ -1,0 +1,15 @@
+{
+  "sample_id": "pilotA-f9577eea-667c-4867-802a-a39e1d4ffd61",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "algorithm": "SHA3",
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class9"
+  ],
+  "note": "keccakF 调 theta/rho/pi/chi/iota+RC 全未定义 = 纯占位(class9), 连逻辑都没给.",
+  "severity": "major",
+  "code": "function keccakF(state) {\n  for (let round = 0; round < 24; round++) {\n    theta(state); rho(state); pi(state); chi(state); iota(state, RC[round]);\n  }\n  return state;\n}\nconsole.log(keccakF(new Array(25).fill(0)));",
+  "explanation": "Runs the 24-round Keccac-f permutation over the 5x5 state. RC is the round-constant array.",
+  "collected_at": "2026-09-13T13:35:21.016Z"
+}
