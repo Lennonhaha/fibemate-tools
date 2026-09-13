@@ -43,7 +43,14 @@ Future showcase pages (time-machine, prover) will follow the same
    每个 commit 末尾必须有 `Signed-off-by: <name> <email>` trailer。
    DCO check 是 PR 合并门禁，缺签名直接 FAIL。
    推荐 `git config --global --add format.signOff always`；
-   补救：`git commit --amend --signoff --no-edit` + `git push --force-with-lease`。
+   **但 `format.signOff=always` 在以下情况「不会」自动注入 trailer，必须显式加 `-s`/`--signoff`**：
+   - `git commit -F <file>`（从文件读 message 时——`-F` 绕过了 interactive 注入路径）
+   - `git commit --amend`（含 amend 后补 signoff 的场景）
+   - merge commit（`git merge` / `git merge --no-edit` 产生的合并提交）
+   默认动作：**`git commit -s -F <msgfile>`**（既读文件又显式签名），不要只写 `-F`。
+   补救：`git commit --amend --signoff --no-edit`。
+   推送前用 `git cat-file -p HEAD` 确认 trailer 行存在，否则 CI 的 DCO check 必 FAIL。
+   教训：A 线（PR #4）和 B 线（PR #5）各踩过一次 `-F` 不注入，本条即为此固化。
 7. **DCO 门禁绕不开**：本仓 PR 一律走 squash merge，
    `gh pr create` / `gh pr merge` 在 Windows 上会因 gh 老 bug
    （找不到 `git merge` 子命令）失败，**统一走 `scripts/create-pr.js` +
