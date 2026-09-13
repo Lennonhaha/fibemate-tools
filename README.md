@@ -51,6 +51,49 @@ cd undecryptable-prover
 cargo run --release               # 生成 evidence.json
 ```
 
+## Scripts
+
+本仓自带的运维脚本（Apache-2.0，零依赖）。它们绕过 `gh` CLI 在 Windows 上的已知 bug（`gh pr create` / `gh pr merge` 调不到 `git merge` 子命令），并封装「服务器锁目录 → pull → 重锁」的部署 SOP。
+
+| 脚本 | 作用 | 何时用 |
+|---|---|---|
+| `scripts/create-pr.js` | 通过 GitHub REST API 开 PR（绕 `gh` Windows bug） | `gh pr create` 在 Windows 失败 |
+| `scripts/merge-pr.js`  | 通过 GitHub REST API squash / merge / rebase 合并 PR | `gh pr merge` 在 Windows 失败 |
+| `scripts/server-sync.sh` | `chattr -i` → `git pull --ff-only` → `chattr +i` 同步 SOP | 部署到带锁工作树的服务器 |
+
+**令牌纪律**：三个脚本都从环境变量 `$GITHUB_TOKEN`（或 `$GH_TOKEN`）读令牌。**绝不硬编码令牌，绝不提交令牌。**
+
+**示例**：
+
+```bash
+# 开 PR（需先准备好 PR body 文件）
+GITHUB_TOKEN=ghp_xxx \
+  node scripts/create-pr.js \
+  --repo Lennonhaha/fibemate-tools \
+  --head chore/scripts-archival-20260913 \
+  --base main \
+  --title "chore(scripts): archive github-api + server-sync helpers" \
+  --body-file ./pr-body.md
+
+# 合并 PR
+GITHUB_TOKEN=ghp_xxx \
+  node scripts/merge-pr.js \
+  --repo Lennonhaha/fibemate-tools \
+  --pr 12 \
+  --method squash
+
+# 服务器同步（示例路径）
+REPO_DIR=/opt/fibemate-repo \
+LOCKED_DIRS="/opt/fibemate-repo/www /opt/fibemate-repo/packages /opt/fibemate-repo/docs" \
+REMOTE=origin BRANCH=main \
+  bash scripts/server-sync.sh
+```
+
+> 注意：本仓的 commit 必须遵守 DCO（Developer Certificate of Origin）。
+> 每条 commit 末尾带 `Signed-off-by: <name> <email>` trailer，否则 PR 的 DCO check 直接 FAIL。
+> 推荐 `git config --global --add format.signOff always`，或在补救时用
+> `git commit --amend --signoff --no-edit` + `git push --force-with-lease`。
+
 ## License
 
 Apache-2.0。详见 [LICENSE](./LICENSE)。
