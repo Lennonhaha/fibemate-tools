@@ -7,14 +7,17 @@
 const ct = require('./constant-time');
 const api = require('./api-misuse');
 const cov = require('./test-coverage');
+const dp = require('./domain-params');
 
 function analyzeFile(source, filename) {
   const ctRes = ct.analyzeConstantTime(source, filename);
   const apiRes = api.analyzeApiMisuse(source, filename);
+  const dpRes = dp.analyzeDomainParams(source, filename);
   return {
     file: filename,
     constantTime: ctRes,
     apiMisuse: apiRes,
+    domainParams: dpRes,
   };
 }
 
@@ -26,6 +29,7 @@ function analyzeProject(sources /* [{filename, source}] */, rootDir) {
   for (const f of perFile) {
     for (const x of f.constantTime.findings) allFindings.push({ type: 'constant-time', ...x });
     for (const s of f.apiMisuse.suspects) allFindings.push({ type: 'api-misuse', ...s });
+    for (const d of f.domainParams.suspects) allFindings.push({ type: 'domain-params', ...d });
   }
   for (const u of covRes.uncovered) allFindings.push({ type: 'test-coverage', file: u.file, note: 'no corresponding test file' });
   return { perFile, coverage: covRes, findings: allFindings };
