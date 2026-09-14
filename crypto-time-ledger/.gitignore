@@ -1,3 +1,13 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# TSR fixture generation intermediates — private keys and test-only certs never leave the machine
+# Patterns below match only the intermediate files. Non-matching files (pinned-certs.pem,
+# meta.json, *.tsr) are NOT listed here so git will not ignore them — they are intended to be
+# tracked. Use "git add test/fixtures/tsr/" (no -A/.): only non-ignored files are staged.
+test/fixtures/tsr/*.key
+test/fixtures/tsr/tsa*.pem
+test/fixtures/tsr/*.cnf
+test/fixtures/tsr/*.tsq
+test/fixtures/tsr/tsaserial
