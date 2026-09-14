@@ -1,0 +1,57 @@
+{
+  "algorithm": "SM4",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class9"
+  ],
+  "severity": "major",
+  "note": "class9: SBOX truncated to 8 entries and no round function; not a real block cipher (unusable).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-sm4-v1-7936bbb5",
+      "code": "class SM4 {\n  constructor(key){ this.key=key; this.SBOX=[0xd6,0x90,0xe9,0xfe,0xcc,0xe1,0x3d,0xb7]; }\n  encrypt(block){ const out=new Uint8Array(16);\n    for(let i=0;i<16;i++){ out[i]=this.SBOX[block[i]&7]^this.key[i&this.key.length-1]; }\n    return out; }\n  decrypt(block){ return this.encrypt(block); }\n}\nconst c=new SM4(crypto.getRandomValues(new Uint8Array(16)));\nconsole.log(c.encrypt(new Uint8Array(16)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: SBOX truncated to 8 entries and no round function; not a real block cipher (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-sm4-v2-0a080f0c",
+      "code": "function sm4(key){\n  const SBOX=[0xd6,0x90,0xe9,0xfe,0xcc,0xe1,0x3d,0xb7];\n  function encrypt(block){ const out=new Uint8Array(16);\n    for(let i=0;i<16;i++) out[i]=SBOX[block[i]%SBOX.length]^key[i%key.length]; return out; }\n  function decrypt(block){ return encrypt(block); }\n  return {encrypt,decrypt};\n}\nconst c=sm4(crypto.getRandomValues(new Uint8Array(16)));\nconsole.log(c.encrypt(new Uint8Array(16)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: SBOX truncated to 8 entries and no round function; not a real block cipher (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-sm4-v3-54e803ca",
+      "code": "const SM4={ SBOX:[0xd6,0x90,0xe9,0xfe,0xcc,0xe1,0x3d,0xb7],\n  encrypt(key,block){ const out=new Uint8Array(16);\n    for(let i=0;i<16;i++) out[i]=this.SBOX[block[i]&7]^key[i&15]; return out; },\n  decrypt(key,block){ return this.encrypt(key,block); }\n};\nconsole.log(SM4.encrypt(crypto.getRandomValues(new Uint8Array(16)),new Uint8Array(16)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: SBOX truncated to 8 entries and no round function; not a real block cipher (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

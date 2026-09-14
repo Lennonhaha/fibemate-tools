@@ -1,0 +1,57 @@
+{
+  "algorithm": "ECDH",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "severity": "major",
+  "note": "class10: scalar multiplication replaced by x*x+9, not a real X25519 ladder (shared secret wrong).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-ecdh-v1-628bde02",
+      "code": "class ECDH {\n  constructor(){ this.p=2n**255n-19n; }\n  genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  ladder(){ const x=9n; return x; } // scalar mult body commented out\n  derive(sk,pk){ const s=x*x+9n; return new Uint8Array(32); } // wrong, not scalar mult\n}\nconst e=new ECDH(); const a=e.genKey(), b=e.genKey();\nconsole.log(e.derive(a.sk,b.pk).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: scalar multiplication replaced by x*x+9, not a real X25519 ladder (shared secret wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-ecdh-v2-5014ad21",
+      "code": "function ecdh(){\n  function genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  function derive(sk,pk){ const x=9n; const r=x*x+9n; return new Uint8Array(32); }\n  return {genKey,derive};\n}\nconst e=ecdh(); const a=e.genKey(), b=e.genKey();\nconsole.log(e.derive(a.sk,b.pk).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: scalar multiplication replaced by x*x+9, not a real X25519 ladder (shared secret wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-ecdh-v3-e42d84f2",
+      "code": "const ECDH={ genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; },\n  derive(sk,pk){ const out=new Uint8Array(32); out[0]=9; return out; }\n};\nconst a=ECDH.genKey(), b=ECDH.genKey(); console.log(ECDH.derive(a.sk,b.pk).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: scalar multiplication replaced by x*x+9, not a real X25519 ladder (shared secret wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

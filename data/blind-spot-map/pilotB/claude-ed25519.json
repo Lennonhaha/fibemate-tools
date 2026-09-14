@@ -1,0 +1,57 @@
+{
+  "algorithm": "Ed25519",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "severity": "major",
+  "note": "class10: signing uses r=hash(sk2,msg) instead of the Schnorr/EdDSA HRAM challenge; wrong signing equation.",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-ed25519-v1-a3261535",
+      "code": "class Ed25519 {\n  keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    return {sk, pk:new Uint8Array(32)}; }\n  sign(sk,msg){ const r=hash(sk.slice(16),msg); // HRAM vs hash deviation\n    const sig=new Uint8Array(64); sig.set(r); return sig; }\n  verify(pk,msg,sig){ return sig.length===64; }\n}\nfunction hash(a,b){ const h=new Uint8Array(32); return h; }\nconst e=new Ed25519(); const {sk,pk}=e.keygen();\nconsole.log(e.verify(pk,new Uint8Array(5),e.sign(sk,new Uint8Array(5))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: signing uses r=hash(sk2,msg) instead of the Schnorr/EdDSA HRAM challenge; wrong signing equation.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-ed25519-v2-0ee7249a",
+      "code": "function ed25519(){\n  function keygen(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  function sign(sk,msg){ const r=hmac(sk.slice(16),msg);\n    const sig=new Uint8Array(64); sig.set(r); return sig; }\n  function verify(pk,msg,sig){ return sig.length===64; }\n  return {keygen,sign,verify};\n}\nfunction hmac(k,m){ return new Uint8Array(32); }\nconst e=ed25519(); const {sk,pk}=e.keygen();\nconsole.log(e.verify(pk,new Uint8Array(3),e.sign(sk,new Uint8Array(3))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: signing uses r=hash(sk2,msg) instead of the Schnorr/EdDSA HRAM challenge; wrong signing equation.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-ed25519-v3-b3b2ca26",
+      "code": "const ED={ keygen(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; },\n  sign(sk,msg){ const r=H(sk.slice(16),msg); const sig=new Uint8Array(64); sig.set(r); return sig; },\n  verify(pk,msg,sig){ return sig.length===64; }\n};\nfunction H(a,b){ return new Uint8Array(32); }\nconst {sk,pk}=ED.keygen(); console.log(ED.verify(pk,new Uint8Array(2),ED.sign(sk,new Uint8Array(2))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: signing uses r=hash(sk2,msg) instead of the Schnorr/EdDSA HRAM challenge; wrong signing equation.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}
