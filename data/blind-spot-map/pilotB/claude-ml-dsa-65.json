@@ -1,0 +1,61 @@
+{
+  "algorithm": "ML-DSA-65",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10",
+    "class9"
+  ],
+  "severity": "major",
+  "note": "class10: sign() only memcpy msg into sig, no lattice signing (wrong). class9: q=8380417/n=256/k=6 declared unused.",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-mldsa65-v1-e58fad9b",
+      "code": "class MLDSA65 {\n  constructor(){ this.q=8380417; this.n=256; this.k=6; }\n  keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    return {sk, pk:new Uint8Array(1952)}; }\n  sign(sk,msg){ const sig=new Uint8Array(3309);\n    for(let i=0;i<msg.length;i++){ sig[i]=msg[i]; } return sig; }\n  verify(pk,msg,sig){ return sig.length===3309; }\n}\nconst d=new MLDSA65(); const {sk,pk}=d.keygen();\nconsole.log(d.verify(pk,new Uint8Array(8),d.sign(sk,new Uint8Array(8))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg into sig, no lattice signing (wrong). class9: q=8380417/n=256/k=6 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-mldsa65-v2-5963bb86",
+      "code": "function mlDsa65(){\n  const n=256, k=6, q=8380417;\n  function keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    return {sk, pk:new Uint8Array(1952)}; }\n  function sign(sk,msg){ const sig=new Uint8Array(3309);\n    for(let i=0;i<msg.length&&i<sig.length;i++) sig[i]=msg[i]; return sig; }\n  function verify(pk,msg,sig){ return sig.length===3309; }\n  return {keygen,sign,verify};\n}\nconst a=mlDsa65(); console.log(a.verify(a.keygen().pk,new Uint8Array(4),a.sign(a.keygen().sk,new Uint8Array(4))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg into sig, no lattice signing (wrong). class9: q=8380417/n=256/k=6 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-mldsa65-v3-11c472ce",
+      "code": "const MLDSA = { q:8380417, n:256, k:6,\n  keygen(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(1952)}; },\n  sign(sk,msg){ const s=new Uint8Array(3309); s.set(msg); return s; },\n  verify(pk,msg,sig){ return sig.length===3309; }\n};\nconst {sk,pk}=MLDSA.keygen(); console.log(MLDSA.verify(pk,new Uint8Array(3),MLDSA.sign(sk,new Uint8Array(3))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg into sig, no lattice signing (wrong). class9: q=8380417/n=256/k=6 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

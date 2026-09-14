@@ -1,0 +1,61 @@
+{
+  "algorithm": "SLH-DSA-SHA2-128f",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10",
+    "class9"
+  ],
+  "severity": "major",
+  "note": "class10: sign() only memcpy msg, no FORS/SLH logic (wrong). class9: n=16/h=66/d=22 declared unused.",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-slhdsasha2128f-v1-e1be5226",
+      "code": "class SLHDSA {\n  constructor(){ this.n=16; this.h=66; this.d=22; }\n  keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    return {sk, pk:new Uint8Array(32)}; }\n  sign(sk,msg){ const sig=new Uint8Array(this.n*(this.h+this.d+1));\n    for(let i=0;i<msg.length;i++) sig[i]=msg[i]; return sig; }\n  verify(pk,msg,sig){ return sig.length>0; }\n}\nconst s=new SLHDSA(); const {sk,pk}=s.keygen();\nconsole.log(s.verify(pk,new Uint8Array(5),s.sign(sk,new Uint8Array(5))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg, no FORS/SLH logic (wrong). class9: n=16/h=66/d=22 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-slhdsasha2128f-v2-a947622e",
+      "code": "function slhDsa128f(){\n  const n=16, h=66, d=22;\n  function keygen(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  function sign(sk,msg){ const sig=new Uint8Array(n*(h+d+1));\n    for(let i=0;i<msg.length;i++) sig[i]=msg[i]; return sig; }\n  function verify(pk,msg,sig){ return sig.length>0; }\n  return {keygen,sign,verify};\n}\nconst x=slhDsa128f(); const {sk,pk}=x.keygen();\nconsole.log(x.verify(pk,new Uint8Array(2),x.sign(sk,new Uint8Array(2))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg, no FORS/SLH logic (wrong). class9: n=16/h=66/d=22 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-slhdsasha2128f-v3-607cd9c3",
+      "code": "const SLH = { n:16, h:66, d:22,\n  keygen(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; },\n  sign(sk,msg){ const sig=new Uint8Array(this.n*(this.h+this.d+1)); sig.set(msg); return sig; },\n  verify(pk,msg,sig){ return sig.length>0; }\n};\nconst {sk,pk}=SLH.keygen(); console.log(SLH.verify(pk,new Uint8Array(1),SLH.sign(sk,new Uint8Array(1))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: sign() only memcpy msg, no FORS/SLH logic (wrong). class9: n=16/h=66/d=22 declared unused.",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

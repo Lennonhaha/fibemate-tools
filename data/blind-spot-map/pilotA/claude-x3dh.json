@@ -12,5 +12,6 @@
   "severity": "major",
   "code": "function x3dh(IK, SPK, OPK, BobIK) {\n  const dh1 = ecdh(IK, SPK);\n  const dh2 = ecdh(EK, OPK);\n  const sk = kdf(dh1 ^ dh2);\n  return sk;\n}\nconsole.log(x3dh('ik','spk','opk','bob'));",
   "explanation": "Computes the initial shared secret from two Diffie-Hellman exchanges (identity+prekey, ephemeral+onetime).",
-  "collected_at": "2026-09-13T13:35:21.015Z"
+  "collected_at": "2026-09-13T13:35:21.015Z",
+  "synthetic": true
 }

@@ -11,5 +11,6 @@
   "severity": "critical",
   "code": "function sm2Sign(hash, d, n = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123n) {\n  const k = 1n;\n  const R = ecMul(k, G);\n  const r = (R.x + hash) % n;\n  const s = (k - r * d) % n;\n  return { r, s };\n}",
   "explanation": "Signs a hash with private key d. Uses fixed nonce k=1 for simplicity and a linear recombination of r and d.",
-  "collected_at": "2026-09-13T13:35:21.012Z"
+  "collected_at": "2026-09-13T13:35:21.012Z",
+  "synthetic": true
 }

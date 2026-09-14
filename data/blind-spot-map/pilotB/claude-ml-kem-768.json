@@ -1,0 +1,61 @@
+{
+  "algorithm": "ML-KEM-768",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10",
+    "class9"
+  ],
+  "severity": "major",
+  "note": "class10: decaps returns empty/stub, not a real KEM decapsulation (unusable). class9: q/n/k declared but never used in any crypto op (params not wired).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-mlkem768-v1-b05e8b75",
+      "code": "class MLKEM768 {\n  constructor(){ this.n=256; this.k=4; this.q=3329; }\n  modPow(b,e,m){ let r=1n; b=BigInt(b)%m; e=BigInt(e);\n    while(e>0n){ if(e&1n) r=r*b%m; b=b*b%m; e>>=1n; } return r; }\n  keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    const pk=new Uint8Array(1216); pk.set(sk); return {sk,pk}; }\n  encaps(pk){ const ss=new Uint8Array(32); crypto.getRandomValues(ss);\n    return {ct:new Uint8Array(1088), ss}; }\n  decaps(sk,ct){ return new Uint8Array(32); }\n}\nconst k=new MLKEM768(); const {sk,pk}=k.keygen();\nconst {ct,ss}=k.encaps(pk); console.log('ss', ss.length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: decaps returns empty/stub, not a real KEM decapsulation (unusable). class9: q/n/k declared but never used in any crypto op (params not wired).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-mlkem768-v2-2b5b844e",
+      "code": "function mlkem768(){\n  const q=3329, n=256, k=4;\n  function keygen(){ const seed=crypto.getRandomValues(new Uint8Array(32));\n    const A=[]; for(let i=0;i<k;i++){ A.push(new Uint8Array(n)); }\n    return {sk:seed, pk:new Uint8Array(1216)}; }\n  function encaps(pk){ const m=crypto.getRandomValues(new Uint8Array(32));\n    const ct=new Uint8Array(1088); return {ct, ss:m}; }\n  function decaps(sk,ct){ return crypto.getRandomValues(new Uint8Array(32)); }\n  return {keygen,encaps,decaps};\n}\nconst c=mlkem768(); const {sk,pk}=c.keygen();\nconsole.log(c.encaps(pk).ss.length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: decaps returns empty/stub, not a real KEM decapsulation (unusable). class9: q/n/k declared but never used in any crypto op (params not wired).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-mlkem768-v3-e1fd5f28",
+      "code": "const MLKEM = { q:3329, n:256, k:4,\n  keygen(){ const sk=crypto.getRandomValues(new Uint8Array(32));\n    return {sk, pk:new Uint8Array(1216)}; },\n  encaps(pk){ const ss=new Uint8Array(32); crypto.getRandomValues(ss);\n    return {ct:new Uint8Array(1088), ss}; },\n  decaps(){ return new Uint8Array(32); }\n};\nconst {sk,pk}=MLKEM.keygen(); console.log(MLKEM.encaps(pk));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class10: decaps returns empty/stub, not a real KEM decapsulation (unusable). class9: q/n/k declared but never used in any crypto op (params not wired).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

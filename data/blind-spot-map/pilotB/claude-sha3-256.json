@@ -1,0 +1,57 @@
+{
+  "algorithm": "SHA3-256",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class9"
+  ],
+  "severity": "major",
+  "note": "class9: keccakF permutation is an empty placeholder; digest is just msg truncation (not SHA3, unusable).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-sha3256-v1-f5409d1f",
+      "code": "class SHA3 {\n  constructor(){ this.r=1088/8; this.rate=new Uint8Array(136); }\n  keccakF(){ /* placeholder - no permutation implemented */ }\n  digest(msg){ const out=new Uint8Array(32);\n    for(let i=0;i<msg.length&&i<32;i++) out[i]=msg[i]; return out; }\n}\nconst s=new SHA3(); console.log(s.digest(new Uint8Array(10)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: keccakF permutation is an empty placeholder; digest is just msg truncation (not SHA3, unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-sha3256-v2-49eed100",
+      "code": "function sha3(){\n  function keccakF(){ /* TODO permutation */ }\n  function digest(msg){ const out=new Uint8Array(32);\n    for(let i=0;i<msg.length;i++) out[i]=msg[i]; return out; }\n  return {digest};\n}\nconsole.log(sha3().digest(new Uint8Array(6)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: keccakF permutation is an empty placeholder; digest is just msg truncation (not SHA3, unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-sha3256-v3-379eec93",
+      "code": "const SHA3={ rate:136, keccakF(){ /* not implemented */ },\n  digest(msg){ const out=new Uint8Array(32); out.set(msg.slice(0,32)); return out; }\n};\nconsole.log(SHA3.digest(new Uint8Array(4)).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class9"
+      ],
+      "severity": "major",
+      "note": "class9: keccakF permutation is an empty placeholder; digest is just msg truncation (not SHA3, unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

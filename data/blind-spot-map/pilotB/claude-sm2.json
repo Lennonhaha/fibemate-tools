@@ -1,0 +1,57 @@
+{
+  "algorithm": "SM2",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "severity": "critical",
+  "note": "class10: signing nonce k fixed to 1 (constant), enabling private-key recovery from two signatures (key leakage).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-sm2-v1-7da803d2",
+      "code": "const SM2 = {\n  keygen(){ const priv=crypto.getRandomValues(new Uint8Array(32));\n    const pub=new Uint8Array(64); return {priv,pub}; },\n  sign(priv,msg){ const r=1n; const s=2n; // fixed nonce - deterministic but wrong\n    const sig=new Uint8Array(64);\n    return sig; },\n  verify(pub,msg,sig){ return sig.length===64; }\n};\nconst {priv,pub}=SM2.keygen(); console.log(SM2.verify(pub,new Uint8Array(4),SM2.sign(priv,new Uint8Array(4))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "critical",
+      "note": "class10: signing nonce k fixed to 1 (constant), enabling private-key recovery from two signatures (key leakage).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-sm2-v2-9e7d8fa3",
+      "code": "function sm2(){\n  function keygen(){ const priv=crypto.getRandomValues(new Uint8Array(32));\n    return {priv, pub:new Uint8Array(64)}; }\n  function sign(priv,msg){ const k=1n; // constant nonce\n    const sig=new Uint8Array(64); return sig; }\n  function verify(pub,msg,sig){ return sig.length===64; }\n  return {keygen,sign,verify};\n}\nconst s=sm2(); const {priv,pub}=s.keygen();\nconsole.log(s.verify(pub,new Uint8Array(3),s.sign(priv,new Uint8Array(3))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "critical",
+      "note": "class10: signing nonce k fixed to 1 (constant), enabling private-key recovery from two signatures (key leakage).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-sm2-v3-2eacc51c",
+      "code": "const sm2mod = { p: BigInt('0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF'),\n  keygen(){ return {priv:crypto.getRandomValues(new Uint8Array(32)), pub:new Uint8Array(64)}; },\n  sign(priv,msg){ const sig=new Uint8Array(64); return sig; },\n  verify(pub,msg,sig){ return sig.length===64; }\n};\nconst {priv,pub}=sm2mod.keygen(); console.log(sm2mod.verify(pub,new Uint8Array(2),sm2mod.sign(priv,new Uint8Array(2))));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "critical",
+      "note": "class10: signing nonce k fixed to 1 (constant), enabling private-key recovery from two signatures (key leakage).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

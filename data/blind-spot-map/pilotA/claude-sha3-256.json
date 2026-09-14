@@ -11,5 +11,6 @@
   "severity": "major",
   "code": "function keccakF(state) {\n  for (let round = 0; round < 24; round++) {\n    theta(state); rho(state); pi(state); chi(state); iota(state, RC[round]);\n  }\n  return state;\n}\nconsole.log(keccakF(new Array(25).fill(0)));",
   "explanation": "Runs the 24-round Keccac-f permutation over the 5x5 state. RC is the round-constant array.",
-  "collected_at": "2026-09-13T13:35:21.016Z"
+  "collected_at": "2026-09-13T13:35:21.016Z",
+  "synthetic": true
 }

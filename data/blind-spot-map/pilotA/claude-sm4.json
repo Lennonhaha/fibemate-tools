@@ -11,5 +11,6 @@
   "severity": "major",
   "code": "function sm4Round(x, rk) {\n  const t = x[0] ^ x[1] ^ x[2] ^ x[3] ^ rk;\n  const s = SBOX[t & 0xff] | (SBOX[(t>>8)&0xff]<<8) | (SBOX[(t>>16)&0xff]<<16) | (SBOX[(t>>24)&0xff]<<24);\n  return [x[1], x[2], x[3], x[0] ^ L(s)];\n}\nconsole.log(sm4Round([1,2,3,4], 0x12345678));",
   "explanation": "One SM4 round: XOR key, S-box substitution, linear transformation L. SBOX is the standard 256-entry table.",
-  "collected_at": "2026-09-13T13:35:21.013Z"
+  "collected_at": "2026-09-13T13:35:21.013Z",
+  "synthetic": true
 }

@@ -9,5 +9,6 @@
   "severity": null,
   "code": "function expandA(seed, k = 6, l = 5, q = 8380417) {\n  const A = [];\n  for (let i = 0; i < k; i++) {\n    const row = [];\n    for (let j = 0; j < l; j++) row.push(xof(seed + '-' + i + '-' + j, 256).map(x => x % q));\n    A.push(row);\n  }\n  return A;\n}\nconsole.log(expandA('seed'));",
   "explanation": "Builds the public matrix A by deriving each coefficient vector from an XOF of the seed. Coefficients reduced mod q.",
-  "collected_at": "2026-09-13T13:35:21.010Z"
+  "collected_at": "2026-09-13T13:35:21.010Z",
+  "synthetic": true
 }

@@ -1,0 +1,61 @@
+{
+  "algorithm": "AES-GCM",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10",
+    "class9"
+  ],
+  "severity": "critical",
+  "note": "class10: auth tag ignores AAD and length (authentication bypass). class9: \"encryption\" is XOR with key, not AES round/CTR (structurally wrong).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-aesgcm-v1-62144238",
+      "code": "class AESGCM {\n  constructor(key){ this.key=key; }\n  encrypt(plain){ const iv=crypto.getRandomValues(new Uint8Array(12));\n    const ct=new Uint8Array(plain.length);\n    for(let i=0;i<plain.length;i++) ct[i]=plain[i]^this.key[i%this.key.length];\n    const tag=this.ghash(this.key, ct); // tag ignores AAD and length\n    return {iv, ct, tag}; }\n  ghash(h,x){ const t=new Uint8Array(16); for(let i=0;i<x.length&&i<16;i++) t[i]=x[i]; return t; }\n  decrypt(c){ return c.ct; }\n}\nconst a=new AESGCM(crypto.getRandomValues(new Uint8Array(32)));\nconsole.log(a.encrypt(new Uint8Array(20)).ct.length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "critical",
+      "note": "class10: auth tag ignores AAD and length (authentication bypass). class9: \"encryption\" is XOR with key, not AES round/CTR (structurally wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-aesgcm-v2-29854b26",
+      "code": "function aesGcm(key){\n  function encrypt(plain){ const iv=crypto.getRandomValues(new Uint8Array(12));\n    const ct=new Uint8Array(plain.length);\n    for(let i=0;i<plain.length;i++) ct[i]=plain[i]^key[i%key.length];\n    const tag=ghash(key,ct); return {iv,ct,tag}; }\n  function ghash(h,x){ const t=new Uint8Array(16); t.set(x.slice(0,16)); return t; }\n  function decrypt(c){ return c.ct; }\n  return {encrypt,decrypt};\n}\nconst a=aesGcm(crypto.getRandomValues(new Uint8Array(32)));\nconsole.log(a.encrypt(new Uint8Array(10)).ct.length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "critical",
+      "note": "class10: auth tag ignores AAD and length (authentication bypass). class9: \"encryption\" is XOR with key, not AES round/CTR (structurally wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-aesgcm-v3-5493ff6d",
+      "code": "const AES_GCM={ encrypt(key,plain){ const iv=crypto.getRandomValues(new Uint8Array(12));\n    const ct=new Uint8Array(plain.length);\n    for(let i=0;i<plain.length;i++) ct[i]=plain[i]^key[i&31];\n    const tag=Buffer.from('00000000000000000000000000000000','hex');\n    return {iv,ct,tag}; },\n  decrypt(key,c){ return c.ct; }\n};\nconsole.log(AES_GCM.encrypt(crypto.getRandomValues(new Uint8Array(32)),new Uint8Array(8)).ct.length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10",
+        "class9"
+      ],
+      "severity": "critical",
+      "note": "class10: auth tag ignores AAD and length (authentication bypass). class9: \"encryption\" is XOR with key, not AES round/CTR (structurally wrong).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}

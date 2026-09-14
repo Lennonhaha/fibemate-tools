@@ -1,0 +1,57 @@
+{
+  "algorithm": "X3DH",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "synthetic": true,
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "severity": "major",
+  "note": "class10: shared-secret derivation references undefined EK (V1/V2 runtime crash) or fills zero (V3 fake shared secret); no real DH (unusable).",
+  "variant_count": 3,
+  "variants": [
+    {
+      "variant": 1,
+      "sample_id": "pilotB-x3dh-v1-5a140f06",
+      "code": "class X3DH {\n  constructor(){ this.curve='X25519'; }\n  genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  derive(ik,spk){ const sh=new Uint8Array(32);\n    // uses undefined EK variable - would throw at runtime\n    sh.set(EK.pk); return sh; }\n}\nconst x=new X3DH(); const a=x.genKey(), b=x.genKey();\nconsole.log(x.derive(a.sk,b.pk).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: shared-secret derivation references undefined EK (V1/V2 runtime crash) or fills zero (V3 fake shared secret); no real DH (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 2,
+      "sample_id": "pilotB-x3dh-v2-50f175a6",
+      "code": "function x3dh(){\n  function genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; }\n  function derive(ik,spk){ const sh=new Uint8Array(32);\n    // missing EK generation before use\n    sh.set(ek.pk); return sh; }\n  return {genKey,derive};\n}\nconst x=x3dh(); const a=x.genKey(), b=x.genKey();\nconsole.log(x.derive(a.sk,b.pk));",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: shared-secret derivation references undefined EK (V1/V2 runtime crash) or fills zero (V3 fake shared secret); no real DH (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    },
+    {
+      "variant": 3,
+      "sample_id": "pilotB-x3dh-v3-0af1b443",
+      "code": "const X3DH={ genKey(){ return {sk:crypto.getRandomValues(new Uint8Array(32)), pk:new Uint8Array(32)}; },\n  derive(ik,spk){ const sh=new Uint8Array(32);\n    const ek=crypto.getRandomValues(new Uint8Array(32));\n    sh.set(ek.slice(0,32)); return sh; }\n};\nconst a=X3DH.genKey(), b=X3DH.genKey(); console.log(X3DH.derive(a.sk,b.pk).length);",
+      "human_verdict": "confirmed",
+      "hallucination_type": [
+        "class10"
+      ],
+      "severity": "major",
+      "note": "class10: shared-secret derivation references undefined EK (V1/V2 runtime crash) or fills zero (V3 fake shared secret); no real DH (unusable).",
+      "synthetic": true,
+      "ai_model": "claude",
+      "model_version": "claude-sonnet-4-20250929"
+    }
+  ]
+}
