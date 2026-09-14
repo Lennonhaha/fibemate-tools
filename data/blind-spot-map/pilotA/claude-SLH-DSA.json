@@ -1,0 +1,15 @@
+{
+  "sample_id": "pilotA-8aa25d5e-8d33-458e-96f0-ed00bba794c3",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "algorithm": "SLH-DSA",
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "note": "forsSign 取前4字节当单索引 = FORS 应多叶子哈希派生树索引, 逻辑错(class10).",
+  "severity": "major",
+  "code": "function forsSign(msg, sk) {\n  const idx = bytesToInt(msg.slice(0, 4));\n  return sk[idx];\n}\nconsole.log(forsSign(Buffer.from('abc'), ['s0','s1','s2','s3']));",
+  "explanation": "Signs by selecting the FORS secret leaf indexed by the first 4 bytes of the message. Returns the raw leaf value.",
+  "collected_at": "2026-09-13T13:35:21.011Z"
+}

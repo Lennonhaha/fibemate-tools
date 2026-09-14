@@ -1,0 +1,15 @@
+{
+  "sample_id": "pilotA-32087d16-92d2-45f2-b16e-857cd6f892bf",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "algorithm": "ECDH",
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10"
+  ],
+  "note": "x=x*x+9 重复 ≠ Montgomery ladder(无条件交换/x2x3 跟踪缺失) = 逻辑错(class10); ladder 体被注释省略.",
+  "severity": "major",
+  "code": "function x25519(d, u) {\n  const k = clamp(d);\n  let x = u;\n  for (let i = 0; i < 255; i++) {\n    x = (x * x + 9) ; // ladder body omitted for brevity\n  }\n  return x;\n}\nconsole.log(x25519(5, 9));",
+  "explanation": "Montgomery ladder for X25519. Applies the curve map x -> x^2+9 repeatedly over the scalar.",
+  "collected_at": "2026-09-13T13:35:21.017Z"
+}

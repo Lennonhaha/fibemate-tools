@@ -1,0 +1,16 @@
+{
+  "sample_id": "pilotA-c12262cd-47fb-4ed0-9c1a-3097fd194392",
+  "ai_model": "claude",
+  "model_version": "claude-sonnet-4-20250929",
+  "algorithm": "ML-KEM",
+  "human_verdict": "confirmed",
+  "hallucination_type": [
+    "class10",
+    "class5"
+  ],
+  "note": "Math.pow(root,i*j) 非模幂 = 数学错(class10); root=17 非标准 NTT 根 = 参数/域值错(class5, 可自动).",
+  "severity": "major",
+  "code": "function ntt(a, q = 3329, root = 17) {\n  const n = a.length, out = new Array(n);\n  for (let i = 0; i < n; i++) {\n    let s = 0;\n    for (let j = 0; j < n; j++) s = (s + a[j] * Math.pow(root, i * j)) % q;\n    out[i] = s;\n  }\n  return out;\n}\nconsole.log(ntt([1,2,3,4,5,6,7,8]));",
+  "explanation": "Q=3329 per FIPS 203. Used base 17 as a stand-in twiddle factor to keep the demo short; double loop is a placeholder for the butterfly.",
+  "collected_at": "2026-09-13T13:35:21.007Z"
+}
