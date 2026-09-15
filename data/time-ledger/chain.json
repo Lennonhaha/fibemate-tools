@@ -1,0 +1,62 @@
+[
+  {
+    "schema_version": 1,
+    "index": 0,
+    "ts": "2026-09-14T09:37:16.000Z",
+    "state": {
+      "algorithms": [
+        {
+          "name": "ML-KEM-768",
+          "version": "1.0",
+          "lib": "noble"
+        }
+      ],
+      "git_commit": "0c4f3c3",
+      "note": "demo-seed from test fixtures"
+    },
+    "tsr_digest": "sha256:a1dc0b259c908d82dc5cf6d7c66e6e788d2573e16ec43652bd3518e4465a0ea8",
+    "tsr_ref": "a1dc0b259c908d82dc5cf6d7c66e6e788d2573e16ec43652bd3518e4465a0ea8.tsr",
+    "hash_prev": "genesis",
+    "hash_now": "sha256:afa972af57bbbe12f85f01c3d1d19b3600cd7c43d19c351ed1ea8631d199a6f5"
+  },
+  {
+    "schema_version": 1,
+    "index": 1,
+    "ts": "2026-09-14T09:37:16.000Z",
+    "state": {
+      "algorithms": [
+        {
+          "name": "ML-DSA-65",
+          "version": "2.0",
+          "lib": "noble"
+        }
+      ],
+      "git_commit": "0c4f3c3",
+      "note": "demo-seed from test fixtures"
+    },
+    "tsr_digest": "sha256:acc11a37bd8cd3e53c980e0450243908d23925ec128cb1299fc94377d7ee69f0",
+    "tsr_ref": "acc11a37bd8cd3e53c980e0450243908d23925ec128cb1299fc94377d7ee69f0.tsr",
+    "hash_prev": "sha256:afa972af57bbbe12f85f01c3d1d19b3600cd7c43d19c351ed1ea8631d199a6f5",
+    "hash_now": "sha256:2678dc22248e718b0dac3dd2f2c79b0a9d1340c3094b9fb8b3b2b77e0964f33b"
+  },
+  {
+    "schema_version": 1,
+    "index": 2,
+    "ts": "2026-09-14T09:37:17.000Z",
+    "state": {
+      "algorithms": [
+        {
+          "name": "SLH-DSA-128f",
+          "version": "1.0",
+          "lib": "noble"
+        }
+      ],
+      "git_commit": "0c4f3c3",
+      "note": "demo-seed from test fixtures"
+    },
+    "tsr_digest": "sha256:c229ed071f3611c3b4ac25bd39bc1743af7c5ec4cd58b57ac1c990af0649b53a",
+    "tsr_ref": "c229ed071f3611c3b4ac25bd39bc1743af7c5ec4cd58b57ac1c990af0649b53a.tsr",
+    "hash_prev": "sha256:2678dc22248e718b0dac3dd2f2c79b0a9d1340c3094b9fb8b3b2b77e0964f33b",
+    "hash_now": "sha256:9a54e29de07fe6bf3360fe1fd84eb07a4cf87d9cb5b3d3e5dd8b1d1271541b42"
+  }
+]
