@@ -10,11 +10,22 @@
 //       --pr 65 \
 //       --sha 06226a8209efa0f4a46a3f586d7033a9f59ebf12 \
 //       --method squash \
-//       --commit-title "docs(homepage): ... (#65)" \
-//       --commit-message "Closes the gap ..."
+//       --commit-title "docs(homepage): ... (#65)"
 //
 // Method defaults to 'squash'. sha defaults to the PR's current head SHA
 // (auto-discovered if --sha omitted; that costs one extra API call).
+//
+// === DCO / SIGN-OFF DISCIPLINE (hard rule) ===
+// For squash merges (this repo's policy), NEVER pass --commit-message.
+// When merge_method=squash, GitHub concatenates EVERY source commit's
+// message into the resulting commit body and PRESERVES their Signed-off-by
+// / Co-Authored-By trailers. Passing --commit-message REPLACES that entire
+// body and WIPES the source sign-off trailers -> DCO check fails and the
+// trailer can never be retro-fitted onto an already-squashed main commit
+// (Repository Rule forbids force-push to main -> it is irreversible).
+// Only --commit-title is safe: GitHub uses it for the subject line and still
+// keeps the auto-concatenated body (with trailers) for squash.
+// To ADD a Co-Authored-By without wiping source messages, use --co-author.
 //
 // Why this exists: gh pr merge on Windows shells out to `git merge`
 // which fails when the bundled git shim can't find the merge subcommand
@@ -33,13 +44,24 @@ function parseArgs(argv) {
     else if (a === '--sha')    out.sha = argv[++i];
     else if (a === '--method') out.method = argv[++i];
     else if (a === '--commit-title')    out.commitTitle = argv[++i];
-    else if (a === '--commit-message')  out.commitMessage = argv[++i];
+    else if (a === '--commit-message')  { out.commitMessage = argv[++i]; out.commitMessageExplicit = true; }
+    else if (a === '--co-author')        out.coAuthor = argv[++i];
     else throw new Error('unknown arg: ' + a);
   }
   for (const k of ['repo', 'pr']) {
     if (!out[k]) throw new Error('missing required arg: --' + k);
   }
-  return out;
+  // === DCO guard ===
+  // Squash + --commit-message would wipe source Signed-off-by trailers.
+  // Repository Rule forbids force-push to main, so a lost trailer on main
+  // is irreversible. Refuse outright.
+  if (out.commitMessageExplicit && args.method === 'squash') {
+    console.error('REFUSED: --commit-message is forbidden with squash merge.');
+    console.error('It replaces the auto-concatenated body and WIPES source');
+    console.error('Signed-off-by trailers. Use --commit-title only (keeps the');
+    console.error('body + trailers), or --co-author to append a Co-Authored-By.');
+    process.exit(4);
+  }
 }
 
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
@@ -102,7 +124,15 @@ function api(method, path, body) {
     sha: args.sha,
   };
   if (args.commitTitle)   payload.commit_title = args.commitTitle;
-  if (args.commitMessage) payload.commit_message = args.commitMessage;
+  // Only attach commit_message when NOT squash (squash must keep the
+  // auto-concatenated source body so Signed-off-by trailers survive).
+  if (args.commitMessage && args.method !== 'squash') {
+    payload.commit_message = args.commitMessage;
+  }
+  // --co-author appends a trailer WITHOUT wiping the source body.
+  if (args.coAuthor) {
+    payload.commit_message = 'Co-Authored-By: ' + args.coAuthor;
+  }
 
   const r = await api('PUT', `/repos/${owner}/${repo}/pulls/${args.pr}/merge`, payload);
   console.log('STATUS=' + r.status);

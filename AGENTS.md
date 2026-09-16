@@ -55,6 +55,19 @@ Future showcase pages (time-machine, prover) will follow the same
    `gh pr create` / `gh pr merge` 在 Windows 上会因 gh 老 bug
    （找不到 `git merge` 子命令）失败，**统一走 `scripts/create-pr.js` +
    `scripts/merge-pr.js`**（GitHub REST API，零依赖）。
+8. **merge 脚本禁止用 `--commit-message` 整段替换 body**（本仓 squash 政策硬规则）：
+   `merge_method=squash` 时，GitHub 会把**所有源 commit 的 message 拼接成 body**
+   并**保留其 `Signed-off-by` / `Co-Authored-By` trailer**。一旦传
+   `--commit-message`，整段 body 被替换，**源 sign-off trailer 全部丢失** →
+   DCO check FAIL，且 main 的 squash commit 一旦落地就**无法补 trailer**
+   （Repository Rule 禁止 force-push 到 main → 不可逆）。
+   正确做法：
+   - 只用 `--commit-title`（GitHub 只拿它当 subject，squash 时仍保留拼接 body + trailer）；
+   - 要加 `Co-Authored-By` 用 `--co-author`（追加 trailer，不擦除源 message）；
+   - `scripts/merge-pr.js` 已内置护栏：`squash` + `--commit-message` 直接 `exit 4` 拒绝。
+   背景：PR #11 的 main commit `0c4f3c3` 因此丢失 trailer，因 main 禁 force-push
+   而永不可逆；结论是「机制上无法给已 squash 的 main commit 补 trailer，真正的
+   纪律修复点是改 merge 脚本防复发」，详见本会话 2026-09-15 复盘。
 
 ## Encoding Discipline (推送前必查)
 
