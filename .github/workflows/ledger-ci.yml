@@ -1,0 +1,22 @@
+name: ledger-ci
+
+on:
+  pull_request:
+    paths:
+      - 'crypto-time-ledger/**'
+      - '.github/workflows/ledger-ci.yml'
+
+jobs:
+  ci-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: crypto-time-ledger
+        run: npm ci
+      - name: Run tests (core / storage / tsr / cli)
+        working-directory: crypto-time-ledger
+        run: npm test
