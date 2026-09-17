@@ -117,6 +117,42 @@ function api(method, path, body) {
     if (r.status !== 200) { console.error('PR FETCH ERR: ' + r.status + ' ' + r.raw); process.exit(1); }
     args.sha = r.body.head.sha;
     console.log('auto-discovered head SHA: ' + args.sha);
+
+    // P1④: refuse to merge if PR is not mergeable or CI has failing/pending checks
+    if (r.body.mergeable === false) {
+      console.error('REFUSED: PR is not mergeable (mergeable=false).');
+      console.error('Resolve conflicts before merging.');
+      process.exit(5);
+    }
+    if (r.body.mergeable === null) {
+      console.error('REFUSED: GitHub is still computing mergeable status (null).');
+      console.error('Wait a few seconds and retry.');
+      process.exit(5);
+    }
+  }
+
+  // P1④: check CI status before merging
+  const cr = await api('GET', `/repos/${owner}/${repo}/pulls/${args.pr}`);
+  if (cr.status === 200 && cr.body.mergeable === false) {
+    console.error('REFUSED: PR became unmergeable.');
+    process.exit(5);
+  }
+  const sr = await api('GET', `/repos/${owner}/${repo}/commits/${args.sha}/check-runs`);
+  if (sr.status === 200 && sr.body && sr.body.check_runs) {
+    const runs = sr.body.check_runs;
+    const pending = runs.filter(r => r.status !== 'completed');
+    const failed  = runs.filter(r => r.status === 'completed' && r.conclusion === 'failure');
+    if (pending.length > 0) {
+      console.error('REFUSED: ' + pending.length + ' check(s) still pending:');
+      pending.forEach(r => console.error('  - ' + r.name));
+      process.exit(5);
+    }
+    if (failed.length > 0) {
+      console.error('REFUSED: ' + failed.length + ' check(s) failed:');
+      failed.forEach(r => console.error('  - ' + r.name));
+      process.exit(5);
+    }
+    console.log('CI: ' + runs.length + ' checks, all passed.');
   }
 
   const payload = {
