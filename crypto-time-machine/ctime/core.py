@@ -35,33 +35,41 @@ def collect_timeline(repo, pattern, since=None, until=None, mode='-S'):
     """
     用 git log -S/-G 追踪某个符号/字符串的引入与变更历史。
     mode='-S' 追踪内容出现次数变化（增删）；mode='-G' 追踪差异行匹配。
+    单次 git log --name-only 同时拿 commit 信息和受影响文件，避免 N+1 子进程。
     """
     if mode not in ('-S', '-G'):
         raise ValueError("mode must be -S or -G")
-    args = ['log', '--pretty=format:%H|%aI|%an|%s', mode + pattern, '--']
+    # 用 --pretty + --name-only 一次拿到 commit 元数据和文件列表
+    args = ['log', '--pretty=format:%H|%aI|%an|%s', '--name-only', mode + pattern, '--']
     if since:
         args += ['--since=' + since]
     if until:
         args += ['--until=' + until]
     out = run_git(args, repo)
     rows = []
+    current = None
     for line in out.splitlines():
         if not line.strip():
             continue
         parts = line.split('|', 3)
-        if len(parts) < 4:
-            continue
-        sha, iso, author, subject = parts
-        # 该 commit 中受影响文件（仅列匹配文件，避免全量噪声）
-        files = run_git(['show', '--pretty=format:', '--name-only', sha], repo).splitlines()
-        files = [f for f in files if f.strip()]
-        rows.append({
-            'sha': sha,
-            'date': iso,
-            'author': author,
-            'subject': subject,
-            'files': files,
-        })
+        if len(parts) >= 4 and not line.startswith(' '):
+            # commit header line
+            if current:
+                rows.append(current)
+            sha, iso, author, subject = parts
+            current = {
+                'sha': sha,
+                'date': iso,
+                'author': author,
+                'subject': subject,
+                'files': [],
+            }
+        else:
+            # file name line (indented or just a path)
+            if current is not None:
+                current['files'].append(line.strip())
+    if current:
+        rows.append(current)
     return rows
 
 

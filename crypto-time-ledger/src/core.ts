@@ -77,7 +77,8 @@ export function computeHash(block: LedgerBlock): string {
 
 // verifyTSR 由调用方注入：读 tsr_ref 文件 → 验签（TSA 证书链）→ 对上 block.ts
 // 返回 false ⇒ 该链块判无效（不做降级，§4.2 拍板 #3）
-export type VerifyTSR = (tsrRef: string, ts: string, tsrDigest: string) => boolean;
+// 契约统一：与 tsr.ts makeVerifyTSR 一致，1-arg async (digest) => Promise<boolean>
+export type VerifyTSR = (digest: string) => Promise<boolean>;
 
 export interface VerifyResult {
   ok: boolean;
@@ -85,7 +86,7 @@ export interface VerifyResult {
   reason?: string;
 }
 
-export function verifyChain(blocks: LedgerBlock[], verifyTSR: VerifyTSR): VerifyResult {
+export async function verifyChain(blocks: LedgerBlock[], verifyTSR: VerifyTSR): Promise<VerifyResult> {
   let prevHash = "genesis";
   let expectedIndex = 0;
   for (const b of blocks) {
@@ -99,7 +100,7 @@ export function verifyChain(blocks: LedgerBlock[], verifyTSR: VerifyTSR): Verify
     if (b.hash_now !== computed) {
       return { ok: false, failedAt: b.index, reason: "hash_now mismatch" };
     }
-    if (!verifyTSR(b.tsr_ref, b.ts, b.tsr_digest)) {
+    if (!(await verifyTSR(b.tsr_digest))) {
       return { ok: false, failedAt: b.index, reason: "TSR invalid" };
     }
     prevHash = b.hash_now;

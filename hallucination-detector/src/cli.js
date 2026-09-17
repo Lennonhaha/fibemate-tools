@@ -8,6 +8,9 @@ const fs = require('fs');
 const path = require('path');
 const { analyzeProject } = require('./index');
 
+const EXCLUDE_DIRS = new Set(['node_modules', 'test', '.git', 'dist', 'build', 'coverage', 'out', '.next', 'vendor', '.cache', 'tmp']);
+const MAX_FILE_SIZE = 1024 * 1024; // 1 MB — skip files larger than this
+
 function collect(dirOrFile, acc) {
   acc = acc || [];
   const stat = fs.statSync(dirOrFile);
@@ -16,9 +19,10 @@ function collect(dirOrFile, acc) {
       const full = path.join(dirOrFile, e);
       const s = fs.statSync(full);
       if (s.isDirectory()) {
-        if (e === 'node_modules' || e === 'test' || e === '.git') continue;
+        if (EXCLUDE_DIRS.has(e)) continue;
         collect(full, acc);
       } else if (/\.(js|ts)$/.test(e)) {
+        if (s.size > MAX_FILE_SIZE) continue; // skip oversized files
         acc.push({ filename: full, source: fs.readFileSync(full, 'utf-8') });
       }
     }
