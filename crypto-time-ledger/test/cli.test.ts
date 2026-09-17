@@ -232,7 +232,7 @@ describe("ledger add", () => {
     const rSeed = await runCli(["--store", join(tmpDir, "tsr-file-missing.db"), "add", "--block", join(tmpDir, "genesis-seed2.json")], tmpDir);
     assert.strictEqual(rSeed.code, 0, `seed genesis failed: ${rSeed.stderr}`);
     // Phase 2: block at index=1 (needs hash_prev=genesis.hash_now), references TSR but file missing
-    const block = await makeBlock({ index: 1, hash_prev: genesis.hash_now, tsr_digest: "sha256:abc123" });
+    const block = await makeBlock({ index: 1, hash_prev: genesis.hash_now as string, tsr_digest: "sha256:abc123" });
     writeFileSync(join(tmpDir, "tsr-file-missing.json"), JSON.stringify(block));
     const r = await runCli(
       ["--store", join(tmpDir, "tsr-file-missing.db"), "add", join(tmpDir, "tsr-file-missing.json"), "--tsr", join(tmpDir, "nonexistent.tsr")],
