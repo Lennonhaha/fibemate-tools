@@ -9,7 +9,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   },
   "dependencies": {
     "pkijs": "^3.4.0"
