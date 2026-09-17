@@ -14,3 +14,5 @@ jobs:
       - name: Run sample tests (zero-dependency static analysis)
         working-directory: hallucination-detector
         run: node test/sample.test.js
+      - name: Check whitelist version stamps
+        run: node scripts/check-whitelist-version.js

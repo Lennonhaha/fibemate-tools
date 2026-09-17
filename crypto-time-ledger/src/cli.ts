@@ -1,13 +1,10 @@
 /**
  * CLI entry point for the Crypto Time Ledger.
  *
- * Design: see `cli-design.md` (workspace-only, not committed).
- *
- * TODO (CLI-DESIGN-1, open): `core.ts` `VerifyTSR` (3-arg sync) and `tsr.ts`
- * `VerifyTSR` (1-arg async) are incompatible. Long-term goal: unify to
- * `verifyTSR(ref, opts): Promise<TSRResult>`. The wrapper below is a temporary bridge.
- * All cryptographic verification stays in `tsr.ts`; the wrapper only sequences file
- * lookups, tolerance checks, and delegates to `makeVerifyTSR`.
+ * VerifyTSR contract unified (CLI-DESIGN-1 resolved): core.ts and tsr.ts both
+ * use `(digest: string) => Promise<boolean>`. cli.ts calls makeVerifyTSR directly
+ * and performs genTime cross-checks separately (requires block context + file access
+ * that the core contract intentionally excludes).
  */
 
 import { parseArgs } from "node:util";
