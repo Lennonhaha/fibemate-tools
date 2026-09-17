@@ -41,6 +41,17 @@ REMOTE="${REMOTE:-origin}"
 BRANCH="${BRANCH:-main}"
 SKIP_VERIFY="${SKIP_VERIFY:-}"
 
+# P1③: trap ensures locks are restored even on Ctrl-C / SIGTERM / unexpected exit
+_unlocked=false
+restore_locks() {
+  if [[ "$_unlocked" == "true" ]]; then
+    echo "=== trap: restoring locks (interrupted) ==="
+    for d in $LOCKED_DIRS; do [[ -e "$d" ]] && chattr +i "$d" 2>/dev/null || true; done
+    _unlocked=false
+  fi
+}
+trap restore_locks EXIT INT TERM
+
 if [[ -z "$REPO_DIR" ]]; then echo "REPO_DIR env var is required"; exit 2; fi
 if [[ -z "$LOCKED_DIRS" ]]; then echo "LOCKED_DIRS env var is required"; exit 2; fi
 
@@ -52,6 +63,7 @@ for d in $LOCKED_DIRS; do
     echo "(skip non-existent: $d)"
   fi
 done
+_unlocked=true
 
 echo
 echo "=== STEP 2: git pull --ff-only $REMOTE $BRANCH ==="
@@ -67,6 +79,7 @@ echo "=== STEP 3: chattr +i re-lock ==="
 for d in $LOCKED_DIRS; do
   if [[ -e "$d" ]]; then chattr +i "$d" || { echo "FAILED to re-lock: $d"; exit 3; }; fi
 done
+_unlocked=false
 
 echo
 echo "=== STEP 4: verify (working tree + last 3 commits) ==="

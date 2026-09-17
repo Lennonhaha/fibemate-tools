@@ -16,4 +16,12 @@ updates:
     labels:
       - "dependencies"
 
+  - package-ecosystem: "npm"
+    directory: "/crypto-time-ledger"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+
   # 注：crypto-time-machine 仅用 Python 标准库，无第三方依赖，不配 dependabot。
