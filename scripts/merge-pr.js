@@ -55,7 +55,7 @@ function parseArgs(argv) {
   // Squash + --commit-message would wipe source Signed-off-by trailers.
   // Repository Rule forbids force-push to main, so a lost trailer on main
   // is irreversible. Refuse outright.
-  if (out.commitMessageExplicit && args.method === 'squash') {
+  if (out.commitMessageExplicit && out.method === 'squash') {
     console.error('REFUSED: --commit-message is forbidden with squash merge.');
     console.error('It replaces the auto-concatenated body and WIPES source');
     console.error('Signed-off-by trailers. Use --commit-title only (keeps the');
