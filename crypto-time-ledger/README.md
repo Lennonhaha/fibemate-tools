@@ -5,15 +5,37 @@ chain of "what algorithm was used at time T" anchored to RFC 3161 Trusted Timest
 
 ## Status
 
-v0.1.0 — **core + storage + TSR verification modules** (this PR). **CLI is next.**
+v0.1.0 — core + storage + TSR verification modules + **CLI（`add` / `verify` / `query` / `export`）**。
 
 ## Quick Start
 
 ```bash
 npm install
-npm test        # 29 tests (13 core + 8 storage + 8 TSR)
+npm test        # 63 tests (13 core + 8 storage + 8 TSR + 34 CLI)
 npm run typecheck
 ```
+
+## CLI
+
+```bash
+node src/cli.ts --help
+```
+
+| 命令 | 作用 |
+|------|------|
+| `add <block-file> [--tsr <tsr-file>]` | 追加一个块（`-` 读 stdin）。块须为完整 `LedgerBlock`：`hash_now` 由调用方按 `core.computeHash` 预计算，`hash_prev` 接上一块的 `hash_now`（genesis 用字面量 `genesis`） |
+| `verify [hash]` | 校验整链（或到指定 hash）：哈希、链连续性、TSR 密码学验证 |
+| `query [--algorithm <name>] [--ts <iso>]` | 按算法名或时间查询 |
+| `export [--format json\|csv]` | 导出整链 |
+
+全局选项：`--store <path>`（SQLite，默认 cwd 下 `ledger.db`）、`--tsr-dir`、
+`--pinned-certs`、`--tsr-tolerance <s>`。
+
+TSR 的 `genTime` 与块 `ts` 做交叉校验（fail-closed）：`genTime < ts` 判时钟异常，
+延迟超过 `--tsr-tolerance` 判 excessive delay。
+
+畸形输入（缺字段 / `state` 非对象）返回结构化错误 `{"error":"block_parse_error",...}`
+并 exit 1，不抛裸堆栈。
 
 ## Generate fixtures
 
@@ -79,11 +101,13 @@ src/
   core.ts      — LedgerBlock schema + canonicalize + computeHash
   storage.ts   — SQLite persistence (LedgerStore interface)
   tsr.ts       — TSR verification (makeVerifyTSR / verifyTSR)
+  cli.ts       — add / verify / query / export commands
 
 test/
   core.test.ts
   storage.test.ts
   tsr.test.ts
+  cli.test.ts
   fixtures/tsr/ — fixture data (see .gitignore note above)
 
 scripts/

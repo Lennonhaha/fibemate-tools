@@ -25,7 +25,16 @@ REPO = os.environ.get('CTM_REPO', DEFAULT_REPO)
 
 def run_git(args, repo):
     cmd = ['git', '-C', repo] + args
-    r = subprocess.run(cmd, capture_output=True, text=True, errors='replace')
+    # 只读分析工具应与宿主机 git 配置隔离：
+    #   - GIT_CONFIG_NOSYSTEM=1  丢弃系统级配置（PortableGit 自带
+    #     diff.astextplain.textconv=astextplain，而部分发行版缺 file.exe，
+    #     遇到二进制 blob 会让 git log 直接报错——实测可复现）
+    #   - GIT_CONFIG_GLOBAL=os.devnull  丢弃用户级配置（同理，防 global
+    #     textconv / alias 干扰可复现输出）
+    env = dict(os.environ)
+    env['GIT_CONFIG_NOSYSTEM'] = '1'
+    env['GIT_CONFIG_GLOBAL'] = os.devnull
+    r = subprocess.run(cmd, capture_output=True, text=True, errors='replace', env=env)
     if r.returncode != 0:
         raise RuntimeError(f"git {' '.join(args)} failed: {r.stderr[:200]}")
     return r.stdout
