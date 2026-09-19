@@ -196,6 +196,29 @@ describe("ledger add", () => {
     assert.strictEqual(err.error, "block_hash_mismatch");
   });
 
+  it("exits 1 with structured block_parse_error on malformed state (not a raw crash)", async () => {
+    // Regression: a block whose `state` is a plain string used to slip past
+    // JSON.parse + computeHash and blow up later with an unhandled TypeError
+    // + stack trace. Shape validation must reject it with the CLI error contract.
+    const block = await makeBlock({ index: 0, hash_prev: "genesis" });
+    (block as Record<string, unknown>).state = "deployed"; // wrong type on purpose
+    writeFileSync(join(tmpDir, "bad-shape.json"), JSON.stringify(block));
+    const r = await runCli(["add", "--block", join(tmpDir, "bad-shape.json")], tmpDir);
+    assert.strictEqual(r.code, 1, `expected exit 1, got ${r.code}`);
+    const err = JSON.parse(r.stderr);
+    assert.strictEqual(err.error, "block_parse_error");
+    assert.ok(!r.stderr.includes("TypeError"), "must not leak a raw stack trace");
+  });
+
+  it("exits 1 with structured block_parse_error on missing fields", async () => {
+    writeFileSync(join(tmpDir, "bad-fields.json"), JSON.stringify({ ts: "2026-09-14T10:00:00Z" }));
+    const r = await runCli(["add", "--block", join(tmpDir, "bad-fields.json")], tmpDir);
+    assert.strictEqual(r.code, 1, `expected exit 1, got ${r.code}`);
+    const err = JSON.parse(r.stderr);
+    assert.strictEqual(err.error, "block_parse_error");
+    assert.ok(String(err.detail?.detail ?? "").includes("missing field"), `detail: ${JSON.stringify(err.detail)}`);
+  });
+
   it("exits 1 on chain broken (wrong hash_prev)", async () => {
     // Phase 1: seed genesis into isolated store so appendBlock reaches hash_prev check
     const genesis = await makeBlock({ index: 0, hash_prev: "genesis" });

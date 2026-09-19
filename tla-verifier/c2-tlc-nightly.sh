@@ -47,6 +47,13 @@ TLA2TOOLS_URL="${TLA2TOOLS_URL:-https://github.com/tlaplus/tlaplus/releases/down
 JAR="${TLA2TOOLS_JAR:-/tmp/tla2tools.jar}"
 JAVA_OPTS="${JAVA_OPTS:--Xmx2g -XX:+UseParallelGC}"
 
+# Windows/git-bash：java 是原生程序，MSYS 风格路径（/tmp/...、/d/...）它读不到。
+# 与上面 CFG/TLA 同理做 cygpath 归一化；实测缺失时
+# "Error: Unable to access jarfile /tmp/tla2tools.jar"（exit 1）。
+if command -v cygpath >/dev/null 2>&1; then
+  JAR="$(cygpath -w "$JAR")"
+fi
+
 # 0. 输入检查
 [ -f "$CFG" ] || { echo "MISSING: $CFG (set MAIN_REPO_DIR to fibemate checkout root)"; exit 2; }
 [ -f "$TLA" ] || { echo "MISSING: $TLA (set MAIN_REPO_DIR to fibemate checkout root)"; exit 2; }

@@ -9,9 +9,11 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 
 | 工具 | 语言 | 作用 | 状态 |
 |---|---|---|---|
-| `hallucination-detector` | Node (零依赖) | 检测 AI 生成的密码代码中的幻觉/侧信道不安全模式 | 可跑，样本 PASS，误报已修 (A+B) |
-| `crypto-time-machine` | Python (仅标准库) | 把密码学 API 的引入/变更变成可查询 git 时间轴 | 可跑，真实历史测试 PASS |
+| `hallucination-detector` | Node (零依赖) | 检测 AI 生成的密码代码中的幻觉/侧信道不安全模式 | 可跑，12 项样本 PASS（含域参数 / 测试覆盖回归） |
+| `crypto-time-machine` | Python (仅标准库) | 把密码学 API 的引入/变更变成可查询 git 时间轴 | 可跑，CI + 真实主仓历史测试 PASS |
 | `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，`cargo build` + `run` PASS |
+| `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，63 tests + typecheck PASS |
+| `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
 
 ## 设计纪律（全部工具共守）
 
@@ -27,10 +29,12 @@ fibemate-tools/
 ├── README.md
 ├── LICENSE                  (Apache-2.0)
 ├── .github/
-│   ├── workflows/           (detector-ci / time-machine-ci / prover-ci)
+│   ├── workflows/           (detector-ci / time-machine-ci / prover-ci / ledger-ci / codeql)
 │   └── dependabot.yml
 ├── hallucination-detector/  (Node)
 ├── crypto-time-machine/     (Python)
+├── crypto-time-ledger/      (TypeScript)
+├── tla-verifier/            (Bash + TLA+ TLC)
 └── undecryptable-prover/    (Rust + Lean)
 ```
 

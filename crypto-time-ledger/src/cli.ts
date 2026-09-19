@@ -181,6 +181,54 @@ function checkGenTimeConsistency(
 
 // ---- Commands ----
 
+/**
+ * Structural validation of a parsed block *before* any hashing / store access.
+ * Without this, a malformed `state` (e.g. a plain string instead of a
+ * BlockState object) survives JSON.parse + computeHash and blows up later
+ * inside `query` with an unhandled TypeError + raw stack trace — instead of
+ * the structured { v, command, error, message } contract the CLI promises.
+ */
+function validateBlockShape(b: unknown): { ok: true } | { ok: false; detail: string } {
+  if (b === null || typeof b !== "object" || Array.isArray(b)) {
+    return { ok: false, detail: "block must be a JSON object" };
+  }
+  const o = b as Record<string, unknown>;
+  const missing: string[] = [];
+  for (const k of ["schema_version", "index", "ts", "state", "tsr_digest", "tsr_ref", "hash_prev", "hash_now"]) {
+    if (!(k in o)) missing.push(k);
+  }
+  if (missing.length) return { ok: false, detail: `missing field(s): ${missing.join(", ")}` };
+  if (typeof o.ts !== "string" || Number.isNaN(Date.parse(o.ts))) {
+    return { ok: false, detail: "field 'ts' must be an ISO 8601 date string" };
+  }
+  const st = o.state;
+  if (st === null || typeof st !== "object" || Array.isArray(st)) {
+    return { ok: false, detail: "field 'state' must be an object: { algorithms: [{name, version, lib}], git_commit, note? }" };
+  }
+  const stO = st as Record<string, unknown>;
+  if (!Array.isArray(stO.algorithms)) {
+    return { ok: false, detail: "field 'state.algorithms' must be an array of {name, version, lib}" };
+  }
+  for (const a of stO.algorithms) {
+    if (a === null || typeof a !== "object" || typeof (a as Record<string, unknown>).name !== "string") {
+      return { ok: false, detail: "each entry of 'state.algorithms' must be an object with a string 'name'" };
+    }
+  }
+  if (typeof o.tsr_digest !== "string" || typeof o.tsr_ref !== "string") {
+    return { ok: false, detail: "fields 'tsr_digest' and 'tsr_ref' must be strings" };
+  }
+  if (typeof o.hash_prev !== "string" || typeof o.hash_now !== "string") {
+    return { ok: false, detail: "fields 'hash_prev' and 'hash_now' must be strings" };
+  }
+  if (typeof o.index !== "number" || !Number.isInteger(o.index) || o.index < 0) {
+    return { ok: false, detail: "field 'index' must be a non-negative integer" };
+  }
+  if (typeof o.schema_version !== "number") {
+    return { ok: false, detail: "field 'schema_version' must be a number" };
+  }
+  return { ok: true };
+}
+
 async function cmdAdd(args: {
   blockFile: string;
   tsrFile?: string;
@@ -199,6 +247,13 @@ async function cmdAdd(args: {
 
   } catch {
     emitError(false, "add", E_BLOCK_PARSE_ERROR, "failed to read or parse block JSON", null, null);
+    return;
+  }
+
+  // 0. shape validation (before hash check — a wrong-shaped block can never hash right)
+  const shape = validateBlockShape(block);
+  if (!shape.ok) {
+    emitError(true, "add", E_BLOCK_PARSE_ERROR, "block does not match the LedgerBlock schema", null, { detail: shape.detail });
     return;
   }
 
