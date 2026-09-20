@@ -62,5 +62,43 @@ TLA2TOOLS_JAR=/tmp/tla2tools.jar MAIN_REPO_DIR=/path/to/fibemate \
 
 ## 文件
 
-- `c2-tlc-nightly.sh` — 可复用验证脚本（跨仓拉主仓模型，路径由 `MAIN_REPO_DIR` 注入）
+- `c2-tlc-nightly.sh` — 可复用验证脚本（跨仓拉主仓模型，路径由 `MAIN_REPO_DIR` 注入；G1 专用，仅 C2）
+- `seam-checker.js` — **接缝检查器 v1**（G 层门禁 + S 层接缝映射；见下）
 - `README.md` — 本文件
+
+## seam-checker.js（接缝检查器 v1）
+
+把 `seam-checker-v0` 原型落成正式工具。职责两层：
+
+**G 层（模型内门禁，执行层取证）**：对每个模型（C2/OPK）复制 `.tla+.cfg` 到临时目录跑 TLC，
+按 **exit code + 逐 `INVARIANT` VIOLATED** 判 `PARSE_FAIL / INV_VIOLATED / DEADLOCK / PASS`。
+**不凭 `.cfg` 存在判“通过”** —— 这正是 C-2 门禁接缝（G1）和 OPK 从未跑过（M 类）要抓的纪律。
+
+**S 层（层间接缝，声明式映射表）**：把 `seam-checklist-v1` 的 S1/S2/S4/G2/M 项做成硬编码映射
+（期望证据 + 当前状态），输出每条 `CLOSED / OPEN / MODEL_DEFECT`。
+v1 不自动 grep 代码库（避免误判），证据变化时由人工/CI 更新。
+
+### 用法
+```bash
+MAIN_REPO_DIR=/path/to/fibemate \
+TLA2TOOLS_JAR=/tmp/tla2tools.jar \
+  node tla-verifier/seam-checker.js
+```
+
+### 实测（2026-09-20，主仓工作树含 OPK 未提交编辑）
+```
+### C2 -> PASS (exit 0)   cfg invariants: TypeOK, K1..K5 (7 条)  真实机器证据 133891/26115
+### OPK -> INV_VIOLATED (exit 12)  违反 O4_ConsumedNotReusable
+S 层: CLOSED=2  OPEN=11  MODEL_DEFECT=3
+G 层（模型门禁）: FAIL   (exit 1 → CI 红)
+```
+
+### 关键纪律（已落 memory）
+> "有 `.cfg` / 有 `INVARIANT` 行" ≠ "跑过" ≠ "通过"。声明层（文件在、cfg 在）与执行层
+> （exit 0 + VIOLATED=0）是两回事。OPK 是活标本：声明层配了 O1–O6，执行层 O4 失败。
+
+### 待推进（不在此 v1）
+- v2：S 层自动 grep 实现仓库（mlkem-kat/gm-crossval/握手集成测试）断言 S1 项闭合
+- v2：S2 层接 TVLA 流水线结果；S4 层接外部标准引用表自动校验可追溯
+- G2：nightly TLC 加 `PROPERTY L_Handshake` / `T1/T2`（当前 C2.cfg 未列）
+- 是否提升进主仓 `docs/` + 并入 `nightly-phase1.yml`，需用户授权（DCO sign-off）
