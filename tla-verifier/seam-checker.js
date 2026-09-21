@@ -36,6 +36,144 @@ const MODELS = {
   OPK: { cfg: 'OPK.cfg', tla: 'OPK.tla' },
 };
 
+// ---- v2 锚点自动 grep 化（manifest 驱动 + 双树阴性对照）----
+// 设计文档：seam-checker-v2-anchors-design_20260920.md（§2 三态伪码 / §6 接入法）
+// survey 实证：seam-v2-repo-survey_20260920.md（§5 锚点集，已推翻 HKDF 假阳性）
+//
+// 三态引擎（§2）：
+//   ANCHOR_BROKEN   = 锚点在 ref（已知良树）也命中 0 → 锚点定义写错（非证据缺失），立即报警
+//   EVIDENCE_GAP    = ref 命中但 live（当前树）命中 0 → 证据确实没了
+//   EVIDENCE_FOUND  = live 命中 → 该接缝项可升 CLOSED
+//   REF_MISSING     = REF_COMMIT 未配置 → 双树退化单树，阴性对照失效（机制未完整启用，告警不退化为伪 PASS）
+//
+// ref 树来源（用户拍板选 (2)）：fibemate 某已知良 commit，经 `git show <sha>:<path>` 取内容，
+//  跨平台、抗 stale、保留 ANCHOR_BROKEN 阴性对照。配置：env REF_COMMIT=<fibemate sha>。
+
+// 注意：设计文档 §2 字面写 "ANCHOR_BROKEN = ref 命中 0"，但若直接套用到 C2-G2-1（一个
+// 正确指向『确实不存在的特性』的锚点），会把『特性未实现』误判为『锚点写错』。真实
+// 阴性对照意图是『ref 连文件都找不到 → 锚点畸形』。故本实现以 ref 文件存在性为
+// ANCHOR_BROKEN 判据（见 evalAnchor），与 §2 字面有偏差，已向用户报备。
+
+const REF_COMMIT = process.env.REF_COMMIT || '';
+
+function loadRefTree() {
+  // 返回 { kind:'git', root, sha } 或 null（未配置/sha 不存在）
+  if (!REF_COMMIT) return null;
+  const r = spawnSync('git', ['-C', MAIN_REPO_DIR, 'cat-file', '-t', REF_COMMIT], { encoding: 'utf8' });
+  if (r.status !== 0) return null;
+  return { kind: 'git', root: MAIN_REPO_DIR, sha: REF_COMMIT };
+}
+
+function listPaths(tree, target) {
+  // 用 git ls-files / ls-tree 在两种树上统一展开 glob → 相对路径集合
+  const out = (tree.kind === 'fs')
+    ? spawnSync('git', ['-C', tree.root, 'ls-files', '--', target], { encoding: 'utf8' }).stdout
+    : spawnSync('git', ['-C', tree.root, 'ls-tree', '-r', '--name-only', tree.sha, '--', target], { encoding: 'utf8' }).stdout;
+  return out.split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+function readContent(tree, rel) {
+  if (tree.kind === 'fs') {
+    try { return fs.readFileSync(path.join(tree.root, rel), 'utf8'); } catch { return null; }
+  }
+  const r = spawnSync('git', ['-C', tree.root, 'show', tree.sha + ':' + rel], { encoding: 'utf8' });
+  return r.status === 0 ? r.stdout : null;
+}
+
+// 多行正则 + 跨文件 AND：patterns 数组全部命中（可在不同文件）即计 1，否则 0。
+// 命中计数用正则 test（语义：所有 pattern 是否都存在于拼合内容，满足 §2『跨文件组合』）。
+function grepGlobs(tree, targets, patterns) {
+  const relPaths = new Set();
+  for (const t of targets) for (const p of listPaths(tree, t)) relPaths.add(p);
+  if (relPaths.size === 0) return 0;
+  let content = '';
+  for (const rel of relPaths) {
+    const text = readContent(tree, rel);
+    if (text != null) content += '\n' + text;
+  }
+  if (!content) return 0;
+  const allHit = patterns.every(p => { try { return new RegExp(p, 'm').test(content); } catch { return false; } });
+  return allHit ? 1 : 0;
+}
+
+function evalAnchor(a, liveTree, refTree) {
+  // MANUAL 锚点（无 targets/patterns 或显式 status:MANUAL）：不自动评估
+  if (a.status === 'MANUAL' || !a.targets || a.targets.length === 0) {
+    return { state: 'MANUAL', refHits: null, liveHits: null,
+      note: a.note || '锚点无 target → 留 MANUAL（未知位置 / 无测试断言，待建证据）' };
+  }
+  if (!refTree) {
+    return { state: 'REF_MISSING', refHits: null, liveHits: null,
+      note: 'REF_COMMIT 未配置 → 双树退化单树，阴性对照失效（v2 机制未完整启用，告警不退化为伪 PASS）' };
+  }
+  const isGap = a.expect === 'gap';
+  const refHits = grepGlobs(refTree, a.targets, a.patterns);
+  const refPaths = new Set();
+  for (const t of a.targets) for (const p of listPaths(refTree, t)) refPaths.add(p);
+  const refMissing = refPaths.size === 0;
+
+  if (isGap) {
+    // 期望缺口：ref 0 与 live 0 都合法（特性本就未实现）——不误报 ANCHOR_BROKEN
+    const liveHits = grepGlobs(liveTree, a.targets, a.patterns);
+    if (liveHits > 0) {
+      return { state: 'EVIDENCE_FOUND', refHits, liveHits,
+        note: 'expect=gap 但 live 命中 → 特性已实现（意外收获，可升 CLOSED）' };
+    }
+    return { state: 'EVIDENCE_GAP', refHits, liveHits,
+      note: 'expect=gap: ref 与 live 均 0 → 特性未实现（已知缺口，非锚点错误）' };
+  }
+
+  // 期望存在（默认）：ref 0 = 锚点定义错误（阴性对照核心）
+  if (refMissing) {
+    return { state: 'ANCHOR_BROKEN', refHits, liveHits: null,
+      note: '锚点在 ref 已知良树连目标文件都找不到 → 锚点定义错误（targets 写错 / 文件已移）' };
+  }
+  if (refHits === 0) {
+    return { state: 'ANCHOR_BROKEN', refHits, liveHits: null,
+      note: '锚点在 ref 已知良树有文件但 pattern 0 命中 → 锚点 pattern 写错（非证据缺失）' };
+  }
+  const liveHits = grepGlobs(liveTree, a.targets, a.patterns);
+  if (liveHits === 0) {
+    return { state: 'EVIDENCE_GAP', refHits, liveHits,
+      note: 'ref 命中但 live 命中 0 → 证据确实缺失（PR 删测试 / 重构改名）' };
+  }
+  return { state: 'EVIDENCE_FOUND', refHits, liveHits, note: 'ref 与 live 均命中 → 证据闭合' };
+}
+
+// ANCHORS manifest（survey §5 六条；G2=gap, S1-KAT=found, OPK-S1-1=app-layer, C2-S1-1 BIND=MANUAL）
+// 纪律 5b：所有锚点以 survey grep 实证为准，禁手填；未知位置标 MANUAL。
+// 纪律 5c：无伪 CLOSED——MANUAL 须带 note，无 note 的 MANUAL 同为伪达标。
+const ANCHORS = [
+  { id: 'C2-G2-1', seam: 'G2', expect: 'gap', targets: ['docs/tla/C2.cfg'], patterns: ['PROPERTIES|L_Handshake'],
+    note: 'C2.cfg 无 PROPERTIES/L_Handshake → EVIDENCE_GAP（G2 活性未机器验证，expect=gap 正确反映）' },
+  { id: 'OPK-G2-1', seam: 'G2', expect: 'gap', targets: ['docs/tla/OPK.cfg'], patterns: ['PROPERTIES|T1|T2'],
+    note: 'OPK.cfg 无 T1/T2 → EVIDENCE_GAP（expect=gap）' },
+  { id: 'S1-KAT-jasmin', seam: 'S1-KAT', expect: 'found', targets: ['scripts/kat-jasmin-compare.js'], patterns: ['assert|Jasmin|libjade'],
+    note: 'ML-KEM-768 × Jasmin/libjade KAT 逐字节验证 → EVIDENCE_FOUND（真证据）' },
+  { id: 'S1-KAT-fml', seam: 'S1-KAT', expect: 'found', targets: ['packages/fml-dsa/test/kat-verify.mjs'], patterns: ['ML-DSA|KAT|Noble'],
+    note: 'ML-DSA KAT vs Noble oracle → EVIDENCE_FOUND（真证据）' },
+  { id: 'OPK-S1-1', seam: 'S1', expect: 'found', targets: ['src/opk-server.js'],
+    patterns: ['oneTimePreKey|OneTimePreKey', 'used|consumed|markUsed|removeOPK|spent'],
+    note: '应用层标记 used 后拒重（非 DB 事务）；锁定 opk-server.js 排除 double-ratchet.js Signal ratchet 噪声。仅证应用层逻辑，非密码学原子性' },
+  { id: 'C2-S1-1', seam: 'S1-BIND', targets: [], patterns: [], status: 'MANUAL',
+    note: 'HKDF(sessionKey=HKDF(sm2_ss||mlkem_ss)) 无测试断言，仅 src/pqc-hybrid-server.js:10 注释级 → 留 MANUAL 待建集成测试' },
+];
+
+// S 层 id → 锚点 id 映射（有锚点的 S 项用 evalAnchor 实时结果覆盖/附注）
+const ANCHOR_BY_SID = {
+  'C2-G2-1': 'C2-G2-1',
+  'OPK-G2-1': 'OPK-G2-1',
+  'OPK-S1-1': 'OPK-S1-1',
+  'C2-S1-1': 'C2-S1-1',
+};
+
+// 锚点 id → 该锚点闭合时赋予 S 层项的 status（EVIDENCE_FOUND 升 CLOSED，其余保持 OPEN）
+function anchorStatusToClosure(state) {
+  if (state === 'EVIDENCE_FOUND') return 'CLOSED';
+  if (state === 'REF_MISSING') return 'OPEN'; // 机制未启用，不伪判
+  return 'OPEN'; // EVIDENCE_GAP / ANCHOR_BROKEN / MANUAL 均不自动 CLOSED
+}
+
 function extractInvariants(cfgText) {
   // 解析 .cfg 的两种写法：
   //   (a) 单行:  INVARIANT Foo   /   INVARIANT Foo Bar
@@ -165,16 +303,53 @@ function main() {
     }
   }
 
-  // S 层报告
+  // S 层报告（v2：有锚点的 S 项加 anchor_state 列，阴性对照不静默）
+  const liveTree = { kind: 'fs', root: MAIN_REPO_DIR };
+  const refTree = loadRefTree();
+  const anchorResults = {};
+  for (const a of ANCHORS) {
+    if (a.status === 'MANUAL') {
+      anchorResults[a.id] = { state: 'MANUAL', note: a.note };
+    } else {
+      anchorResults[a.id] = evalAnchor(a, liveTree, refTree);
+    }
+  }
+  if (!refTree) {
+    console.log('\n⚠ REF_COMMIT 未配置：双树阴性对照未启用（v2 机制不完整，已告警不退化为伪 PASS）。' +
+      ' 建议设 REF_COMMIT=<fibemate 已知良 sha> 复跑以激活 ANCHOR_BROKEN 检测。');
+  } else {
+    console.log('\nref_tree=' + refTree.sha.slice(0, 12) + ' (双树阴性对照已启用)');
+  }
+
   console.log('\n=== S 层接缝闭合报告 ===');
   const counts = { CLOSED: 0, OPEN: 0, MODEL_DEFECT: 0 };
   for (const s of S_LAYER) {
     counts[s.status]++;
     const tag = s.status === 'CLOSED' ? '✓' : s.status === 'MODEL_DEFECT' ? '⚠' : '·';
-    console.log('  ' + tag + ' [' + s.seam + '] ' + s.id + ' (' + s.status + '): ' + s.need);
+    let extra = '';
+    const aid = ANCHOR_BY_SID[s.id];
+    if (aid && anchorResults[aid]) {
+      const ar = anchorResults[aid];
+      extra = '  [anchor=' + ar.state + '] ' + (ar.note || '');
+    }
+    console.log('  ' + tag + ' [' + s.seam + '] ' + s.id + ' (' + s.status + '): ' + s.need + extra);
   }
   console.log('  ---');
   console.log('  CLOSED=' + counts.CLOSED + '  OPEN=' + counts.OPEN + '  MODEL_DEFECT=' + counts.MODEL_DEFECT);
+
+  // v2 锚点三态汇总（独立列，便于 CI 解析）
+  console.log('\n=== v2 锚点三态汇总 ===');
+  const aCounts = {};
+  for (const a of ANCHORS) {
+    const st = anchorResults[a.id].state;
+    aCounts[st] = (aCounts[st] || 0) + 1;
+    console.log('  [' + a.seam + '] ' + a.id + ' -> ' + st + ' | ' + (anchorResults[a.id].note || ''));
+  }
+  console.log('  ---');
+  console.log('  ' + Object.entries(aCounts).map(([k, v]) => k + '=' + v).join('  '));
+  if (Object.values(anchorResults).some(r => r.state === 'ANCHOR_BROKEN')) {
+    console.log('  ⚠ 存在 ANCHOR_BROKEN：锚点定义写错（非证据缺失），须修正 manifest 而非仓库。');
+  }
 
   // 总判定（执行层）
   console.log('\n=== 总判定 ===');
