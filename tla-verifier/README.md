@@ -75,7 +75,7 @@ TLA2TOOLS_JAR=/tmp/tla2tools.jar MAIN_REPO_DIR=/path/to/fibemate \
 **不凭 `.cfg` 存在判“通过”** —— 这正是 C-2 门禁接缝（G1）和 OPK 从未跑过（M 类）要抓的纪律。
 
 **S 层（层间接缝，声明式映射表）**：把 `seam-checklist-v1` 的 S1/S2/S4/G2/M 项做成硬编码映射
-（期望证据 + 当前状态），输出每条 `CLOSED / OPEN / MODEL_DEFECT`。
+（期望证据 + 当前状态），输出每条 `CLOSED / OPEN / MODEL_DEFECT / SAMPLING_VERIFIED(≈) / SAMPLING_FAIL(✗)`（SAMPLING_* 为统计验证态，非穷举证明）。
 v1 不自动 grep 代码库（避免误判），证据变化时由人工/CI 更新。
 
 ### 用法
@@ -89,7 +89,8 @@ TLA2TOOLS_JAR=/tmp/tla2tools.jar \
 ```
 ### C2 -> PASS (exit 0)   cfg invariants: TypeOK, K1..K5 (7 条)  真实机器证据 133891/26115
 ### OPK -> INV_VIOLATED (exit 12)  违反 O4_ConsumedNotReusable
-S 层: CLOSED=2  OPEN=11  MODEL_DEFECT=3
+S 层: CLOSED=2  OPEN=11  MODEL_DEFECT=2  SAMPLING_VERIFIED=1
+（SAMPLING_VERIFIED=OPK-C 抽样验证态，非全量证明；≈ 标记表示统计保证）
 G 层（模型门禁）: FAIL   (exit 1 → CI 红)
 ```
 
