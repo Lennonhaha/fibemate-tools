@@ -58,5 +58,25 @@
     "tsr_ref": "c229ed071f3611c3b4ac25bd39bc1743af7c5ec4cd58b57ac1c990af0649b53a.tsr",
     "hash_prev": "sha256:2678dc22248e718b0dac3dd2f2c79b0a9d1340c3094b9fb8b3b2b77e0964f33b",
     "hash_now": "sha256:9a54e29de07fe6bf3360fe1fd84eb07a4cf87d9cb5b3d3e5dd8b1d1271541b42"
+  },
+  {
+    "schema_version": 1,
+    "index": 3,
+    "ts": "2026-09-23T10:06:11.000Z",
+    "state": {
+      "algorithms": [
+        {
+          "name": "ML-KEM-768",
+          "version": "1.0",
+          "lib": "noble"
+        }
+      ],
+      "git_commit": "0c4f3c3",
+      "note": "external anchor via FreeTSA (freetsa.org) — non-self-signed timestamp"
+    },
+    "tsr_digest": "sha256:f4f9fbbd8015656070d4229b7a0ba9e8ebe8700f6851c669aca79f891bb07220",
+    "tsr_ref": "f4f9fbbd8015656070d4229b7a0ba9e8ebe8700f6851c669aca79f891bb07220.tsr",
+    "hash_prev": "sha256:9a54e29de07fe6bf3360fe1fd84eb07a4cf87d9cb5b3d3e5dd8b1d1271541b42",
+    "hash_now": "sha256:8694c34fd00c794ecfc2f6e900d1d8549d4063aab4473fcfd3fe8b7011584129"
   }
 ]
