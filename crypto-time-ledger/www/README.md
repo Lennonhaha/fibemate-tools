@@ -43,3 +43,10 @@ npx esbuild src/browser-entry.ts \
 仓库根还有 `crypto-time-ledger/poc/`（本地开发期浏览器 PoC，含 `poc.html` + `serve.cjs` +
 `dist/` 重复 bundle），**未提交进 git**——正式交付物是上面的 `www/verify.iife.js`。重建方式：
 `node scripts/bundle-browser.cjs` 生成 `dist/`，`poc/serve.cjs` 起本地 HTTP 供浏览器验证。
+
+## 开发期 smoke 脚本
+
+`scripts/smoke-freetsa-verify.mjs` 的负例断言在 commit 1 追加 FreeTSA 证书后已修正（改为
+X509 subject 解析精确过滤出纯 Test TSA 证书）。它只是 dev-time smoke，不进线上数据，且依赖
+`dist/`（被 .gitignore 忽略）与 `/tmp/` 下的 FreeTSA 测试产物，**非 CI 可复现测试**，仅供
+手动验证「自证循环可破」时参考。
