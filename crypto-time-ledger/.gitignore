@@ -1,6 +1,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+poc/
 
 # TSR fixture generation intermediates — private keys and test-only certs never leave the machine
 # Patterns below match only the intermediate files. Non-matching files (pinned-certs.pem,
