@@ -2,7 +2,7 @@
 'use strict';
 /*
  * cli.js — 命令行入口
- * 用法: node src/cli.js <file-or-dir> [rootDir]
+ * 用法: node src/cli.js <file-or-dir> [rootDir] [--fail-on <low|medium|high>]
  */
 const fs = require('fs');
 const path = require('path');
@@ -32,15 +32,53 @@ function collect(dirOrFile, acc) {
   return acc;
 }
 
+const SEVERITY_RANK = { low: 0, medium: 1, high: 2 };
+
+// 解析参数：--fail-on <level> 与位置参数分离；位置参数顺序保持不变
+function parseArgs(argv) {
+  const flags = {};
+  const positional = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === '--fail-on') {
+      flags.failOn = argv[++i];
+    } else if (a.startsWith('--')) {
+      flags[a.slice(2)] = true;
+    } else {
+      positional.push(a);
+    }
+  }
+  return { flags, positional };
+}
+
+// finding 的 severity 归一化：无 severity 字段（api-misuse / domain-params /
+// test-coverage）视为 medium——它们是「需人工核验」而非「确定违规」。
+function severityOf(f) {
+  return f.severity || 'medium';
+}
+
 function main() {
-  const target = process.argv[2];
-  if (!target) { console.error('usage: node src/cli.js <file-or-dir>'); process.exit(2); }
-  const rootDir = process.argv[3] || (fs.statSync(target).isDirectory() ? target : '.');
+  const { flags, positional } = parseArgs(process.argv.slice(2));
+  if (flags.failOn !== undefined && !Object.prototype.hasOwnProperty.call(SEVERITY_RANK, flags.failOn)) {
+    console.error('--fail-on requires one of: low | medium | high');
+    process.exit(2);
+  }
+  const target = positional[0];
+  if (!target) { console.error('usage: node src/cli.js <file-or-dir> [rootDir] [--fail-on <low|medium|high>]'); process.exit(2); }
+  const rootDir = positional[1] || (fs.statSync(target).isDirectory() ? target : '.');
   const sources = collect(target);
   const report = analyzeProject(sources, rootDir);
   console.log(JSON.stringify(report, null, 2));
   const n = report.findings.length;
   console.log('\n[summary] files=' + sources.length + ' findings=' + n);
+  if (flags.failOn !== undefined && n > 0) {
+    const threshold = SEVERITY_RANK[flags.failOn];
+    const offending = report.findings.filter((f) => SEVERITY_RANK[severityOf(f)] >= threshold);
+    if (offending.length > 0) {
+      console.error('[fail-on] ' + offending.length + ' finding(s) at or above severity "' + flags.failOn + '"');
+      process.exit(1);
+    }
+  }
 }
 
 main();

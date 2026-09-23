@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from ctime import core
 
 # 本机默认值；CI 或其他机器用环境变量覆盖（CTM_TEST_REPO / CTM_TEST_PATTERN / CTM_TEST_FILE）
-REPO = os.environ.get('CTM_TEST_REPO', r'D:\FIBEMATE\fibemate')
+REPO = os.environ.get('CTM_TEST_REPO', '.')  # 测试时用环境变量指定真实仓库；默认当前目录
 PATTERN = os.environ.get('CTM_TEST_PATTERN', 'ml_kem768')  # 已知存在于 FIBEMATE（noble-ciphers 的 ml_kem768）
 HISTORY_FILE = os.environ.get('CTM_TEST_FILE', 'packages/pqc-kem/src/ml-kem-768.js')
 

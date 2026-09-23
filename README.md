@@ -46,7 +46,7 @@ cd hallucination-detector
 node test/sample.test.js          # 自带样本测试
 node src/cli.js your-file.js      # 分析你的代码
 
-# 时间机器（REPO 环境变量指向任意 git 仓，默认 D:\FIBEMATE\fibemate）
+# 时间机器（REPO 环境变量指向任意 git 仓，默认分析当前目录）
 cd crypto-time-machine
 REPO=/path/to/repo python test/local_test.py
 

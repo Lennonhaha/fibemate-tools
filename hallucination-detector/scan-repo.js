@@ -11,8 +11,8 @@
  *
  * 用法：
  *   node scan-repo.js
- *   node scan-repo.js --repo D:\FIBEMATE\fibemate
- *   CHD_REPO=D:\FIBEMATE\fibemate node scan-repo.js --json
+ *   node scan-repo.js --repo <path-to-repo>
+ *   CHD_REPO=<path-to-repo> node scan-repo.js --json
  */
 
 const fs = require('fs');

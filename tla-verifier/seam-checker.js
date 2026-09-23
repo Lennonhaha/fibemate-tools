@@ -27,7 +27,7 @@ const path = require('path');
 const MAIN_REPO_DIR = process.env.MAIN_REPO_DIR || '.';
 const TLA_DIR = path.join(MAIN_REPO_DIR, 'docs', 'tla');
 const JAR = process.env.TLA2TOOLS_JAR ||
-  (os.platform() === 'win32' ? 'C:/Users/maivs/AppData/Local/Temp/tla2tools.jar'
+  (os.platform() === 'win32' ? path.join(os.tmpdir(), 'tla2tools.jar')
                              : '/tmp/tla2tools.jar');
 
 // 模型清单：模型名 -> 配置文件（位于主仓 docs/tla/）
