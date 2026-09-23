@@ -19,7 +19,7 @@ import os
 import re
 from datetime import datetime, timezone
 
-DEFAULT_REPO = r'D:\FIBEMATE\fibemate'  # 本机默认；CI/其他机器用环境变量 CTM_REPO 覆盖
+DEFAULT_REPO = '.'  # 默认分析当前目录；指定任意 git 仓用环境变量 CTM_REPO 覆盖
 REPO = os.environ.get('CTM_REPO', DEFAULT_REPO)
 
 
