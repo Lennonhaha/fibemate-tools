@@ -18,7 +18,10 @@
 ```bash
 npm test                  # 自带样本验证（命中幻觉模式 + 不误报良好代码）
 node src/cli.js <dir>     # 扫描目录
+node src/cli.js <dir> --fail-on high   # CI 门禁：存在 >=high 的 finding 则退出码 1
 ```
+
+`--fail-on <low|medium|high>` 让 CLI 在存在「该级别及以上」的 finding 时以退出码 1 失败（可作 CI 门禁）；缺参或非法值退出码 2。注意：`api-misuse` / `domain-params` / `test-coverage` 三类 finding 没有 `severity` 字段，统一按 `medium` 归并——所以 `--fail-on high` 会放过 `medium` 级 finding（含这三类）；若要连这三类一起拦截，用 `--fail-on low`。
 
 ## 架构
 
