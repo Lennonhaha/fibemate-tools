@@ -7,6 +7,11 @@
   "scripts": {
     "test": "node test/sample.test.js"
   },
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git"
+  },
+  "files": ["src"],
   "engines": { "node": ">=16" }
 }
