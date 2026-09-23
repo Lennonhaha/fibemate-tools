@@ -27,9 +27,25 @@ console.log("test data digest:", digest);
 const ok = await verifyTsrBytes(tsr, digest, pinnedPem);
 console.log("FreeTSA TSR verify (pinned tsa.crt):", ok);
 
-// Negative: wrong pinned cert must fail (fail-closed) — use the project's Test TSA cert
-const wrongPem = readFileSync(join(root, "test", "fixtures", "tsr", "pinned-certs.pem"), "utf8");
-const okWrong = await verifyTsrBytes(tsr, digest, wrongPem);
+// Negative: wrong pinned cert must fail (fail-closed) — pin ONLY the project's
+// Test TSA certs (which do NOT include the FreeTSA signer). NOTE: pinned-certs.pem
+// now also carries the FreeTSA cert (added for block #3), so we must strip it
+// here to exercise a genuinely-wrong pin set. Filter by parsed subject (PEM body
+// is base64, so plain-text substring matching won't work).
+import { X509Certificate } from "node:crypto";
+const allPem = readFileSync(join(root, "test", "fixtures", "tsr", "pinned-certs.pem"), "utf8");
+const onlyTestPem = allPem
+  .split("-----END CERTIFICATE-----")
+  .filter((s) => s.includes("BEGIN CERTIFICATE"))
+  .map((s) => s.split("-----BEGIN CERTIFICATE-----")[1].trim())
+  .map((c) => "-----BEGIN CERTIFICATE-----\n" + c + "\n-----END CERTIFICATE-----")
+  .filter((pem) => {
+    const x = new X509Certificate(pem);
+    return !/freetsa/i.test(x.subject);
+  })
+  .join("\n");
+console.log("onlyTestPem cert count:", onlyTestPem ? onlyTestPem.split("BEGIN CERTIFICATE").length - 1 : 0);
+const okWrong = await verifyTsrBytes(tsr, digest, onlyTestPem);
 console.log("FreeTSA TSR vs Test-TSA pin (should be false):", okWrong);
 
 console.log("\nRESULT:", ok === true && okWrong === false ? "PASS — self-issue loop breakable" : "FAIL");
