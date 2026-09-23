@@ -1,0 +1,44 @@
+name: dco
+
+# Developer Certificate of Origin (DCO) gate.
+# Every non-merge commit in a PR must carry a `Signed-off-by:` trailer.
+# This enforces the README statement "PR DCO check 直接 FAIL" as a real status check.
+# Zero external dependencies: pure git, fully auditable and reproducible.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  dco-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch PR head
+        run: |
+          git fetch origin "+refs/pull/${{ github.event.pull_request.number }}/head:refs/remotes/origin/pr-head"
+
+      - name: Verify DCO sign-off
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="refs/remotes/origin/pr-head"
+          commits="$(git rev-list --no-merges "$base..$head")"
+          if [ -z "$commits" ]; then
+            echo "No non-merge commits in PR; nothing to check."
+            exit 0
+          fi
+          fail=0
+          for c in $commits; do
+            if ! git show -s --format='%B' "$c" | grep -q '^Signed-off-by:'; then
+              echo "::error::Commit $(git rev-parse --short "$c") missing Signed-off-by trailer"
+              fail=1
+            fi
+          done
+          exit $fail
