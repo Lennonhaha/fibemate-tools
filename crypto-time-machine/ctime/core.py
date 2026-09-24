@@ -40,21 +40,14 @@ def run_git(args, repo):
     return r.stdout
 
 
-def collect_timeline(repo, pattern, since=None, until=None, mode='-S'):
+def parse_git_log(out):
     """
-    用 git log -S/-G 追踪某个符号/字符串的引入与变更历史。
-    mode='-S' 追踪内容出现次数变化（增删）；mode='-G' 追踪差异行匹配。
-    单次 git log --name-only 同时拿 commit 信息和受影响文件，避免 N+1 子进程。
+    解析 `git log --pretty=format:%H|%aI|%an|%s [--name-only]` 的原始输出为 rows。
+
+    commit 头行 = 非空白缩进且能切成 4 段（sha|iso|author|subject）；
+    其后缩进/独立行 = 该 commit 的受影响文件（仅 --name-only 时出现）。
+    无文件行时 files 为空列表，语义统一。
     """
-    if mode not in ('-S', '-G'):
-        raise ValueError("mode must be -S or -G")
-    # 用 --pretty + --name-only 一次拿到 commit 元数据和文件列表
-    args = ['log', '--pretty=format:%H|%aI|%an|%s', '--name-only', mode + pattern, '--']
-    if since:
-        args += ['--since=' + since]
-    if until:
-        args += ['--until=' + until]
-    out = run_git(args, repo)
     rows = []
     current = None
     for line in out.splitlines():
@@ -82,24 +75,36 @@ def collect_timeline(repo, pattern, since=None, until=None, mode='-S'):
     return rows
 
 
-def collect_file_history(repo, filepath, since=None, until=None):
-    """某文件自身的提交历史（不是符号追踪）。"""
-    args = ['log', '--pretty=format:%H|%aI|%an|%s', '--', filepath]
+def collect_timeline(repo, pattern, since=None, until=None, mode='-S'):
+    """
+    用 git log -S/-G 追踪某个符号/字符串的引入与变更历史。
+    mode='-S' 追踪内容出现次数变化（增删）；mode='-G' 追踪差异行匹配。
+    单次 git log --name-only 同时拿 commit 信息和受影响文件，避免 N+1 子进程。
+    """
+    if mode not in ('-S', '-G'):
+        raise ValueError("mode must be -S or -G")
+    # 用 --pretty + --name-only 一次拿到 commit 元数据和文件列表
+    args = ['log', '--pretty=format:%H|%aI|%an|%s', '--name-only', mode + pattern, '--']
     if since:
         args += ['--since=' + since]
     if until:
         args += ['--until=' + until]
     out = run_git(args, repo)
-    rows = []
-    for line in out.splitlines():
-        if not line.strip():
-            continue
-        parts = line.split('|', 3)
-        if len(parts) < 4:
-            continue
-        sha, iso, author, subject = parts
-        rows.append({'sha': sha, 'date': iso, 'author': author, 'subject': subject})
-    return rows
+    return parse_git_log(out)
+
+
+def collect_file_history(repo, filepath, since=None, until=None, follow=True):
+    """某文件自身的提交历史（不是符号追踪）。follow=True 时加 --follow 追踪重命名。"""
+    args = ['log', '--pretty=format:%H|%aI|%an|%s']
+    if follow:
+        args.append('--follow')
+    args += ['--', filepath]
+    if since:
+        args += ['--since=' + since]
+    if until:
+        args += ['--until=' + until]
+    out = run_git(args, repo)
+    return parse_git_log(out)
 
 
 def build_db(repo, pattern, db_path, mode='-S'):
