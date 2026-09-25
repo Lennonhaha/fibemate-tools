@@ -1,0 +1,56 @@
+name: xdiff
+
+on:
+  push:
+    paths:
+      - 'verifact/**'
+      - 'xdiff/**'
+      - '.github/workflows/xdiff-ci.yml'
+  pull_request:
+    paths:
+      - 'xdiff/**'
+      - '.github/workflows/xdiff-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: 回归与语法
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: 语法检查
+        working-directory: xdiff
+        run: |
+          for f in $(find src bin -name '*.js'); do node --check "$f" || exit 1; done
+      - name: 回归
+        working-directory: xdiff
+        run: node test/run.js
+
+  graceful:
+    name: 实现缺失时优雅降级
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # CI runner 上没有 D:\FIBEMATE，所有实现都应报 unavailable。
+      # 这一条保证工具在找不到实现时给出可读报告并正常退出，而不是崩溃。
+      - name: 降级跑一次
+        working-directory: xdiff
+        run: |
+          node bin/xdiff.js run --fail-on none --format json --out .xdiff/ci.json
+          node -e "
+            const r = require('./.xdiff/ci.json');
+            const bad = r.implementations.filter(i => i.status === 'ready').length;
+            console.log('ready=' + bad + '  gate=' + r.gate);
+            if (!r.findings.length) { console.error('缺少降级说明'); process.exit(1); }
+         "
+      - name: 报告归档
+        uses: actions/upload-artifact@v4
+        with:
+          name: xdiff-ci-report
+          path: xdiff/.xdiff/ci.json

@@ -14,6 +14,8 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 | `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，`cargo build` + `run` PASS |
 | `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，63 tests + typecheck PASS |
 | `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
+| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，15 项回归 PASS；主仓 337 份文档实测 verified 145 / drift 23 |
+| `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，14 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k |
 
 ## 设计纪律（全部工具共守）
 
@@ -35,6 +37,8 @@ fibemate-tools/
 ├── crypto-time-machine/     (Python)
 ├── crypto-time-ledger/      (TypeScript)
 ├── tla-verifier/            (Bash + TLA+ TLC)
+├── verifact/                (Node，零依赖)
+├── xdiff/                   (Node，零依赖 + C 桥接)
 └── undecryptable-prover/    (Rust + Lean)
 ```
 
@@ -53,6 +57,20 @@ REPO=/path/to/repo python test/local_test.py
 # 证明器
 cd undecryptable-prover
 cargo run --release               # 生成 evidence.json
+
+# 事实哨兵（verifact）：核验文档硬数字与产出物是否一致
+cd verifact
+node bin/verifact.js verify                    # 按 verifact.json 跑，drift 时退出码 1
+node bin/verifact.js verify --format md --out report.md
+node bin/verifact.js diff                      # 对比两次运行之间的状态迁移
+node bin/verifact.js serve                     # 本地看板 http://127.0.0.1:8787
+
+# 差分哨兵（xdiff）：多套实现同种子逐字节差分
+cd xdiff
+node bin/xdiff.js list                         # 列出实现及其可用性
+node bin/xdiff.js run                          # 互操作矩阵 + 密钥派生根因定位
+node bin/xdiff.js run --format md --out r.md
+node test/run.js                               # 14 项回归
 ```
 
 ## Scripts
