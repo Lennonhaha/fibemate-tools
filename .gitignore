@@ -25,3 +25,4 @@ xdiff/.xdiff/
 verifact/verifact.json
 xdiff/xdiff.json
 
+scripts/tmp-*
