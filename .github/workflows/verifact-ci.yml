@@ -1,0 +1,59 @@
+name: verifact-ci
+
+on:
+  pull_request:
+    paths:
+      - 'verifact/**'
+      - '.github/workflows/verifact-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  ci-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit + regression tests
+        working-directory: verifact
+        run: node test/run.js
+      - name: CLI end-to-end on clean fixture（门禁应为 PASS）
+        working-directory: verifact
+        run: node bin/verifact.js verify --docs test/fixtures/docs/good.md --no-cache --fail-on drift
+      - name: CLI end-to-end on reporting fixture（应命中 drift 并以 1 退出）
+        working-directory: verifact
+        run: |
+          set +e
+          node bin/verifact.js verify --docs test/fixtures/docs/report.md --artifacts test/fixtures/artifacts --no-cache --fail-on drift
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "expected exit 1 (drift present), got $code"
+            exit 1
+          fi
+
+  # 只对 verifact 自身的文档做稿规自检；不改仓库里任何既有文件。
+  self-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 稿规自检（high 级应命中规则自身的例句，medium 级不应命中）
+        working-directory: verifact
+        run: |
+          set +e
+          node bin/verifact.js verify --docs README.md --no-cache --fail-on none --format json --out /tmp/self.json
+          set -e
+          node -e "
+            const r = require('/tmp/self.json');
+            const medium = r.lint.filter(f => f.severity === 'medium');
+            if (medium.length) {
+              console.error('README 命中 medium 级用语线索：');
+              medium.forEach(f => console.error('  ' + f.file + ':' + f.line + ' ' + f.ruleId + ' ' + f.matched));
+              process.exit(1);
+            }
+            console.log('self-lint ok, findings=' + r.lint.length);
+          "

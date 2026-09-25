@@ -1,0 +1,21 @@
+{
+  "name": "@fibemate/verifact",
+  "version": "0.1.0",
+  "description": "事实哨兵 — 把文档里的硬数字声明绑定到真实产出物上逐条核验，漂移即红。",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "private": true,
+  "main": "src/engine.js",
+  "bin": {
+    "verifact": "bin/verifact.js"
+  },
+  "scripts": {
+    "verify": "node bin/verifact.js verify",
+    "serve": "node bin/verifact.js serve",
+    "test": "node test/run.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}
