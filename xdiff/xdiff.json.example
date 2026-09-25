@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "algorithm": "ML-KEM-768",
+  "sizes": { "pk": 1184, "sk": 2400, "ct": 1088, "ss": 32 },
+  "params": { "k": 3, "eta1": 2, "eta2": 2 },
+  "masterSeed": "fibemate-xdiff-2026-09-24",
+  "implementations": [
+    {
+      "id": "cp",
+      "label": "fibemate-core 纯 JS（独立包，841 行）",
+      "type": "js-mlkem",
+      "path": "${FIBEMATE}/fibemate-core/index.js",
+      "note": "Keccak 为 32 位字实现；decapsulate(sk, ct)"
+    },
+    {
+      "id": "main",
+      "label": "主仓 packages/pqc-kem（453 行）",
+      "type": "js-mlkem",
+      "path": "${FIBEMATE}/fibemate/packages/pqc-kem/src/ml-kem-768.js",
+      "note": "与 cp 已分叉；同一份算法的两条演进线"
+    },
+    {
+      "id": "noble",
+      "label": "@noble/post-quantum 0.7.1 ml_kem768",
+      "type": "noble-mlkem",
+      "path": "${FIBEMATE}/fibemate/node_modules/@noble/post-quantum",
+      "note": "第三方独立实现，作为交叉参考；decapsulate(ct, sk) 参数顺序相反"
+    },
+    {
+      "id": "liboqs",
+      "label": "liboqs 0.16（C 参考实现）",
+      "type": "liboqs-bridge",
+      "path": "${FIBEMATE}/fibemate-tools/xdiff/tools/oqsbridge(.exe)",
+      "note": "本地 liboqs-build 为算法全禁用的空壳构建，OQS_KEM_new 返回 NULL，实测不可用；oqsbridge.exe 为构建产物不进仓，编译与依赖见 README「八、构建 oqsbridge」；编出完整库后改 path 即可启用",
+      "enabled": true
+    }
+  ],
+  "cases": {
+    "lengthCompliance": { "enabled": true },
+    "roundtrip": { "enabled": true, "samples": 8 },
+    "crossInterop": { "enabled": true, "samples": 8 },
+    "determinism": { "enabled": true, "samples": 4 },
+    "seedAlignment": { "enabled": true },
+    "keySchedule": { "enabled": true },
+    "kat": {
+      "enabled": true,
+      "rsp": "${FIBEMATE}/fibemate/packages/pqc-kem/test/kat/mlkem-768-KAT.rsp",
+      "vectors": 16
+    },
+    "katFileHygiene": { "enabled": true },
+    "entropy": { "enabled": true, "samples": 8 },
+    "implicitRejection": { "enabled": true, "samples": 4 },
+    "rngProfile": { "enabled": true },
+    "timing": { "enabled": true, "samples": 20 }
+  },
+  "pool": { "workers": 0, "timeoutMs": 120000 },
+  "output": { "dir": ".xdiff", "failOn": "error" }
+}
