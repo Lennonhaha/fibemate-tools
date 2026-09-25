@@ -13,5 +13,10 @@
   },
   "dependencies": {
     "pkijs": "^3.4.0"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git"
   }
 }

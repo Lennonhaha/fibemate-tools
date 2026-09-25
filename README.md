@@ -14,8 +14,8 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 | `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，`cargo build` + `run` PASS |
 | `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，63 tests + typecheck PASS |
 | `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
-| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，15 项回归 PASS；主仓 337 份文档实测 verified 145 / drift 23 |
-| `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，14 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k |
+| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，19 项回归 PASS；主仓 339 份文档实测 verified 145 / drift 24（2026-09-25） |
+| `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，18 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k（2026-09-25 实测同结论） |
 
 ## 设计纪律（全部工具共守）
 
@@ -50,9 +50,9 @@ cd hallucination-detector
 node test/sample.test.js          # 自带样本测试
 node src/cli.js your-file.js      # 分析你的代码
 
-# 时间机器（REPO 环境变量指向任意 git 仓，默认分析当前目录）
+# 时间机器（CTM_TEST_REPO 环境变量指向任意 git 仓，默认分析当前目录）
 cd crypto-time-machine
-REPO=/path/to/repo python test/local_test.py
+CTM_TEST_REPO=/path/to/repo python test/local_test.py
 
 # 证明器
 cd undecryptable-prover
