@@ -1,0 +1,18 @@
+{
+  "name": "cbom-tools",
+  "version": "0.1.0",
+  "description": "Crypto Bill of Materials — scan, diff, report",
+  "license": "Apache-2.0",
+  "author": "刘天赫",
+  "scripts": {
+    "test": "node cbom-diff.js"
+  },
+  "bin": {
+    "cbom-diff": "cbom-diff.js"
+  },
+  "files": [
+    "cbom-diff.js",
+    "cbom-cyclonedx.json",
+    "README.md"
+  ]
+}
