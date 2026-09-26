@@ -10,6 +10,25 @@
 const fs = require('fs');
 const path = require('path');
 
+const ALGO_META = JSON.parse(fs.readFileSync(path.join(__dirname, 'algo-metadata.json'), 'utf-8'));
+
+const NAME_ALIASES = {
+ 'ML-KEM-768': 'ML-KEM',
+ 'ML-KEM-512': 'ML-KEM',
+ 'ML-KEM-1024': 'ML-KEM',
+ 'ML-DSA': 'ML-DSA/fml-dsa',
+ 'ML-DSA-44': 'ML-DSA/fml-dsa',
+ 'ML-DSA-65': 'ML-DSA/fml-dsa',
+ 'ML-DSA-87': 'ML-DSA/fml-dsa',
+};
+
+function lookupMeta(name) {
+ if (ALGO_META[name]) return ALGO_META[name];
+ const alias = NAME_ALIASES[name];
+ if (alias && ALGO_META[alias]) return ALGO_META[alias];
+ return null;
+}
+
 const DEFAULT_RULES = {
  packages: {
  '@noble/post-quantum': ['ML-KEM-768', 'ML-DSA-65', 'SLH-DSA'],
@@ -96,11 +115,16 @@ function toCycloneDX(algorithms) {
  timestamp: new Date().toISOString(),
  tools: [{ name: 'cbom-scan', version: '0.1.0', vendor: 'FIBEMATE' }],
  },
- components: [...algorithms].sort().map(name => ({
+ components: [...algorithms].sort().map(name => {
+ const meta = lookupMeta(name);
+ const comp = {
  type: 'cryptographic-asset',
  name,
  'bom-ref': `crypto:${name}`,
- })),
+ };
+ if (meta) comp.cryptoProperties = meta;
+ return comp;
+ }),
  dependencies: [],
  };
 }
