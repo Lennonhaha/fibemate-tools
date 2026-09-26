@@ -1,0 +1,34 @@
+{
+  "name": "xdiff",
+  "version": "0.1.0",
+  "description": "跨实现差分哨兵 — 对同一密码学算法的多套实现做同种子逐字节差分、互操作矩阵与失败性解密一致性检查",
+  "type": "commonjs",
+  "main": "src/engine.js",
+  "bin": {
+    "xdiff": "./bin/xdiff.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "tools",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node test/run.js",
+    "run": "node bin/xdiff.js run",
+    "list": "node bin/xdiff.js list"
+  },
+  "keywords": [
+    "pqc",
+    "ml-kem",
+    "fips-203",
+    "differential-testing",
+    "cross-implementation",
+    "cryptography"
+  ],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

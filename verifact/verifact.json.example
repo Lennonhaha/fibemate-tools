@@ -1,0 +1,92 @@
+{
+  "$comment": "verifact 配置：把 fibemate 相关文档与真实产出物挂钩后逐条核验。deny/ignore 是人工复核后的沉淀，每条都对应一次已确认的误绑。",
+  "docs": {
+    "roots": [
+      "${FIBEMATE}/fibemate",
+      "${USERHOME}/Desktop/FIBEMATE-待发布文章",
+      "${FIBEMATE}/README.md",
+      "${FIBEMATE}/TECHNICAL-VERIFICATION.md",
+      "${FIBEMATE}/fibemate-tools",
+      "${FIBEMATE}/fibemate-core"
+    ],
+    "include": ["**/*.md"],
+    "exclude": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/CHANGELOG.md",
+      "**/fibemate/scripts/**",
+      "**/fibemate/tools/**",
+      "**/docs/pr-archive/**",
+      "**/verifact/**"
+    ],
+    "maxFileBytes": 2097152,
+    "maxFiles": 3000,
+    "maxDepth": 14
+  },
+  "artifacts": {
+    "roots": [
+      "${FIBEMATE}/fibemate/tools",
+      "${FIBEMATE}/fibemate/scripts",
+      "${FIBEMATE}/pqc-hw-bench",
+      "${FIBEMATE}/fibemate-core",
+      "${FIBEMATE}/lookingglass",
+      "${FIBEMATE}/ml-kem-768_timestamp_v2",
+      "${FIBEMATE}/tsa_v11",
+      "${FIBEMATE}/fips205_kat",
+      "${FIBEMATE}/pqc_kem1024_mldsa44",
+      "${FIBEMATE}/lg-v3.1-20260716.tsr",
+      "${FIBEMATE}/vwz-076-20260717.tsr"
+    ],
+    "presenceRoots": [
+      "${FIBEMATE}/_backup_2026-07-18",
+      "${FIBEMATE}/papers",
+      "${FIBEMATE}/tsa_v11",
+      "${FIBEMATE}/ml-kem-768_timestamp_v2",
+      "${FIBEMATE}/fibemate/www/docs/tsa",
+      "${FIBEMATE}/fibemate/docs/tla"
+    ],
+    "exclude": ["**/node_modules/**", "**/.git/**", "**/target/**", "**/verifact/**"],
+    "deny": [
+      "**/pqc-ecosystem-scan.json::assessment.*.usage*",
+      "**/risk-coverage-matrix.json::matrix[*].summary#*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d2_*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d4_*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d6_*",
+      "**/pqc-hw-bench/hardware/project/**/runme.log",
+      "**/pqc-hw-bench/results/raw/**",
+      "**/lookingglass/docs/performance-scheduler.md",
+      "**/lookingglass/docs/p0-closure_2026-06-27.md",
+      "**/lookingglass/docs/independence-experiment-results.json",
+      "**/*#pk",
+      "**/*#sk",
+      "**/*#du",
+      "**/*#dv",
+      "**/*#signature-size",
+      "**/tsa_v11/**SHA256SUMS*",
+      "**/paper/eprint-submission-form.txt"
+    ],
+    "maxFileBytes": 8388608,
+    "maxFiles": 4000,
+    "maxDepth": 12
+  },
+  "resolve": { "minScore": 0.45, "relTolerance": 0.005, "absTolerance": 0 },
+  "lint": { "enabled": true, "disable": [], "includeCodeBlocks": false },
+  "bindings": [],
+  "ignore": [
+    { "file": "**/fibemate/README.md", "key": "keygen-s", "note": "RSA-2048 那一行的 60ms，与 ML-KEM kem-keygen 无关" },
+    { "file": "**/fibemate/README.md", "key": "s-vs", "note": "『vs 1.19ms pure JS』的比较值，不是待核验指标" },
+    { "file": "**/gbk-fix-verify-cleanup_2026-08-14.md", "key": "double-ratchet-pq-js", "note": "em-dash 计数，不是 rekey interval" },
+    { "file": "**/RELEASE_NOTES.md", "key": "finding", "note": "26-pt gap 评分，与 d6 的文件数不是一回事" },
+    { "file": "**/README.md", "key": "cost", "note": "BKZ cost 里的耦合计数" },
+    { "key": "差异不足-ns", "note": "假设性数值：『若两次构建相差 2 ns』，不是实测值" },
+    { "key": "次成功-run", "note": "CI 运行时长，不是硬件指标" },
+    { "file": "**/performance-benchmarks-2026-07-18.md", "key": "rsa-keygen", "note": "RSA-2048 的对照列，不与 ML-KEM 比" },
+    { "key": "sigma", "note": "研究稿里的噪声参数，与投稿表单里的取值集合无关" },
+    { "file": "**/fibemate/README.md", "key": "kem-stress", "note": "1,000 次压测总耗时 8.9s，不是单次 keygen 延迟" },
+    { "key": "kem-完整", "note": "完整 KEM 往返耗时，不与 keygen 单步比对" },
+    { "key": "ntt-roundtrip", "note": "NTT 往返耗时 10µs，被键名带到了 WNS 上；应单独立绑定" }
+  ],
+  "gate": { "failOn": "drift" },
+  "cache": { "enabled": true, "dir": ".verifact", "maxHistory": 120 },
+  "server": { "host": "127.0.0.1", "port": 8787 }
+}
