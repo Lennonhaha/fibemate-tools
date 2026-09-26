@@ -160,10 +160,10 @@ if (oldCBOM && newCBOM) {
 // --- 依赖关系比较 ---
 if (oldCBOM && newCBOM) {
   const oldDepMap = new Map();
-  oldCBOM.dependencies.forEach(d => oldDepMap.set(d.ref, (d.dependsOn || []).sort().join(',')));
+  ;(oldCBOM.dependencies || []).forEach(d => oldDepMap.set(d.ref, (d.dependsOn || []).sort().join(',')));
 
   const newDepMap = new Map();
-  newCBOM.dependencies.forEach(d => newDepMap.set(d.ref, (d.dependsOn || []).sort().join(',')));
+  ;(newCBOM.dependencies || []).forEach(d => newDepMap.set(d.ref, (d.dependsOn || []).sort().join(',')));
 
   // Added deps
   newDepMap.forEach((deps, ref) => {
