@@ -57,6 +57,7 @@ const DEFAULT_RULES = {
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.cache']);
 const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx)$/;
+const MAX_OCC_PER_ALGO = 50;
 
 function loadPackageDeps(dir) {
  const pkgPath = path.join(dir, 'package.json');
@@ -78,7 +79,17 @@ function matchDeps(deps, rules) {
 }
 
 function scanSource(root, rules) {
- const found = new Set();
+ const found = new Map();
+
+ function addOcc(name, file, line) {
+ let arr = found.get(name);
+ if (!arr) { arr = []; found.set(name, arr); }
+ if (arr.length >= MAX_OCC_PER_ALGO) return;
+ const loc = path.relative(root, file).replace(/\\/g, '/');
+ if (arr.some(o => o.location === loc && o.line === line)) return;
+ arr.push({ location: loc, line });
+ }
+
  function walk(d) {
  let entries;
  try { entries = fs.readdirSync(d, { withFileTypes: true }); }
@@ -88,14 +99,18 @@ function scanSource(root, rules) {
  const full = path.join(d, entry.name);
  if (entry.isDirectory()) walk(full);
  else if (SCAN_EXT.test(entry.name)) {
- let src;
- try { src = fs.readFileSync(full, 'utf-8'); }
+ let content;
+ try { content = fs.readFileSync(full, 'utf-8'); }
  catch { continue; }
  for (const { re, algs } of rules.sourcePatterns) {
  re.lastIndex = 0;
  let m;
- while ((m = re.exec(src)) !== null) {
- for (const a of algs) found.add(a.replace(/\$(\d+)/g, (_, i) => m[i]));
+ while ((m = re.exec(content)) !== null) {
+ const line = content.slice(0, m.index).split('\n').length;
+ for (const a of algs) {
+ const name = a.replace(/\$(\d+)/g, (_, i) => m[i]);
+ addOcc(name, full, line);
+ }
  }
  }
  }
@@ -110,12 +125,11 @@ function toCycloneDX(algorithms) {
  bomFormat: 'CycloneDX',
  specVersion: '1.6',
  version: 1,
- serialNumber: `urn:uuid:${genUUID()}`,
  metadata: {
  timestamp: new Date().toISOString(),
  tools: [{ name: 'cbom-scan', version: '0.1.0', vendor: 'FIBEMATE' }],
  },
- components: [...algorithms].sort().map(name => {
+ components: [...algorithms.keys()].sort().map(name => {
  const meta = lookupMeta(name);
  const comp = {
  type: 'cryptographic-asset',
@@ -123,17 +137,11 @@ function toCycloneDX(algorithms) {
  'bom-ref': `crypto:${name}`,
  };
  if (meta) comp.cryptoProperties = meta;
+ const occ = algorithms.get(name);
+ if (occ && occ.length) comp.evidence = { occurrences: occ };
  return comp;
  }),
- dependencies: [],
  };
-}
-
-function genUUID() {
- return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
- const r = Math.random() * 16 | 0;
- return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
- });
 }
 
 function main() {
@@ -144,13 +152,17 @@ function main() {
  const deps = loadPackageDeps(dir);
  const fromDeps = matchDeps(deps, DEFAULT_RULES);
  const fromSource = scanSource(dir, DEFAULT_RULES);
- const all = new Set([...fromDeps, ...fromSource]);
 
- const cbom = toCycloneDX(all);
+ // Merge: union of both. Source occurrences override empty array from deps.
+ const merged = new Map();
+ for (const name of fromDeps) merged.set(name, []);
+ for (const [name, occ] of fromSource) merged.set(name, occ);
+
+ const cbom = toCycloneDX(merged);
  const output = JSON.stringify(cbom, null, 2);
  if (outPath) {
  fs.writeFileSync(outPath, output, 'utf-8');
- console.error(`cbom-scan: wrote ${all.size} algorithms to ${outPath}`);
+ console.error(`cbom-scan: wrote ${merged.size} algorithms to ${outPath}`);
  } else {
  console.log(output);
  }
