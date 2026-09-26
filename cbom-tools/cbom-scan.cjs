@@ -91,6 +91,7 @@ function toCycloneDX(algorithms) {
  bomFormat: 'CycloneDX',
  specVersion: '1.6',
  version: 1,
+ serialNumber: `urn:uuid:${genUUID()}`,
  metadata: {
  timestamp: new Date().toISOString(),
  tools: [{ name: 'cbom-scan', version: '0.1.0', vendor: 'FIBEMATE' }],
@@ -100,7 +101,15 @@ function toCycloneDX(algorithms) {
  name,
  'bom-ref': `crypto:${name}`,
  })),
+ dependencies: [],
  };
+}
+
+function genUUID() {
+ return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+ const r = Math.random() * 16 | 0;
+ return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+ });
 }
 
 function main() {

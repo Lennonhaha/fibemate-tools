@@ -48,6 +48,16 @@ if (!newHash) newHash = 'HEAD';
 // CBOM 加载
 // ════════════════════════════
 function loadCBOM(hash) {
+  // 1. File path mode: .json extension → read file directly
+  if (hash && hash.toLowerCase().endsWith('.json')) {
+    const filePath = path.resolve(hash);
+    if (!fs.existsSync(filePath)) {
+      console.error(`✕ cbom-diff: file not found: ${filePath}`);
+      process.exit(2);
+    }
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  }
+  // 2. Git mode
   if (gitMode) {
     try {
       const raw = execSync(`git show ${hash}:tools/cbom-cyclonedx.json`, {
@@ -61,7 +71,7 @@ function loadCBOM(hash) {
       process.exit(4);
     }
   }
-  // Default: load from local file
+  // 3. Default: load from local file
   try {
     const local = path.join(__dirname, 'cbom-cyclonedx.json');
     return JSON.parse(fs.readFileSync(local, 'utf-8'));
