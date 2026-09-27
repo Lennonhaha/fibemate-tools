@@ -1,0 +1,13 @@
+{
+  "ml_kem_768": {
+    "verification": "KAT 10000/10000 Noble cross-validated, TVLA 6/9 steady, ADLA 3/4 mixed"
+  },
+  "latency": {
+    "p95_ms": 81.2
+  },
+  "coverage": 99.1,
+  "cross_validation": "43/43",
+  "payload": {
+    "signature_bytes": 80
+  }
+}
