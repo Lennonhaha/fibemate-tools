@@ -1,7 +1,8 @@
 {
   "name": "crypto-time-ledger",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
+  "description": "RFC 3161 anchored crypto algorithm state ledger (add/verify/query/export CLI)",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -13,5 +14,10 @@
   },
   "dependencies": {
     "pkijs": "^3.4.1"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git"
   }
 }
