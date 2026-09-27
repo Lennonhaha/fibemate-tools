@@ -1,0 +1,195 @@
+{
+  "$comment": "verifact 配置：把 fibemate 相关文档与真实产出物挂钩后逐条核验。deny/ignore 是人工复核后的沉淀，每条都对应一次已确认的误绑。",
+  "docs": {
+    "roots": [
+      "D:/FIBEMATE/fibemate",
+      "C:/Users/maivs/Desktop/FIBEMATE-待发布文章",
+      "D:/FIBEMATE/README.md",
+      "D:/FIBEMATE/TECHNICAL-VERIFICATION.md",
+      "D:/FIBEMATE/fibemate-tools",
+      "D:/FIBEMATE/fibemate-core"
+    ],
+    "include": [
+      "**/*.md"
+    ],
+    "exclude": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/CHANGELOG.md",
+      "**/fibemate/scripts/**",
+      "**/fibemate/tools/**",
+      "**/docs/pr-archive/**",
+      "**/verifact/**"
+    ],
+    "maxFileBytes": 2097152,
+    "maxFiles": 3000,
+    "maxDepth": 14
+  },
+  "artifacts": {
+    "roots": [
+      "D:/FIBEMATE/fibemate/tools",
+      "D:/FIBEMATE/fibemate/scripts",
+      "D:/FIBEMATE/pqc-hw-bench",
+      "D:/FIBEMATE/fibemate-core",
+      "D:/FIBEMATE/lookingglass",
+      "D:/FIBEMATE/ml-kem-768_timestamp_v2",
+      "D:/FIBEMATE/tsa_v11",
+      "D:/FIBEMATE/fips205_kat",
+      "D:/FIBEMATE/pqc_kem1024_mldsa44",
+      "D:/FIBEMATE/lg-v3.1-20260716.tsr",
+      "D:/FIBEMATE/vwz-076-20260717.tsr"
+    ],
+    "presenceRoots": [
+      "D:/FIBEMATE/_backup_2026-07-18",
+      "D:/FIBEMATE/papers",
+      "D:/FIBEMATE/tsa_v11",
+      "D:/FIBEMATE/ml-kem-768_timestamp_v2",
+      "D:/FIBEMATE/fibemate/www/docs/tsa",
+      "D:/FIBEMATE/fibemate/docs/tla"
+    ],
+    "exclude": [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/target/**",
+      "**/verifact/**"
+    ],
+    "deny": [
+      "**/pqc-ecosystem-scan.json::assessment.*.usage*",
+      "**/risk-coverage-matrix.json::matrix[*].summary#*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d2_*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d4_*",
+      "**/ibm-dimensions-scorecard.json::dimensions.d6_*",
+      "**/pqc-hw-bench/hardware/project/**/runme.log",
+      "**/pqc-hw-bench/results/raw/**",
+      "**/lookingglass/docs/performance-scheduler.md",
+      "**/lookingglass/docs/p0-closure_2026-06-27.md",
+      "**/lookingglass/docs/independence-experiment-results.json",
+      "**/*#pk",
+      "**/*#sk",
+      "**/*#du",
+      "**/*#dv",
+      "**/*#signature-size",
+      "**/tsa_v11/**SHA256SUMS*",
+      "**/paper/eprint-submission-form.txt"
+    ],
+    "maxFileBytes": 8388608,
+    "maxFiles": 4000,
+    "maxDepth": 12
+  },
+  "resolve": {
+    "minScore": 0.45,
+    "relTolerance": 0.005,
+    "absTolerance": 0
+  },
+  "lint": {
+    "enabled": true,
+    "disable": [],
+    "includeCodeBlocks": false
+  },
+  "bindings": [],
+  "ignore": [
+    {
+      "file": "**/fibemate/README.md",
+      "key": "keygen-s",
+      "note": "RSA-2048 那一行的 60ms，与 ML-KEM kem-keygen 无关"
+    },
+    {
+      "file": "**/fibemate/README.md",
+      "key": "s-vs",
+      "note": "『vs 1.19ms pure JS』的比较值，不是待核验指标"
+    },
+    {
+      "file": "**/gbk-fix-verify-cleanup_2026-08-14.md",
+      "key": "double-ratchet-pq-js",
+      "note": "em-dash 计数，不是 rekey interval"
+    },
+    {
+      "file": "**/RELEASE_NOTES.md",
+      "key": "finding",
+      "note": "26-pt gap 评分，与 d6 的文件数不是一回事"
+    },
+    {
+      "file": "**/README.md",
+      "key": "cost",
+      "note": "BKZ cost 里的耦合计数"
+    },
+    {
+      "key": "差异不足-ns",
+      "note": "假设性数值：『若两次构建相差 2 ns』，不是实测值"
+    },
+    {
+      "key": "次成功-run",
+      "note": "CI 运行时长，不是硬件指标"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "rsa-keygen",
+      "note": "RSA-2048 的对照列，不与 ML-KEM 比"
+    },
+    {
+      "key": "sigma",
+      "note": "研究稿里的噪声参数，与投稿表单里的取值集合无关"
+    },
+    {
+      "file": "**/fibemate/README.md",
+      "key": "kem-stress",
+      "note": "1,000 次压测总耗时 8.9s，不是单次 keygen 延迟"
+    },
+    {
+      "key": "kem-完整",
+      "note": "完整 KEM 往返耗时，不与 keygen 单步比对"
+    },
+    {
+      "key": "ntt-roundtrip",
+      "note": "NTT 往返耗时 10µs，被键名带到了 WNS 上；应单独立绑定"
+    },
+    {
+      "file": "**/PQC_MIGRATION_PLAN.md",
+      "key": "kem-keygen",
+      "kind": "measure",
+      "note": "JS 估算值 vs 硬件基准，口径不同。TODO: 修绑定指向 JS benchmark"
+    },
+    {
+      "file": "**/TECHNICAL-VERIFICATION.md",
+      "key": "wns",
+      "kind": "measure",
+      "note": "时序约束 vs 成本模型，口径不同。TODO: 修绑定"
+    },
+    {
+      "file": "**/TECHNICAL-VERIFICATION.md",
+      "key": "keygen-s",
+      "kind": "measure",
+      "note": "JS 列性能 vs 硬件基准，口径不同。TODO: 修绑定"
+    },
+    {
+      "file": "**/TECHNICAL-VERIFICATION.md",
+      "key": "decaps-s",
+      "kind": "measure",
+      "note": "JS 列性能 vs 硬件基准，口径不同。TODO: 修绑定"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "keygen",
+      "kind": "measure",
+      "note": "JS benchmark vs 硬件基准，口径不同。TODO: 修绑定"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "keygen-ms",
+      "kind": "measure",
+      "note": "JS benchmark vs 硬件基准（5 值 1.71~11.77ms），口径不同。TODO: 修绑定"
+    }
+  ],
+  "gate": {
+    "failOn": "drift"
+  },
+  "cache": {
+    "enabled": true,
+    "dir": ".verifact",
+    "maxHistory": 120
+  },
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8787
+  }
+}
