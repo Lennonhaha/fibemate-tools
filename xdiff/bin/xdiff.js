@@ -14,7 +14,7 @@ const USAGE = `xdiff — 跨实现差分哨兵
 
 用法:
   xdiff run [--config <file>] [--seed <str>] [--samples <n>] [--format text|md|json]
-            [--out <file>] [--fail-on error|warn|none] [--quiet]
+            [--out <file>] [--fail-on error|warn|none] [--quiet] [--require-impl <N>]
   xdiff list [--config <file>]                 列出已注册实现及其可用性
   xdiff init [--dir <dir>]                     生成 xdiff.json 配置样例
   xdiff explain <findingId> [--file <report>]  打印某条差异的完整详情
@@ -56,6 +56,15 @@ async function cmdRun(argv) {
   }
   const cfg = loadConfig({ cwd: process.cwd(), configPath: flags.config, overrides });
   const rep = await engine.run(cfg, { log });
+  const requireImpl = flags['require-impl'] ? Number(flags['require-impl']) : 0;
+  if (requireImpl > 0 && Number.isFinite(requireImpl)) {
+    const readyCount = rep.implementations.filter(i => i.status === 'ready').length;
+    if (readyCount < requireImpl) {
+      const missing = rep.implementations.filter(i => i.status !== 'ready').map(i => i.id + '=' + (i.reason || 'unknown')).join(', ');
+      log.error('require-impl=' + requireImpl + ' ready=' + readyCount + ' [' + missing + ']');
+      return 1;
+    }
+  }
 
   const format = String(flags.format || 'text');
   let body;

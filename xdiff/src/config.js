@@ -23,30 +23,30 @@ const DEFAULTS = {
       id: 'cp',
       label: 'fibemate-core 纯 JS',
       type: 'js-mlkem',
-      path: 'D:/FIBEMATE/fibemate-core/index.js',
+      path: '../../fibemate-core/index.js',
       note: '独立发布的纯 JS 包，Keccak 为 32 位字实现'
     },
     {
       id: 'main',
       label: '主仓 packages/pqc-kem',
       type: 'js-mlkem',
-      path: 'D:/FIBEMATE/fibemate/packages/pqc-kem/src/ml-kem-768.js',
+      path: '../../fibemate/packages/pqc-kem/src/ml-kem-768.js',
       note: '主仓副本，453 行，与 cp 已分叉'
     },
     {
       id: 'noble',
       label: '@noble/post-quantum ml_kem768',
       type: 'noble-mlkem',
-      path: 'D:/FIBEMATE/fibemate/node_modules/@noble/post-quantum',
+      path: '../../fibemate/node_modules/@noble/post-quantum',
       note: '第三方独立实现，作为交叉参考'
     },
     {
       id: 'liboqs',
       label: 'liboqs 0.16 (C)',
       type: 'liboqs-bridge',
-      path: 'D:/FIBEMATE/fibemate-tools/xdiff/tools/oqsbridge.exe',
-      note: 'C 参考实现；本地构建为算法全禁用的空壳，实测不可用',
-      enabled: true
+      path: './tools/oqsbridge.c',
+      note: 'pending: needs cross-platform build; only oqsbridge.c source, no compiled binary',
+      enabled: false
     }
   ],
 
@@ -134,6 +134,16 @@ function loadConfig(opts) {
 
   cfg.__cwd = cwd;
   cfg.__configPath = configPath;
+
+  // Resolve relative implementation paths against config file directory
+  if (Array.isArray(cfg.implementations)) {
+    const base = cfg.__configPath ? path.dirname(cfg.__configPath) : cfg.__cwd;
+    for (const im of cfg.implementations) {
+      if (im.path && !path.isAbsolute(im.path)) {
+        im.path = path.resolve(base, im.path);
+      }
+    }
+  }
 
   validate(cfg);
   return cfg;
