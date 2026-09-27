@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>verifact · 事实哨兵</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">VF</span>
+    <div>
+      <h1>verifact · 事实哨兵</h1>
+      <p class="sub">文档硬数字声明 ↔ 产出物 逐条核验</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="btn-verify" class="btn primary">重新核验</button>
+    <label class="chk"><input type="checkbox" id="chk-nocache"> 跳过缓存</label>
+    <span id="meta" class="meta">—</span>
+  </div>
+</header>
+
+<main>
+  <section class="cards" id="cards"></section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>声明</h2>
+      <div class="tabs" id="tabs">
+        <button data-s="all" class="on">全部</button>
+        <button data-s="drift">漂移</button>
+        <button data-s="ambiguous">候选冲突</button>
+        <button data-s="unbound">未绑定</button>
+        <button data-s="ref-missing">产出物缺失</button>
+        <button data-s="verified">已核验</button>
+      </div>
+    </div>
+    <input id="q" class="search" type="search" placeholder="过滤：文件 / 模块 / 键 / 原文">
+    <div class="table-wrap">
+      <table id="tbl">
+        <thead>
+          <tr>
+            <th style="width:92px">判定</th>
+            <th style="width:220px">位置</th>
+            <th style="width:110px">模块</th>
+            <th style="width:150px">键</th>
+            <th>文档值</th>
+            <th>产出物值</th>
+            <th style="width:64px">评分</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p id="empty" class="empty" hidden>没有匹配的声明。</p>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <div class="panel-head"><h2>用语 / 绝对化线索</h2><div class="tabs" id="lint-tabs">
+        <button data-x="all" class="on">全部</button>
+        <button data-x="high">high</button>
+        <button data-x="medium">medium</button>
+        <button data-x="low">low</button>
+      </div></div>
+      <div id="lint" class="list"></div>
+      <p class="note">输出是「需人工复核的信号」，不是漏洞判决。</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>历史</h2></div>
+      <div id="history" class="list"></div>
+      <p class="note">每次核验追加一条记录，用于看 drift 是从哪次开始出现的。</p>
+    </section>
+  </div>
+</main>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

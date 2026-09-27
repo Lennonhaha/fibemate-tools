@@ -17,3 +17,12 @@ timeline.db
 # Editor / OS
 .DS_Store
 *.swp
+
+# verifact / xdiff — 运行时缓存、编译二进制、本机实例配置（模板 .example 进仓，实例 .json 不进）
+verifact/.verifact/
+xdiff/.xdiff/
+*.exe
+verifact/verifact.json
+xdiff/xdiff.json
+
+scripts/tmp-*

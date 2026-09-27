@@ -1,0 +1,134 @@
+{
+  "ML-KEM": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "KEM"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "NTT": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "MATH"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SHA-256": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "HASH"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM2": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SIGN"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "P-256/ECDH": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "ECC"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Double-Ratchet": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "PROTO"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM3": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "HASH"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "ML-DSA/fml-dsa": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SIGN"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SM4": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SYM"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "AES": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SYM"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SLH-DSA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SIGN"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "TLA+": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "PROTO"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  }
+}
