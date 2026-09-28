@@ -146,7 +146,16 @@ function toCycloneDX(algorithms) {
 
 function main() {
  const args = process.argv.slice(2);
- const dir = args.includes('--dir') ? args[args.indexOf('--dir') + 1] : process.cwd();
+ const dirFlag = args.indexOf('--dir');
+ let dir = process.cwd();
+ if (dirFlag !== -1) {
+   const v = args[dirFlag + 1];
+   if (!v || v.startsWith('--')) {
+     console.error('usage: cbom-scan [--dir <path>] [--out <file>]');
+     process.exit(2);
+   }
+   dir = v;
+ }
  const outPath = args.includes('--out') ? args[args.indexOf('--out') + 1] : null;
 
  const deps = loadPackageDeps(dir);
