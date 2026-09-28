@@ -178,6 +178,51 @@
       "key": "keygen-ms",
       "kind": "measure",
       "note": "JS benchmark vs 硬件基准（5 值 1.71~11.77ms），口径不同。TODO: 修绑定"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "rsa-sign",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "rsa-verify",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "verify-s",
+      "note": "口径不同：JS benchmark vs 硬件基准（覆盖 L35/L37/L39 三行）"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "p-sign",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "p-verify",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "ed25519-sign",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "ed25519-verify",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/performance-benchmarks-2026-07-18.md",
+      "key": "sign",
+      "note": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/tls-hybrid-deployment.md",
+      "key": "ms-op",
+      "note": "BOUND-BUG：verifact auto-binding 将 X25519 keygen 5.97ms 误关联到 SM2 verify 50ms；TODO: 修绑定"
     }
   ],
   "gate": {
