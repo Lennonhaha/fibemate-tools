@@ -17,7 +17,7 @@
  *   0 — 无变更
  *   1 — 有信息性变更（算法属性升级等）
  *   2 — 有警告性变更（算法删除、新经典算法引用等）
- *   3 — 有严重变更（量子脆弱算法被引入）
+ *   3 — (reserved) 量子脆弱/弱算法引入检测（0.2.0 规划）
  */
 
 const { execSync } = require('child_process');
@@ -55,7 +55,12 @@ function loadCBOM(hash) {
       console.error(`✕ cbom-diff: file not found: ${filePath}`);
       process.exit(2);
     }
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    try {
+      return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    } catch (e) {
+      console.error(`✕ cbom-diff: invalid JSON in ${filePath}: ${e.message}`);
+      process.exit(2);
+    }
   }
   // 2. Git mode
   if (gitMode) {
@@ -121,7 +126,7 @@ if (oldCBOM && newCBOM) {
         ref,
         name: c.name,
         type: assetType,
-        risk: classifyRisk(assetType),
+        risk: classifyRisk(crypto),
       });
     }
   });
@@ -206,8 +211,8 @@ if (hasCriticalAdd) {
 // ════════════════════════════
 // 算法风险分类
 // ════════════════════════════
-function classifyRisk(assetType) {
-  const type = (assetType || '').toLowerCase();
+function classifyRisk(cryptoProps) {
+  const type = ((cryptoProps && cryptoProps.assetType) || '').toLowerCase();
   // PQC algorithms: safe additions
   if (/kem|sign|signature|post.quantum|pqc|mlkem|mldsa|slh/i.test(type)) return 'info';
   // Primitive/verification: neutral
@@ -216,6 +221,8 @@ function classifyRisk(assetType) {
   if (/ecc|ecdh|p-256|sm2|curve/i.test(type)) return 'warning';
   // Classic symmetric: info (still safe with large keys)
   if (/sym|sm4|aes|gcm/i.test(type)) return 'info';
+  // TODO(v0.2.0): add 'critical' exit code for quantum-vulnerable algorithms
+  // using cryptoProps.quantumSecurity?.level
   // Unknown: treat as warning
   return 'warning';
 }

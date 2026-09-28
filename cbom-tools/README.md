@@ -40,6 +40,19 @@ Exit codes:
 - `0` — no changes
 - `1` — changes detected
 - `2` — file not found or parse error
+- `3` — (reserved) quantum-vulnerable/weak algorithm detection (planned for 0.2.0)
+
+## Testing
+
+```
+npm test
+```
+
+17 CLI contract tests (Node built-in `node:test`, zero dependencies):
+both binaries are spawned as child processes and checked against edge
+inputs — empty directory, dependencies-only, source-only, an 800-file
+tree (occurrence cap, `node_modules` / `.git` / dotfile skipping),
+unreachable directories, missing argument values, and malformed JSON.
 
 ## Example (real output)
 
