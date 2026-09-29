@@ -5,6 +5,8 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 > 本仓承载**辅助工具**（静态分析 / 历史追踪 / 证明骨架），**不实现任何密码学算法**——
 > 仅做可复现验证、代码质量信号、证据生成。符合"不拿推测当事实"的纪律。
 
+> **设计原则**：见 [fibemate/PRINCIPLES.md](https://github.com/LennonHaha/fibemate/blob/main/PRINCIPLES.md)
+
 ## 工具清单
 
 | 工具 | 语言 | 作用 | 状态 |
