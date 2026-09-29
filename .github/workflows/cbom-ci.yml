@@ -1,0 +1,29 @@
+name: cbom-ci
+
+on:
+  push:
+    paths:
+      - 'cbom-tools/**'
+      - '.github/workflows/cbom-ci.yml'
+  pull_request:
+    paths:
+      - 'cbom-tools/**'
+      - '.github/workflows/cbom-ci.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cbom-tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: npm install
+      - name: Test
+        run: npm test
