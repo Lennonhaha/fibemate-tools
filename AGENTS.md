@@ -1,6 +1,6 @@
 # AGENTS.md - fibemate-tools Workspace
 
-> Companion to [`Lennonhaha/fibemate` AGENTS.md](https://github.com/Lennonhaha/fibemate/blob/main/AGENTS.md).
+> Companion to `Lennonhaha/fibemate` AGENTS.md.
 > This file is fibemate-tools-specific; the main repo's AGENTS.md is the
 > authority on the broader push / encoding / health discipline. Where they
 > disagree, the main repo wins.

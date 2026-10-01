@@ -1,88 +1,95 @@
-**需要——但先分清"测什么"。** 这工具有 15 项回归（`test/run.js`），已内置；问题是**你要不要"越过内置测试"再测**。逐项说。
+# verifact — 事实哨兵
 
----
+**把文档里的硬数字声明绑定到真实产出物上逐条核验，漂移即红。**
 
-## 一、已内置的（`verifact` 自带）
+Markdown 文档里的性能基准、测试计数、版本号——这些数字会漂移。代码改了三轮，README 里的数字还是三个月前的。verifact 自动化「文档声明 vs 产出物」的交叉比对，把核对从肉眼 grep 变成门禁。
 
-| 项                      | 内容                                                                                  |
-| ---------------------- | ----------------------------------------------------------------------------------- |
-| **`node test/run.js`** | ✅ **15 项回归**                                                                        |
-| **CI 三件事**             | ✅ **① `test/run.js` / ② 干净 fixture 端到端（门禁 PASS）/ ③ 含 `drift` fixture 端到端（门禁 FAIL）** |
-| **`self-lint`**        | ✅ **对 `README.md` 做稿规自检，`medium` 应为 0**                                             |
+Zero external dependencies. Pure Node.js.
 
-——**"内置测试已够"**——**但"内置测试" vs "你要测的"是两回事**。
+## 核心流程
 
----
-
-## 二、⚠️ 但**你要测的，是"内置测不到的"**
-
-| # | 内置测不到的                                   | 为何                                                                   |
-| - | ---------------------------------------- | -------------------------------------------------------------------- |
-| 1 | **实仓配置**（`D:/FIBEMATE/...` 路径）           | ⚠️ **"CI 上跑的是 fixture，不是本机实仓——实仓配置里的路径是 `D:/FIBEMATE/...`，只在本地有意义"** |
-| 2 | **`deny`/`ignore` 收敛后**的 `drift` 23 条    | ⚠️ **"23 条聚成 6 组，全需人定夺"**                                            |
-| 3 | **`unbound` 1801 条**                     | ⚠️ **"`unbound` 不等于'文档在说谎'"——**"可能是文档虚构，也可能只是证据没导出"\*\*              |
-| 4 | **`ref-missing` 3 条**（`lg-079`/`lg-083`） | 🔴 **"在本地扫描范围内找不到文件"**                                               |
-| 5 | **`p95=78.5ms`**                         | 🔴 **"在所有产出物里都找不到来源——`unbound`。这句话是 README 与多篇对外文章的头条数字"**           |
-| 6 | **实仓 vs fixture 的"漂移"**                  | ⚠️ **"CI 上跑的是 fixture，不是本机实仓"**                                      |
-
-——**"实仓测"是**你**要跑的**——**"fixture 测"是 CI 跑的**。
-
----
-
-## 三、⚠️ 且**一处要你收**——"`p95=78.5ms` 是 `unbound`"**你上几条说"是头条数字"**
-
-——**你这条**：
-
-> **"`p95=78.5ms` 在所有产出物里都找不到来源——`unbound`。这句话是 README 与多篇对外文章的头条数字，发稿前需要补证据或改写口径。"**
-
-——⚠️ **"`unbound`"**——**你上几条说"官网 `readiness` 页有 `p95=78.5ms`"**——**"`verifact` 说 `unbound`"**——**"两条冲突"**：
-
-| 若                       | 则                        |
-| ----------------------- | ------------------------ |
-| **"`p95=78.5ms` 有产出物"** | ✅ **"`verifact` 扫范围不含"** |
-| **"无产出物"**              | ⚠️ **"要补证据或改写口径"**       |
-
-——**核**：
-
-```bash
-cd D:\FIBEMATE\fibemate-tools\verifact
-node bin/verifact.js explain README.md:45:ratio:kat 2>&1 | head
-grep -rn "p95.*78.5\|78.5.*p95" D:\FIBEMATE\fibemate\ --include="*.json" --include="*.md" 2>/dev/null | head
+```
+[文档] ──→ 抽取带单位的关键数字 ──→ 按键名+数值绑定到产出物 ──→ 六态判定
+                                              ↑
+                                     [基准/日志/TSR 等产出物]
 ```
 
-——**"`p95=78.5ms` 产出物里有无"**——**"这决定'改口径 or 补证据'"**。
+### 六态判定
 
----
+| 判定 | 含义 | 处置 |
+|:--|:--|:--|
+| `verified` | 文档值与产出物在容差内一致 | 绿 |
+| `drift` | 绑定成功但数值超出容差 | 🔴 门禁拦截 |
+| `ambiguous` | 多个产出物候选冲突 | 交人工 |
+| `unbound` | 找不到产出物依据 | 交人工 |
+| `ref-matched` | 声明引用 `lg-XXX` 等实体，在扫描范围内找到 | 绿 |
+| `ref-missing` | 引用实体不在扫描范围内 | 交人工 |
 
-## 四、拍板
+## 用法
 
-| # | 事项                           | 拍板                                |
-| - | ---------------------------- | --------------------------------- |
-| 1 | **内置测试**                     | ✅ **15 项 + CI 三件事已够**             |
-| 2 | **"要不要测"**                   | ✅ **"测实仓"——**"内置测不到实仓"\*\*        |
-| 3 | **"`p95=78.5ms` `unbound`"** | ⚠️ **核——"产出物有无"**                 |
-| 4 | **"`ref-missing` 3 条"**      | ⚠️ **核——"`lg-079`/`lg-083` 真缺？"** |
-
----
-
-## 五、一句话
-
-**需要测——但"内置测试"（15 项 + CI）已够**；**你要测的是"内置测不到的"**：**实仓配置（`D:/FIBEMATE/...` 路径）/ `deny`/`ignore` 收敛后的 `drift` 23 条 / `unbound` 1801 条 / `ref-missing` 3 条（`lg-079`/`lg-083`）**。**且一处核**：**"`p95=78.5ms` 是 `unbound`"**——**你上几条说"官网 `readiness` 页有 `p95=78.5ms`"**——**"两条冲突——核产出物有无"**——**"这决定'改口径 or 补证据'"**。
-
----
-
-## 六、你定
-
-**A.（推荐）跑实仓 `verifact` → 核 `p95` / `ref-missing`**
-
-```bash
-cd D:\FIBEMATE\fibemate-tools\verifact
-node bin/verifact.js verify --format md --out verifact-report.md
-grep -rn "p95.*78.5\|78.5.*p95" D:\FIBEMATE\fibemate\ --include="*.json" --include="*.md" 2>/dev/null | head
+```
+npm install    # 零依赖，仅安装
 ```
 
-**B. 只核 `p95`**  
-**C. 只跑内置测试**  
-**D. 先停**
+### 核验文档
 
-要哪条？**A 最全**——**"实仓测 + `p95` 核"**。
+```bash
+node bin/verifact.js verify                   # 默认配置，drift 即退出码 1
+node bin/verifact.js verify --fail-on none    # 仅报告，不拦截
+node bin/verifact.js verify --format md --out report.md
+```
+
+### 审查单条声明
+
+```bash
+node bin/verifact.js explain <claimId>
+```
+
+### 历史对比
+
+```bash
+node bin/verifact.js diff --since 3    # 最近 3 次运行的状态迁移
+```
+
+### 本地看板
+
+```bash
+node bin/verifact.js serve --port 8080
+```
+
+## 退出码
+
+| 码 | 含义 |
+|---|-------|
+| 0 | 核验通过 / 无命中门禁条件 |
+| 1 | 命中门禁条件（存在 drift 等） |
+| 2 | 用法或配置错误 |
+
+## 配置
+
+项目根目录放置 `verifact.json`：
+
+- `docs.roots` — 要扫描的文档目录
+- `artifacts` — 产出物目录列表
+- `ignore` — 已知可忽略的 drift 条目（白名单）
+- `deny` — 禁止出现的声明模式
+
+详见 [`verifact.json.example`](./verifact.json.example)。
+
+## 设计
+
+详见 [`VERIFACT-DESIGN.md`](./VERIFACT-DESIGN.md)：六态判定设计、绑定算法、ignore/deny 策略。
+
+## 项目状态
+
+| 项 | 状态 |
+|---|-------|
+| 回归测试 | ✅ 15 项 (`node test/run.js`) |
+| CI 集成 | ✅ sentinel 门禁（`fail-on-drift`） |
+| 平台 | Node.js ≥18，零外部依赖 |
+| 发布 | 私有包（`@fibemate/verifact`），未发布 npm |
+| 许可证 | Apache-2.0 |
+
+## LICENSE
+
+Apache-2.0 — see [LICENSE](../LICENSE).
