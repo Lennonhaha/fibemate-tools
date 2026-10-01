@@ -274,3 +274,25 @@ test('本仓默认冒烟：无参数运行 cbom-diff（本地 cbom-cyclonedx.jso
   assert.strictEqual(r.status, 0, `stderr=${r.stderr}`);
   assert.ok(r.stdout.includes('✅ 无变更'));
 });
+
+test('场景 6 C++ monocypher 源码：5 处调用对应 5 个算法', () => {
+  const dir = mk('cxx-mono', {
+    'crypto.cpp': [
+      '#include "monocypher.h"',
+      'void test(void) {',
+      '  crypto_lock(mac, cipher, key, nonce, plain, 32);',
+      '  crypto_x25519(shared, sk, pk);',
+      '  crypto_sign(sig, sk, msg, 16);',
+      '  crypto_blake2b(hash, msg, 16);',
+      '  crypto_argon2i(hash, 32, pass, 8, salt, 16, NULL, 0, 3);',
+      '}',
+    ].join('\n'),
+  });
+  const cbom = scanDir(dir);
+  const names = cbom.components.map(c => c.name).sort();
+  assert.deepStrictEqual(names, ['Argon2i', 'Blake2b', 'ChaCha20-Poly1305', 'Ed25519', 'X25519']);
+  for (const c of cbom.components) {
+    assert.ok(c.evidence, c.name + ' should have evidence');
+    assert.strictEqual(c.evidence.occurrences[0].location, 'crypto.cpp');
+  }
+});

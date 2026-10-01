@@ -52,11 +52,28 @@ const DEFAULT_RULES = {
  { re: /\bsm2\b/gi, algs: ['SM2'] },
  { re: /\bsm3\b/gi, algs: ['SM3'] },
  { re: /\bsm4\b/gi, algs: ['SM4'] },
+ // === C/C++ 编译库（monocypher）===
+ { re: /\bcrypto_lock\b/g, algs: ['ChaCha20-Poly1305'] },
+ { re: /\bcrypto_unlock\b/g, algs: ['ChaCha20-Poly1305'] },
+ { re: /\bcrypto_x25519/g, algs: ['X25519'] },
+ { re: /\bcrypto_sign/g, algs: ['Ed25519'] },
+ { re: /\bcrypto_check\b/g, algs: ['Ed25519'] },
+ { re: /\bcrypto_blake2b/g, algs: ['Blake2b'] },
+ { re: /\bcrypto_argon2i\b/g, algs: ['Argon2i'] },
+ { re: /\bcrypto_key_exchange\b/g, algs: ['X25519'] },
+ // === C/C++ 通用（mbedtls）===
+ { re: /\bmbedtls_sha256/g, algs: ['SHA-256'] },
+ { re: /\bmbedtls_sha512/g, algs: ['SHA-512'] },
+ { re: /\bmbedtls_aes/g, algs: ['AES'] },
+ { re: /\bmbedtls_gcm/g, algs: ['AES-GCM'] },
+ { re: /\bmbedtls_ecdh/g, algs: ['ECDH'] },
+ { re: /\bmbedtls_rsa/g, algs: ['RSA'] },
+
  ],
 };
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.cache']);
-const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx)$/;
+const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|h|hpp)$/;;
 const MAX_OCC_PER_ALGO = 50;
 
 function loadPackageDeps(dir) {

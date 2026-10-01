@@ -130,5 +130,104 @@
     "quantumSecurity": {
       "level": "safe"
     }
+  },
+  "ChaCha20-Poly1305": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "AEAD"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "X25519": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "KEM"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Ed25519": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "SIGN"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Blake2b": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "HASH"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "Argon2i": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "KDF"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "AES-GCM": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "AEAD"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SHA-512": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "HASH"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "ECDH": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "KEM"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "RSA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "ASYMMETRIC"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
   }
 }
