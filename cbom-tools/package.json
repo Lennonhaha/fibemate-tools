@@ -1,6 +1,6 @@
 {
   "name": "cbom-tools",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Crypto Bill of Materials — scan, diff, report (CycloneDX 1.6 CBOM)",
   "license": "Apache-2.0",
   "author": "刘天赫 <research@fibemate.net>",
