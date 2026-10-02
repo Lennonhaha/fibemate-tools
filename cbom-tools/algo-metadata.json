@@ -2,7 +2,7 @@
   "ML-KEM": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "KEM"
+      "primitive": "kem"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -13,7 +13,7 @@
   "NTT": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "MATH"
+      "primitive": "other"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -24,7 +24,7 @@
   "SHA-256": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "HASH"
+      "primitive": "hash"
     },
     "implementationPlatform": "javascript, python",
     "certificationLevel": "known-answer-tested",
@@ -35,7 +35,7 @@
   "SM2": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SIGN"
+      "primitive": "signature"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -46,7 +46,7 @@
   "P-256/ECDH": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "ECC"
+      "primitive": "key-agree"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -57,7 +57,7 @@
   "Double-Ratchet": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "PROTO"
+      "primitive": "other"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -68,7 +68,7 @@
   "SM3": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "HASH"
+      "primitive": "hash"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -79,7 +79,7 @@
   "ML-DSA/fml-dsa": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SIGN"
+      "primitive": "signature"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -90,7 +90,7 @@
   "SM4": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SYM"
+      "primitive": "block-cipher"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -101,7 +101,7 @@
   "AES": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SYM"
+      "primitive": "block-cipher"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -112,18 +112,7 @@
   "SLH-DSA": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SIGN"
-    },
-    "implementationPlatform": "javascript",
-    "certificationLevel": "known-answer-tested",
-    "quantumSecurity": {
-      "level": "safe"
-    }
-  },
-  "TLA+": {
-    "assetType": "algorithm",
-    "algorithmProperties": {
-      "primitive": "PROTO"
+      "primitive": "signature"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
@@ -134,7 +123,7 @@
   "ChaCha20-Poly1305": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "AEAD"
+      "primitive": "ae"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -145,7 +134,7 @@
   "X25519": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "KEM"
+      "primitive": "kem"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -156,7 +145,7 @@
   "Ed25519": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "SIGN"
+      "primitive": "signature"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -167,7 +156,7 @@
   "Blake2b": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "HASH"
+      "primitive": "hash"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -178,7 +167,7 @@
   "Argon2i": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "KDF"
+      "primitive": "kdf"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -189,7 +178,7 @@
   "AES-GCM": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "AEAD"
+      "primitive": "ae"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -200,7 +189,7 @@
   "SHA-512": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "HASH"
+      "primitive": "hash"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -211,7 +200,7 @@
   "ECDH": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "KEM"
+      "primitive": "kem"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -222,12 +211,45 @@
   "RSA": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "ASYMMETRIC"
+      "primitive": "pke"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
     "quantumSecurity": {
       "level": "vulnerable"
+    }
+  },
+  "Keccak": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "other"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SHA3-256": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SHA3-512": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
     }
   }
 }
