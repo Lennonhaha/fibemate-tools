@@ -26,7 +26,7 @@
     "algorithmProperties": {
       "primitive": "HASH"
     },
-    "implementationPlatform": "javascript",
+    "implementationPlatform": "javascript, python",
     "certificationLevel": "known-answer-tested",
     "quantumSecurity": {
       "level": "weak"
