@@ -3,11 +3,11 @@
   "specVersion": "1.6",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-02T13:57:50.913Z",
+    "timestamp": "2026-10-02T14:44:47.580Z",
     "tools": [
       {
         "name": "cbom-scan",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "vendor": "FIBEMATE"
       }
     ]
@@ -173,15 +173,15 @@
         "occurrences": [
           {
             "location": "cbom-scan.cjs",
-            "line": 35
+            "line": 36
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 40
+            "line": 41
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 51
+            "line": 52
           }
         ]
       }
@@ -218,11 +218,7 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 34
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 19
+            "line": 35
           },
           {
             "location": "cbom-scan.cjs",
@@ -238,11 +234,15 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 47
+            "line": 23
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 49
+            "line": 48
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 50
           },
           {
             "location": "test/cli.test.cjs",
@@ -287,11 +287,7 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 34
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 16
+            "line": 35
           },
           {
             "location": "cbom-scan.cjs",
@@ -303,11 +299,15 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 47
+            "line": 19
           },
           {
             "location": "cbom-scan.cjs",
             "line": 48
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 49
           },
           {
             "location": "test/cli.test.cjs",
@@ -536,11 +536,11 @@
         "occurrences": [
           {
             "location": "cbom-scan.cjs",
-            "line": 34
+            "line": 35
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 50
+            "line": 51
           },
           {
             "location": "test/cli.test.cjs",
@@ -581,23 +581,23 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 36
-          },
-          {
-            "location": "cbom-scan.cjs",
             "line": 37
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 39
+            "line": 38
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 43
+            "line": 40
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 52
+            "line": 44
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 53
           },
           {
             "location": "test/cli.test.cjs",
@@ -650,15 +650,15 @@
         "occurrences": [
           {
             "location": "cbom-scan.cjs",
-            "line": 36
+            "line": 37
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 43
+            "line": 44
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 53
+            "line": 54
           },
           {
             "location": "test/cli.test.cjs",
@@ -707,15 +707,15 @@
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 36
+            "line": 37
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 43
+            "line": 44
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 54
+            "line": 55
           },
           {
             "location": "test/cli.test.cjs",

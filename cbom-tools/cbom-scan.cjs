@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ALGO_META = JSON.parse(fs.readFileSync(path.join(__dirname, 'algo-metadata.json'), 'utf-8'));
+const PKG = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
 
 const NAME_ALIASES = {
  'ML-KEM-768': 'ML-KEM',
@@ -148,7 +149,7 @@ function toCycloneDX(algorithms) {
  version: 1,
  metadata: {
  timestamp: new Date().toISOString(),
- tools: [{ name: 'cbom-scan', version: '0.1.0', vendor: 'FIBEMATE' }],
+ tools: [{ name: 'cbom-scan', version: PKG.version, vendor: 'FIBEMATE' }],
  },
  components: [...algorithms.keys()].sort().map(name => {
  const meta = lookupMeta(name);
