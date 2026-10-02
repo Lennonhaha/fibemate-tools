@@ -69,11 +69,15 @@ const DEFAULT_RULES = {
  { re: /\bmbedtls_ecdh/g, algs: ['ECDH'] },
  { re: /\bmbedtls_rsa/g, algs: ['RSA'] },
 
- ],
+ // Python hashlib (MAVLink2 signing, pymavlink sample)
+ { re: /import\s+hashlib/g, algs: ['SHA-256'] },
+ { re: /hashlib\.sha256\(/g, algs: ['SHA-256'] },
+ { re: /hashlib\.new\(\s*["']sha256["']/gi, algs: ['SHA-256'] },
+],
 };
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.cache']);
-const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|h|hpp)$/;;
+const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|h|hpp|py)$/;
 const MAX_OCC_PER_ALGO = 50;
 
 function loadPackageDeps(dir) {
