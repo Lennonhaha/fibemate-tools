@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ALGO_META = JSON.parse(fs.readFileSync(path.join(__dirname, 'algo-metadata.json'), 'utf-8'));
+const PKG = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
 
 const NAME_ALIASES = {
  'ML-KEM-768': 'ML-KEM',
@@ -148,7 +149,7 @@ function toCycloneDX(algorithms) {
  version: 1,
  metadata: {
  timestamp: new Date().toISOString(),
- tools: [{ name: 'cbom-scan', version: '0.1.0', vendor: 'FIBEMATE' }],
+ tools: [{ name: 'cbom-scan', version: PKG.version, vendor: 'FIBEMATE' }],
  },
  components: [...algorithms.keys()].sort().map(name => {
  const meta = lookupMeta(name);
@@ -157,7 +158,20 @@ function toCycloneDX(algorithms) {
  name,
  'bom-ref': `crypto:${name}`,
  };
- if (meta) comp.cryptoProperties = meta;
+ if (meta) {
+    comp.cryptoProperties = {
+      assetType: meta.assetType,
+      algorithmProperties: meta.algorithmProperties,
+    };
+    const props = [];
+    if (meta.implementationPlatform)
+      props.push({ name: 'fibemate:implementationLanguages', value: meta.implementationPlatform });
+    if (meta.certificationLevel)
+      props.push({ name: 'fibemate:testingStatus', value: meta.certificationLevel });
+    if (meta.quantumSecurity?.level)
+      props.push({ name: 'fibemate:quantumSecurity:level', value: meta.quantumSecurity.level });
+    if (props.length) comp.properties = props;
+  }
  const occ = algorithms.get(name);
  if (occ && occ.length) comp.evidence = { occurrences: occ };
  return comp;
