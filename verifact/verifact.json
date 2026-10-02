@@ -2,12 +2,11 @@
   "$comment": "verifact 配置：把 fibemate 相关文档与真实产出物挂钩后逐条核验。deny/ignore 是人工复核后的沉淀，每条都对应一次已确认的误绑。",
   "docs": {
     "roots": [
-      "D:/FIBEMATE/fibemate",
-      "C:/Users/maivs/Desktop/FIBEMATE-待发布文章",
-      "D:/FIBEMATE/README.md",
-      "D:/FIBEMATE/TECHNICAL-VERIFICATION.md",
-      "D:/FIBEMATE/fibemate-tools",
-      "D:/FIBEMATE/fibemate-core"
+      "../fibemate",
+      "../README.md",
+      "../TECHNICAL-VERIFICATION.md",
+      "../fibemate-tools",
+      "../fibemate-core"
     ],
     "include": [
       "**/*.md"
@@ -27,25 +26,25 @@
   },
   "artifacts": {
     "roots": [
-      "D:/FIBEMATE/fibemate/tools",
-      "D:/FIBEMATE/fibemate/scripts",
-      "D:/FIBEMATE/pqc-hw-bench",
-      "D:/FIBEMATE/fibemate-core",
-      "D:/FIBEMATE/lookingglass",
-      "D:/FIBEMATE/ml-kem-768_timestamp_v2",
-      "D:/FIBEMATE/tsa_v11",
-      "D:/FIBEMATE/fips205_kat",
-      "D:/FIBEMATE/pqc_kem1024_mldsa44",
-      "D:/FIBEMATE/lg-v3.1-20260716.tsr",
-      "D:/FIBEMATE/vwz-076-20260717.tsr"
+      "../fibemate/tools",
+      "../fibemate/scripts",
+      "../pqc-hw-bench",
+      "../fibemate-core",
+      "../lookingglass",
+      "../ml-kem-768_timestamp_v2",
+      "../tsa_v11",
+      "../fips205_kat",
+      "../pqc_kem1024_mldsa44",
+      "../lg-v3.1-20260716.tsr",
+      "../vwz-076-20260717.tsr"
     ],
     "presenceRoots": [
-      "D:/FIBEMATE/_backup_2026-07-18",
-      "D:/FIBEMATE/papers",
-      "D:/FIBEMATE/tsa_v11",
-      "D:/FIBEMATE/ml-kem-768_timestamp_v2",
-      "D:/FIBEMATE/fibemate/www/docs/tsa",
-      "D:/FIBEMATE/fibemate/docs/tla"
+      "../_backup_2026-07-18",
+      "../papers",
+      "../tsa_v11",
+      "../ml-kem-768_timestamp_v2",
+      "../fibemate/www/docs/tsa",
+      "../fibemate/docs/tla"
     ],
     "exclude": [
       "**/node_modules/**",
