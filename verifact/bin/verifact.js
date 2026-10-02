@@ -198,7 +198,7 @@ function renderMarkdown(report, top) {
     L.push('| 位置 | 规则 | 命中 | 原文 |');
     L.push('|---|---|---|---|');
     for (const f of high.slice(0, top)) {
-      L.push(`| ${f.file}:${f.line} | ${f.ruleId} | ${f.matched} | ${String(f.sentence).replace(/\|/g, '\\|').slice(0, 80)} |`);
+      L.push(`| ${f.file}:${f.line} | ${f.ruleId} | ${f.matched} | ${String(f.sentence).replace(/[\\|]/g, c => '\\' + c).slice(0, 80)} |`);
     }
   }
   L.push('');
