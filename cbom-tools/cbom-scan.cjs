@@ -164,11 +164,11 @@ function toCycloneDX(algorithms) {
     };
     const props = [];
     if (meta.implementationPlatform)
-      props.push({ name: 'fibemate:implementationPlatform', value: meta.implementationPlatform });
+      props.push({ name: 'fibemate:implementationLanguages', value: meta.implementationPlatform });
     if (meta.certificationLevel)
-      props.push({ name: 'fibemate:certificationLevel', value: meta.certificationLevel });
+      props.push({ name: 'fibemate:testingStatus', value: meta.certificationLevel });
     if (meta.quantumSecurity?.level)
-      props.push({ name: 'fibemate:quantumSecurityLevel', value: meta.quantumSecurity.level });
+      props.push({ name: 'fibemate:quantumSecurity:level', value: meta.quantumSecurity.level });
     if (props.length) comp.properties = props;
   }
  const occ = algorithms.get(name);
