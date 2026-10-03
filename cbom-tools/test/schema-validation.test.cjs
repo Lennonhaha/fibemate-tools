@@ -112,4 +112,44 @@ describe('CBOM CycloneDX 1.6 schema validation', () => {
       assert.fail(`Old uppercase primitive values still present: ${foundForbidden.join(', ')}`);
     }
   });
+
+  describe('José\'s regression fixtures (CycloneDX 1.6 standalone)', () => {
+    const REGRESSION = path.join(FIXTURES, 'jose-regression');
+
+    it('valid-sha256.json passes schema validation', () => {
+      const cbom = JSON.parse(
+        fs.readFileSync(path.join(REGRESSION, 'valid-sha256.json'), 'utf-8')
+      );
+      const validate = createValidator();
+      const valid = validate(cbom);
+      if (!valid) {
+        const msg = validate.errors.map(e =>
+          `  ${e.instancePath || '/'}: ${e.message}`
+        ).join('\n');
+        assert.fail(`valid-sha256.json should pass, but failed:\n${msg}`);
+      }
+    });
+
+    it('invalid-uppercase-primitive.json fails (HASH → not hash)', () => {
+      const cbom = JSON.parse(
+        fs.readFileSync(path.join(REGRESSION, 'invalid-uppercase-primitive.json'), 'utf-8')
+      );
+      const validate = createValidator();
+      const valid = validate(cbom);
+      assert.equal(valid, false,
+        'invalid-uppercase-primitive.json should fail (uppercase HASH)'
+      );
+    });
+
+    it('invalid-misplaced-field.json fails (implementationPlatform under cryptoProperties)', () => {
+      const cbom = JSON.parse(
+        fs.readFileSync(path.join(REGRESSION, 'invalid-misplaced-field.json'), 'utf-8')
+      );
+      const validate = createValidator();
+      const valid = validate(cbom);
+      assert.equal(valid, false,
+        'invalid-misplaced-field.json should fail (misplaced field)'
+      );
+    });
+  });
 });
