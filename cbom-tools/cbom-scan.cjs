@@ -21,6 +21,7 @@ const NAME_ALIASES = {
  'ML-DSA-44': 'ML-DSA/fml-dsa',
  'ML-DSA-65': 'ML-DSA/fml-dsa',
  'ML-DSA-87': 'ML-DSA/fml-dsa',
+ 'Keccak-256': 'Keccak',
 };
 
 function lookupMeta(name) {
