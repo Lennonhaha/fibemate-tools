@@ -134,7 +134,7 @@
   "X25519": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "kem"
+      "primitive": "key-agree"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
@@ -200,7 +200,7 @@
   "ECDH": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "kem"
+      "primitive": "key-agree"
     },
     "implementationPlatform": "c",
     "certificationLevel": "known-answer-tested",
