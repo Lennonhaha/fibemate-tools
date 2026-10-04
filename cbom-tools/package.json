@@ -5,8 +5,8 @@
   "license": "Apache-2.0",
   "author": "刘天赫 <research@fibemate.net>",
   "bin": {
-    "cbom-scan": "./cbom-scan.cjs",
-    "cbom-diff": "./cbom-diff.js"
+    "cbom-scan": "cbom-scan.cjs",
+    "cbom-diff": "cbom-diff.js"
   },
   "files": [
     "cbom-scan.cjs",
