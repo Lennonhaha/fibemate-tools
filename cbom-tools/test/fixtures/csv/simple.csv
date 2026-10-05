@@ -1,0 +1,7 @@
+file,line,algorithm
+src/crypto.js,42,SHA-256
+src/crypto.js,55,AES-256-GCM
+src/pqc.js,101,ML-KEM-768
+src/pqc.js,112,ML-DSA-65
+src/utils.js,7,SHA-256
+src/legacy.c,204,RSA
