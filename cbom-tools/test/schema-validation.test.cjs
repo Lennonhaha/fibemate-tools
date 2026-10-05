@@ -84,7 +84,7 @@ describe('CBOM CycloneDX 1.6 schema validation', () => {
     const props = keccak.cryptoProperties;
     assert(props, 'Keccak-256 should have cryptoProperties (not null)');
     assert.equal(props.assetType, 'algorithm');
-    assert.equal(props.algorithmProperties?.primitive, 'other');
+    assert.equal(props.algorithmProperties?.primitive, 'hash');
 
     const namespaced = keccak.properties || [];
     const implLang = namespaced.find(p => p.name === 'fibemate:implementationLanguages');

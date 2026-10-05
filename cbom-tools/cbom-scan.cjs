@@ -31,6 +31,10 @@ function lookupMeta(name) {
  return null;
 }
 
+// Note: package-level rules declare algorithm availability without
+// source-level call sites. A component may exist with zero
+// occurrences — this is informational, not a scan miss.
+// See Issue #55 for the granularity decision.
 const DEFAULT_RULES = {
  packages: {
  '@noble/post-quantum': ['ML-KEM-768', 'ML-DSA-65', 'SLH-DSA'],
@@ -214,4 +218,6 @@ function main() {
  process.exit(0);
 }
 
-main();
+if (require.main === module) {
+ main();
+}
