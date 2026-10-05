@@ -54,3 +54,12 @@ test('@noble/post-quantum → ML-KEM-768 → primitive=kem (control)', () => {
   assert.ok(c, 'ML-KEM-768 component not found');
   assert.strictEqual(c.cryptoProperties?.algorithmProperties?.primitive, 'kem');
 });
+
+// --- dep-only-keccak: @noble/hashes → Keccak → primitive=hash ---
+
+test('@noble/hashes → Keccak → primitive=hash (was other)', () => {
+  const bom = scanFixture('dep-only-keccak');
+  const c = comp(bom, 'Keccak-256');
+  assert.ok(c, 'Keccak-256 component not found');
+  assert.strictEqual(c.cryptoProperties?.algorithmProperties?.primitive, 'hash');
+});

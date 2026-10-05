@@ -222,7 +222,7 @@
   "Keccak": {
     "assetType": "algorithm",
     "algorithmProperties": {
-      "primitive": "other"
+      "primitive": "hash"
     },
     "implementationPlatform": "javascript",
     "certificationLevel": "known-answer-tested",
