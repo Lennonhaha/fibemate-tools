@@ -123,14 +123,14 @@ function loadPackageDeps(dir) {
  * @returns {Map<string, {pkgName: string, confidence: number}>}
  */
 function matchDeps(deps, rules) {
+  /** @type {Map<string, {origins: Array<{pkgName:string, confidence:number}>}>} */
   const found = new Map();
   for (const [pkgName, _v] of Object.entries(deps || {})) {
     const algos = rules.packages[pkgName];
     if (!algos) continue;
     for (const algo of algos) {
-      if (!found.has(algo)) {
-        found.set(algo, { pkgName, confidence: 0.7 });
-      }
+      if (!found.has(algo)) found.set(algo, { origins: [] });
+      found.get(algo).origins.push({ pkgName, confidence: 0.7 });
     }
   }
   return found;
@@ -142,13 +142,13 @@ function scanSource(root, rules) {
   /** @type {Map<string, Array<{location:string, line:number, symbol:string}>>} */
   const result = new Map();
 
-  function addOcc(algoName, file, line, symbol) {
+  function addOcc(algoName, file, line, symbol, span) {
     if (!result.has(algoName)) result.set(algoName, []);
     const arr = result.get(algoName);
     if (arr.length >= MAX_OCC_PER_ALGO) return;
     const loc = path.relative(root, file).replace(/\\/g, '/');
-    if (arr.some(o => o.location === loc && o.line === line)) return;
-    arr.push({ location: loc, line, symbol });
+    if (arr.some(o => o.location === loc && o.line === line && o.span.start === span.start && o.span.end === span.end)) return;
+    arr.push({ location: loc, line, symbol, span });
   }
 
   function walk(d) {
@@ -168,9 +168,10 @@ function scanSource(root, rules) {
         let m;
         while ((m = re.exec(content)) !== null) {
           const line = content.slice(0, m.index).split('\n').length;
+          const span = { start: m.index, end: m.index + m[0].length };
           for (const a of algs) {
             const name = a.replace(/\$(\d+)/g, (_, i) => m[i]);
-            addOcc(name, full, line, m[0]);
+            addOcc(name, full, line, m[0], span);
           }
         }
       }
@@ -188,39 +189,44 @@ function scanSource(root, rules) {
  * Prevents e.g. "ml-dsa-65" from producing both ML-DSA-65 and ML-DSA.
  */
 function deduplicateOccurrences(source) {
-  // 1. Group occurrences by (file:line) → [{algoName, family, params}]
-  const byLoc = new Map();
+  // 1. Flatten occurrences with span → [{algoName, family, params, location, line, start, end}]
+  const flat = [];
   for (const [algoName, occs] of source) {
     const h = HIERARCHY[algoName];
     if (!h) continue;
     for (const o of occs) {
-      const key = `${o.location}:${o.line}`;
-      if (!byLoc.has(key)) byLoc.set(key, []);
-      byLoc.get(key).push({ algoName, family: h.family, params: h.params });
+      flat.push({
+        algoName, family: h.family, params: h.params,
+        location: o.location, line: o.line,
+        start: o.span.start, end: o.span.end,
+      });
     }
   }
 
-  // 2. For each position with both specific+generic → drop generic
-  const drop = new Set(); // "algoName@file:line"
-  for (const [key, entries] of byLoc) {
-    const byFam = new Map();
-    for (const e of entries) {
-      if (!byFam.has(e.family)) byFam.set(e.family, []);
-      byFam.get(e.family).push(e);
-    }
-    for (const fam of byFam.values()) {
-      const hasSpecific = fam.some(e => e.params !== null);
-      if (!hasSpecific) continue;
-      for (const e of fam) {
-        if (e.params === null) drop.add(`${e.algoName}@${key}`);
-      }
-    }
+  // 2. Collect spans of all specific matches
+  const specificSpans = flat
+    .filter(e => e.params !== null)
+    .map(e => ({ location: e.location, line: e.line, start: e.start, end: e.end }));
+
+  function covers(outer, inner) {
+    return outer.location === inner.location
+      && outer.line === inner.line
+      && outer.start <= inner.start
+      && outer.end >= inner.end;
   }
 
-  // 3. Rebuild map dropping filtered occurrences
+  // 3. Drop generic occurrences whose span is covered by a specific match
+  const drop = new Set(); // "algoName@location:line:start:end"
+  for (const e of flat) {
+    if (e.params !== null) continue; // keep all specifics
+    const absorbed = specificSpans.some(s => covers(s, e));
+    if (absorbed) drop.add(`${e.algoName}@${e.location}:${e.line}:${e.start}:${e.end}`);
+  }
+
+  // 4. Rebuild
   const out = new Map();
   for (const [algoName, occs] of source) {
-    const kept = occs.filter(o => !drop.has(`${algoName}@${o.location}:${o.line}`));
+    const kept = occs.filter(o => !drop.has(`${algoName}@${o.location}:${o.line}:${o.span.start}:${o.span.end}`));
     if (kept.length) out.set(algoName, kept);
   }
   return out;
@@ -248,12 +254,15 @@ function mergeEvidence(fromDeps, fromSource) {
     const srcOccs = fromSource.get(name) || [];
     const methods = [];
 
+    // Bug 3 fix: one method per dependency origin
     if (depInfo) {
-      methods.push({
-        technique: 'manifest-analysis',
-        confidence: depInfo.confidence,
-        value: depInfo.pkgName,
-      });
+      for (const o of depInfo.origins) {
+        methods.push({
+          technique: 'manifest-analysis',
+          confidence: o.confidence,
+          value: o.pkgName,
+        });
+      }
     }
     if (srcOccs.length) {
       const h = HIERARCHY[name];
@@ -265,11 +274,18 @@ function mergeEvidence(fromDeps, fromSource) {
       });
     }
 
+    // Bug 1 fix: omit line for manifest occurrences (unknown real line)
     const occurrences = [];
     if (depInfo) {
-      occurrences.push({ location: 'package.json', line: 1, symbol: depInfo.pkgName });
+      for (const o of depInfo.origins) {
+        occurrences.push({ location: 'package.json', symbol: o.pkgName });
+      }
     }
-    occurrences.push(...srcOccs);
+    // Strip internal span fields from source occurrences before output
+    for (const src of srcOccs) {
+      const { span, ...clean } = src;
+      occurrences.push(clean);
+    }
 
     const identityConf = methods.length
       ? Math.max(...methods.map(m => m.confidence))

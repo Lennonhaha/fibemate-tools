@@ -20,12 +20,22 @@
 Records merge only when **both** hold:
 
 1. The same algorithm identity (exact name — no cross-name inference).
-2. Parameter-set specificity established on **both** sides.
+2. **Compatible granularity**: either both records are family-level,
+   or both records are specific to the same parameter set.
 
-A specific source match never absorbs a generic dependency record. A
-family-level dependency inference never absorbs a specific source match.
-Generic and specific records for the same family stay separate unless
-additional evidence justifies consolidation.
+A family-level record never merges with a parameter-set-specific record
+of the same family, even if the family matches. Specific and generic
+records stay separate unless additional evidence justifies consolidation.
+
+This is a **suggested generator policy**, not a normative CycloneDX rule.
+
+### Coverage limitation
+
+The current `@noble/hashes` mapping emits only `Keccak` at family level.
+This is **partial coverage** of the package's supported algorithms, not
+an exhaustive inventory. Other families (SHA-2, SHA-3, Blake, RIPEMD,
+...) are not inferred in this iteration. Absence of a family in the
+emitted BOM does not imply the package lacks it.
 
 ## Algorithm hierarchy
 

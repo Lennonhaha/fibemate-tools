@@ -150,3 +150,68 @@ test('specific-merge: genuinely specific records merge preserving origins', () =
   assert.equal(identityConf, Math.max(...methodConfs),
     'identity confidence = max of method confidences');
 });
+
+// ────────────────────────────────────────────────────────────────────
+// same-line, independent markers: span-based dedup preserves both
+// ────────────────────────────────────────────────────────────────────
+
+test('same-line-two-markers: independent generic+specific on one line', () => {
+  const bom = scan('provenance-same-line-two-markers');
+
+  // Both ML-DSA and ML-DSA-65 should survive (different spans)
+  const mlDsa = byName(bom, 'ML-DSA');
+  assert.ok(mlDsa, 'ML-DSA present (independent marker)');
+  const mlDsa65 = byName(bom, 'ML-DSA-65');
+  assert.ok(mlDsa65, 'ML-DSA-65 present (independent marker)');
+
+  // Each from source only (no deps)
+  assert.equal(mlDsa.evidence.identity[0].methods.length, 1,
+    'ML-DSA from source only');
+  assert.equal(mlDsa.evidence.identity[0].methods[0].technique,
+    'source-code-analysis');
+  assert.equal(mlDsa65.evidence.identity[0].methods.length, 1,
+    'ML-DSA-65 from source only');
+
+  // Both have exactly one source occurrence
+  assert.equal(mlDsa.evidence.occurrences.length, 1,
+    'ML-DSA has 1 occurrence');
+  assert.equal(mlDsa65.evidence.occurrences.length, 1,
+    'ML-DSA-65 has 1 occurrence');
+});
+
+// ────────────────────────────────────────────────────────────────────
+// multi-dep-origin: same algorithm from different packages → all preserved
+// ────────────────────────────────────────────────────────────────────
+
+test('multi-dep-origin: SM2 from sm-crypto+sm2-crypto → 2 methods', () => {
+  const bom = scan('provenance-multi-dep-origin');
+
+  // Single SM2 component
+  const sm2 = byName(bom, 'SM2');
+  assert.ok(sm2, 'SM2 present');
+
+  // One identity with 2 manifest-analysis methods (different origins)
+  assert.equal(sm2.evidence.identity.length, 1);
+  assert.equal(sm2.evidence.identity[0].methods.length, 2,
+    'two manifest-analysis methods from two packages');
+
+  const values = sm2.evidence.identity[0].methods
+    .filter(m => m.technique === 'manifest-analysis')
+    .map(m => m.value)
+    .sort();
+  assert.deepEqual(values, ['sm-crypto', 'sm2-crypto'],
+    'both package origins preserved');
+
+  // Two package.json occurrences
+  const pkgOccs = sm2.evidence.occurrences.filter(o => o.location === 'package.json');
+  assert.equal(pkgOccs.length, 2,
+    'two package.json occurrences from two dep origins');
+  const symbols = pkgOccs.map(o => o.symbol).sort();
+  assert.deepEqual(symbols, ['sm-crypto', 'sm2-crypto']);
+
+  // No line field on manifest occurrences
+  for (const o of pkgOccs) {
+    assert.equal(o.line, undefined,
+      'manifest occurrence should not have hardcoded line');
+  }
+});
