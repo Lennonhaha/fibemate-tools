@@ -66,7 +66,7 @@ describe('CBOM CycloneDX 1.6 schema validation', () => {
     }
   });
 
-  it('Keccak-256 dependency receives cryptoProperties via NAME_ALIASES', () => {
+  it('Keccak family-level dependency receives cryptoProperties via NAME_ALIASES', () => {
     const fixDir = path.join(FIXTURES, 'dep-only-keccak');
     const outPath = path.join(TEMP_DIR, 'cbom-keccak.json');
 
@@ -78,17 +78,17 @@ describe('CBOM CycloneDX 1.6 schema validation', () => {
 
     const cbom = JSON.parse(fs.readFileSync(outPath, 'utf-8'));
 
-    const keccak = cbom.components.find(c => c.name === 'Keccak-256');
-    assert(keccak, 'Output should contain Keccak-256 component');
+    const keccak = cbom.components.find(c => c.name === 'Keccak');
+    assert(keccak, 'Output should contain Keccak component (family-level)');
 
     const props = keccak.cryptoProperties;
-    assert(props, 'Keccak-256 should have cryptoProperties (not null)');
+    assert(props, 'Keccak should have cryptoProperties (not null)');
     assert.equal(props.assetType, 'algorithm');
     assert.equal(props.algorithmProperties?.primitive, 'hash');
 
     const namespaced = keccak.properties || [];
     const implLang = namespaced.find(p => p.name === 'fibemate:implementationLanguages');
-    assert(implLang, 'Keccak-256 should have fibemate:implementationLanguages');
+    assert(implLang, 'Keccak should have fibemate:implementationLanguages');
     assert.equal(implLang.value, 'javascript');
   });
 
