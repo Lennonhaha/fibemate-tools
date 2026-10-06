@@ -17,8 +17,8 @@ jobs:
     name: 回归与语法
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
       - name: 语法检查
@@ -33,8 +33,8 @@ jobs:
     name: 实现缺失时优雅降级
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
       # CI runner 上没有 D:\FIBEMATE，所有实现都应报 unavailable。
@@ -50,7 +50,7 @@ jobs:
             if (!r.findings.length) { console.error('缺少降级说明'); process.exit(1); }
          "
       - name: 报告归档
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: xdiff-ci-report
           path: xdiff/.xdiff/ci.json

@@ -27,4 +27,12 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
 
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+
   # 注：crypto-time-machine 仅用 Python 标准库，无第三方依赖，不配 dependabot。
