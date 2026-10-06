@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@noble/post-quantum": "^1.0.0"
+  }
+}

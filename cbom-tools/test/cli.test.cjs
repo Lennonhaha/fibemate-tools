@@ -87,14 +87,21 @@ test('场景 2 有 package.json 无源码：只走依赖检测，无 occurrences
   const cbom = scanDir(dir);
   assert.deepStrictEqual(
     cbom.components.map(c => c.name),
-    ['ML-DSA-65', 'ML-KEM-768', 'SLH-DSA', 'SM2', 'SM3', 'SM4']
+    ['ML-DSA', 'ML-KEM', 'SLH-DSA', 'SM2', 'SM3', 'SM4']
   );
   for (const c of cbom.components) {
     assert.strictEqual(c['bom-ref'], `crypto:${c.name}`);
-    assert.strictEqual(c.evidence, undefined, '依赖来源不应有 occurrences');
+    assert.ok(c.evidence, '依赖来源应有 evidence');
+    assert.equal(c.evidence.identity.length, 1, '依赖来源应有 1 个 identity');
+    assert.equal(c.evidence.identity[0].methods.length, 1, '依赖来源应有 1 个 method');
+    assert.equal(c.evidence.identity[0].methods[0].technique, 'manifest-analysis');
+    assert.ok(c.evidence.occurrences.length >= 1,
+      '依赖来源应有 package.json occurrence');
+    assert.equal(c.evidence.occurrences[0].location, 'package.json',
+      '依赖来源 occurrence 指向 package.json');
   }
-  assert.ok(cbom.components.find(c => c.name === 'ML-KEM-768').cryptoProperties,
-    'ML-KEM-768 应通过别名表拿到 cryptoProperties');
+  assert.ok(cbom.components.find(c => c.name === 'ML-KEM').cryptoProperties,
+    'ML-KEM 应通过别名表拿到 cryptoProperties');
 });
 
 test('场景 3 有源码无 package.json：只走源码扫描，occurrences 带位置与行号', () => {
@@ -110,12 +117,12 @@ test('场景 3 有源码无 package.json：只走源码扫描，occurrences 带�
   });
   const cbom = scanDir(dir);
   const names = cbom.components.map(c => c.name).sort();
-  assert.deepStrictEqual(names, ['ML-KEM', 'SHA-256', 'SHA3-512', 'SM2', 'SM3', 'SM4']);
+  assert.deepStrictEqual(names, ['ML-KEM-768', 'SHA-256', 'SHA3-512', 'SM2', 'SM3', 'SM4']);
   const sha = cbom.components.find(c => c.name === 'SHA-256');
   assert.strictEqual(sha.evidence.occurrences[0].location, 'src/index.js');
   assert.strictEqual(sha.evidence.occurrences[0].line, 3);
-  const kem = cbom.components.find(c => c.name === 'ML-KEM');
-  assert.ok(kem.cryptoProperties, 'ML-KEM 应命中元数据表');
+  const kem = cbom.components.find(c => c.name === 'ML-KEM-768');
+  assert.ok(kem.cryptoProperties, 'ML-KEM-768 应命中元数据表');
   const s3 = cbom.components.find(c => c.name === 'SHA3-512');
   assert.strictEqual(s3.evidence.occurrences[0].location, 'lib/deep/a.cjs');
 });

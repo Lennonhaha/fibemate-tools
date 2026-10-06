@@ -48,18 +48,18 @@ test('mbedtls_ecdh_compute_shared → ECDH → primitive=key-agree', () => {
 
 // --- mlkem-control: @noble/post-quantum → ML-KEM → primitive=kem (control) ---
 
-test('@noble/post-quantum → ML-KEM-768 → primitive=kem (control)', () => {
+test('@noble/post-quantum → ML-KEM → primitive=kem (control)', () => {
   const bom = scanFixture('mlkem-control');
-  const c = comp(bom, 'ML-KEM-768');
-  assert.ok(c, 'ML-KEM-768 component not found');
+  const c = comp(bom, 'ML-KEM');
+  assert.ok(c, 'ML-KEM component not found');
   assert.strictEqual(c.cryptoProperties?.algorithmProperties?.primitive, 'kem');
 });
 
 // --- dep-only-keccak: @noble/hashes → Keccak → primitive=hash ---
 
-test('@noble/hashes → Keccak → primitive=hash (was other)', () => {
+test('@noble/hashes → Keccak → primitive=hash', () => {
   const bom = scanFixture('dep-only-keccak');
-  const c = comp(bom, 'Keccak-256');
-  assert.ok(c, 'Keccak-256 component not found');
+  const c = comp(bom, 'Keccak');
+  assert.ok(c, 'Keccak component not found');
   assert.strictEqual(c.cryptoProperties?.algorithmProperties?.primitive, 'hash');
 });
