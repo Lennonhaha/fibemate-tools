@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'cbom-tools/**'
+      - 'scripts/cbom-official-crosscheck.cjs'
       - '.github/workflows/cbom-ci.yml'
   pull_request:
     paths:
       - 'cbom-tools/**'
+      - 'scripts/cbom-official-crosscheck.cjs'
       - '.github/workflows/cbom-ci.yml'
   workflow_dispatch:
 
@@ -27,3 +29,23 @@ jobs:
         run: npm install
       - name: Test
         run: npm test
+
+  # 独立交叉验证：用 CycloneDX 官方实现复验 cbom-tools 的产物。
+  # 官方库在此 job 内 ad-hoc 安装，不是 cbom-tools 的依赖
+  # （该包对外宣称 "Zero external dependencies"）。
+  official-crosscheck:
+    name: official-crosscheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '20' # 官方库 engines: >=20.18
+      - name: Install the official CycloneDX library (ad-hoc, not a cbom-tools dependency)
+        run: |
+          npm install --no-save --no-audit --no-fund --prefix "$RUNNER_TEMP/xcheck" \
+            @cyclonedx/cyclonedx-library@10.3.0 ajv@8 ajv-formats@3 ajv-formats-draft2019
+      - name: Cross-check cbom-tools output against the official implementation
+        env:
+          NODE_PATH: ${{ runner.temp }}/xcheck/node_modules
+        run: node scripts/cbom-official-crosscheck.cjs
