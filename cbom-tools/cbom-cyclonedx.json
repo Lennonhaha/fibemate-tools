@@ -3,11 +3,11 @@
   "specVersion": "1.6",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-10-02T14:44:47.580Z",
+    "timestamp": "2026-10-13T14:14:03.150Z",
     "tools": [
       {
         "name": "cbom-scan",
-        "version": "0.2.0",
+        "version": "0.2.1",
         "vendor": "FIBEMATE"
       }
     ]
@@ -17,6 +17,29 @@
       "type": "cryptographic-asset",
       "name": "Argon2i",
       "bom-ref": "crypto:Argon2i",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "Argon2i",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto_argon2i"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 294,
+            "symbol": "crypto_argon2i"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -36,20 +59,35 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 287
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "Blake2b",
       "bom-ref": "crypto:Blake2b",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "Blake2b",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto_blake2b"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 293,
+            "symbol": "crypto_blake2b"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -69,20 +107,35 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "weak"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 286
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "ChaCha20-Poly1305",
       "bom-ref": "crypto:ChaCha20-Poly1305",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "ChaCha20-Poly1305",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto_lock"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 290,
+            "symbol": "crypto_lock"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -102,20 +155,93 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ECDH",
+      "bom-ref": "crypto:ECDH",
       "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "ECDH",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "mbedtls_ecdh"
+              }
+            ]
+          }
+        ],
         "occurrences": [
           {
-            "location": "test/cli.test.cjs",
-            "line": 283
+            "location": "test/fixtures/ecdh-dh/source.c",
+            "line": 2,
+            "symbol": "mbedtls_ecdh"
+          },
+          {
+            "location": "test/semantic-mapping.test.cjs",
+            "line": 40,
+            "symbol": "mbedtls_ecdh"
+          },
+          {
+            "location": "test/semantic-mapping.test.cjs",
+            "line": 42,
+            "symbol": "mbedtls_ecdh"
           }
         ]
-      }
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "key-agree"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "c"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "vulnerable"
+        }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "Ed25519",
       "bom-ref": "crypto:Ed25519",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "Ed25519",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto_sign"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 292,
+            "symbol": "crypto_sign"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -135,24 +261,204 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "vulnerable"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 285
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "Keccak",
       "bom-ref": "crypto:Keccak",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "Keccak",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "Keccak"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 16,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 17,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 18,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 19,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 20,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 20,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 38,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 26,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 45,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 53,
+            "symbol": "keccak"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 71,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/fixtures/provenance-keccak-family/src.js",
+            "line": 1,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 98,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 98,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 98,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 101,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 102,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 104,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 104,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 105,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 105,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 106,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 107,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 108,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 112,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 69,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 70,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 71,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 81,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 81,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 82,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 82,
+            "symbol": "Keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 84,
+            "symbol": "keccak"
+          },
+          {
+            "location": "test/schema-validation.test.cjs",
+            "line": 85,
+            "symbol": "Keccak"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
-          "primitive": "other"
+          "primitive": "hash"
         }
       },
       "properties": [
@@ -168,20 +474,201 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "Keccak-224",
+      "bom-ref": "crypto:Keccak-224",
       "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "Keccak-224",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "Keccak-224"
+              }
+            ]
+          }
+        ],
         "occurrences": [
           {
-            "location": "cbom-scan.cjs",
-            "line": 36
+            "location": "algorithm-hierarchy.cjs",
+            "line": 16,
+            "symbol": "Keccak-224"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 41
+            "line": 63,
+            "symbol": "Keccak-224"
+          }
+        ]
+      }
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "Keccak-256",
+      "bom-ref": "crypto:Keccak-256",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "Keccak-256",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "Keccak-256"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 17,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 38,
+            "symbol": "Keccak-256"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 52
+            "line": 26,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 47,
+            "symbol": "keccak256"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 47,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 53,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 64,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "test/fixtures/provenance-specific-merge/src.js",
+            "line": 1,
+            "symbol": "keccak-256"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 126,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 127,
+            "symbol": "Keccak-256"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 132,
+            "symbol": "Keccak-256"
+          }
+        ]
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "hash"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "Keccak-384",
+      "bom-ref": "crypto:Keccak-384",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "Keccak-384",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "Keccak-384"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 18,
+            "symbol": "Keccak-384"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 65,
+            "symbol": "Keccak-384"
+          }
+        ]
+      }
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "Keccak-512",
+      "bom-ref": "crypto:Keccak-512",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "Keccak-512",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "Keccak-512"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 19,
+            "symbol": "Keccak-512"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 66,
+            "symbol": "Keccak-512"
           }
         ]
       }
@@ -190,6 +677,184 @@
       "type": "cryptographic-asset",
       "name": "ML-DSA",
       "bom-ref": "crypto:ML-DSA",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "ML-DSA",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "ML-DSA"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 8,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 9,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 10,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 11,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 11,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 34,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 34,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 35,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 36,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 37,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-diff.js",
+            "line": 217,
+            "symbol": "mldsa"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 22,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 22,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 23,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 24,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 25,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 43,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 69,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 74,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 189,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 43,
+            "symbol": "noble/post-quantum"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 83,
+            "symbol": "noble/post-quantum"
+          },
+          {
+            "location": "test/fixtures/provenance-generic-merge/src.js",
+            "line": 1,
+            "symbol": "ml-dsa"
+          },
+          {
+            "location": "test/fixtures/provenance-same-line-two-markers/src.js",
+            "line": 1,
+            "symbol": "ml-dsa"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 37,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 37,
+            "symbol": "ml-dsa"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 38,
+            "symbol": "mlDsa"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 38,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 39,
+            "symbol": "mlDsa"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 39,
+            "symbol": "ML-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 40,
+            "symbol": "mlDsa"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -209,56 +874,499 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-DSA-44",
+      "bom-ref": "crypto:ML-DSA-44",
       "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-DSA-44",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-DSA-44"
+              }
+            ]
+          }
+        ],
         "occurrences": [
           {
-            "location": "cbom-diff.js",
-            "line": 217
+            "location": "algorithm-hierarchy.cjs",
+            "line": 8,
+            "symbol": "ML-DSA-44"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 35,
+            "symbol": "ML-DSA-44"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 35
+            "line": 23,
+            "symbol": "ML-DSA-44"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 20
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 21
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 22
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 23
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 48
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 50
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 83
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
+            "line": 57,
+            "symbol": "ML-DSA-44"
           }
         ]
-      }
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-DSA-65",
+      "bom-ref": "crypto:ML-DSA-65",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-DSA-65",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-DSA-65"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 9,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 36,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 24,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 58,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 189,
+            "symbol": "ml-dsa-65"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 189,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 55,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/fixtures/provenance-generic-vs-specific-separate/src.js",
+            "line": 1,
+            "symbol": "ml-dsa-65"
+          },
+          {
+            "location": "test/fixtures/provenance-same-line-two-markers/src.js",
+            "line": 1,
+            "symbol": "ml-dsa-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 69,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 78,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 78,
+            "symbol": "ml-dsa-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 79,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 79,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 80,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 81,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 82,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 161,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 164,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 164,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 165,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 165,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 172,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 173,
+            "symbol": "ML-DSA-65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 178,
+            "symbol": "mlDsa65"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 179,
+            "symbol": "ML-DSA-65"
+          }
+        ]
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-DSA-87",
+      "bom-ref": "crypto:ML-DSA-87",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-DSA-87",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-DSA-87"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 10,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 37,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 25,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 59,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "test/fixtures/provenance-generic-vs-specific-separate/src.js",
+            "line": 1,
+            "symbol": "ml-dsa-87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 69,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 84,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 84,
+            "symbol": "ml-dsa-87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 85,
+            "symbol": "mlDsa87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 85,
+            "symbol": "ML-DSA-87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 86,
+            "symbol": "mlDsa87"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 87,
+            "symbol": "mlDsa87"
+          }
+        ]
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "signature"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "ML-KEM",
       "bom-ref": "crypto:ML-KEM",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "ML-KEM",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "ML-KEM"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 12,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 13,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 14,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 15,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 15,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 31,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 32,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 33,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-diff.js",
+            "line": 217,
+            "symbol": "mlkem"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 19,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 20,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 21,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 43,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 68,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 74,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 43,
+            "symbol": "noble/post-quantum"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 103,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 104,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 83,
+            "symbol": "noble/post-quantum"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 49,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 50,
+            "symbol": "mlKem"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 50,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 51,
+            "symbol": "mlKem"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 51,
+            "symbol": "ML-KEM"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 52,
+            "symbol": "mlKem"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -278,88 +1386,294 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-KEM-1024",
+      "bom-ref": "crypto:ML-KEM-1024",
       "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-KEM-1024",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-KEM-1024"
+              }
+            ]
+          }
+        ],
         "occurrences": [
           {
-            "location": "cbom-diff.js",
-            "line": 217
+            "location": "algorithm-hierarchy.cjs",
+            "line": 14,
+            "symbol": "ML-KEM-1024"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 33,
+            "symbol": "ML-KEM-1024"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 35
+            "line": 21,
+            "symbol": "ML-KEM-1024"
           },
           {
             "location": "cbom-scan.cjs",
-            "line": 17
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 18
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 19
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 48
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 49
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 83
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 96
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 97
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 106
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 113
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 117
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 118
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 200
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 246
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 253
+            "line": 62,
+            "symbol": "ML-KEM-1024"
           }
         ]
-      }
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kem"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-KEM-512",
+      "bom-ref": "crypto:ML-KEM-512",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-KEM-512",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-KEM-512"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 12,
+            "symbol": "ML-KEM-512"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 32,
+            "symbol": "ML-KEM-512"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 20,
+            "symbol": "ML-KEM-512"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 60,
+            "symbol": "ML-KEM-512"
+          }
+        ]
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kem"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
+    },
+    {
+      "type": "cryptographic-asset",
+      "name": "ML-KEM-768",
+      "bom-ref": "crypto:ML-KEM-768",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.9,
+            "concludedValue": "ML-KEM-768",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.9,
+                "value": "ML-KEM-768"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 13,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "cbom-csv.cjs",
+            "line": 31,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 19,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 61,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 113,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 120,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 124,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 125,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 207,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 253,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 260,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 55,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 71,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 72,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 136,
+            "symbol": "ML-KEM-768"
+          },
+          {
+            "location": "test/csv-input.test.cjs",
+            "line": 151,
+            "symbol": "ML-KEM-768"
+          }
+        ]
+      },
+      "cryptoProperties": {
+        "assetType": "algorithm",
+        "algorithmProperties": {
+          "primitive": "kem"
+        }
+      },
+      "properties": [
+        {
+          "name": "fibemate:implementationLanguages",
+          "value": "javascript"
+        },
+        {
+          "name": "fibemate:testingStatus",
+          "value": "known-answer-tested"
+        },
+        {
+          "name": "fibemate:quantumSecurity:level",
+          "value": "safe"
+        }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SHA-256",
       "bom-ref": "crypto:SHA-256",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SHA-256",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto.createHash('sha-256')"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 112,
+            "symbol": "crypto.createHash('sha-256')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 153,
+            "symbol": "crypto.createHash('sha-256')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 184,
+            "symbol": "crypto.createHash('sha-256')"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -379,28 +1693,50 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "weak"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 105
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 146
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 177
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SHA-512",
       "bom-ref": "crypto:SHA-512",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SHA-512",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto.createHash('sha-512')"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 136,
+            "symbol": "crypto.createHash('sha-512')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 137,
+            "symbol": "crypto.createHash('sha-512')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 138,
+            "symbol": "crypto.createHash('sha-512')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 160,
+            "symbol": "crypto.createHash('sha-512')"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -420,32 +1756,35 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "weak"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 129
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 130
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 131
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 153
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SHA3-256",
       "bom-ref": "crypto:SHA3-256",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SHA3-256",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto.createHash('sha3-256')"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 134,
+            "symbol": "crypto.createHash('sha3-256')"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -465,20 +1804,35 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 127
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SHA3-512",
       "bom-ref": "crypto:SHA3-512",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SHA3-512",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto.createHash('sha3-512')"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 116,
+            "symbol": "crypto.createHash('sha3-512')"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -498,20 +1852,75 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 109
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SLH-DSA",
       "bom-ref": "crypto:SLH-DSA",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SLH-DSA",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "SLH-DSA"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 21,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "algorithm-hierarchy.cjs",
+            "line": 21,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 43,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 70,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 55,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 56,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 57,
+            "symbol": "SLH-DSA"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 68,
+            "symbol": "SLH-DSA"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -531,28 +1940,165 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "safe"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "cbom-scan.cjs",
-            "line": 35
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 51
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SM2",
       "bom-ref": "crypto:SM2",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SM2",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "sm2"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "cbom-diff.js",
+            "line": 221,
+            "symbol": "sm2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 49,
+            "symbol": "SM2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 50,
+            "symbol": "sm2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 50,
+            "symbol": "SM2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 52,
+            "symbol": "sm2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 52,
+            "symbol": "SM2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 73,
+            "symbol": "SM2"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 78,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 111,
+            "symbol": "require('sm-crypto')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 120,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 215,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 219,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 219,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 186,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 186,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 189,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 190,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 190,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 191,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 191,
+            "symbol": "SM2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 194,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 195,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 198,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 202,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 206,
+            "symbol": "sm2"
+          },
+          {
+            "location": "test/provenance.test.cjs",
+            "line": 210,
+            "symbol": "sm2"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -572,60 +2118,60 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "vulnerable"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "cbom-diff.js",
-            "line": 221
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 37
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 38
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 40
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 44
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 53
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 104
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 113
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 208
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 212
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SM3",
       "bom-ref": "crypto:SM3",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SM3",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "SM3"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "cbom-scan.cjs",
+            "line": 49,
+            "symbol": "SM3"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 73,
+            "symbol": "SM3"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 79,
+            "symbol": "SM3"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 111,
+            "symbol": "require('sm-crypto')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "SM3"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 120,
+            "symbol": "SM3"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -645,40 +2191,65 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "weak"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "cbom-scan.cjs",
-            "line": 37
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 44
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 54
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 104
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 113
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "SM4",
       "bom-ref": "crypto:SM4",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "SM4",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "sm4"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "cbom-diff.js",
+            "line": 223,
+            "symbol": "sm4"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 49,
+            "symbol": "SM4"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 73,
+            "symbol": "SM4"
+          },
+          {
+            "location": "cbom-scan.cjs",
+            "line": 80,
+            "symbol": "SM4"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 111,
+            "symbol": "require('sm-crypto')"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 90,
+            "symbol": "SM4"
+          },
+          {
+            "location": "test/cli.test.cjs",
+            "line": 120,
+            "symbol": "SM4"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
@@ -698,48 +2269,54 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "weak"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "cbom-diff.js",
-            "line": 223
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 37
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 44
-          },
-          {
-            "location": "cbom-scan.cjs",
-            "line": 55
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 104
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 90
-          },
-          {
-            "location": "test/cli.test.cjs",
-            "line": 113
-          }
-        ]
-      }
+      ]
     },
     {
       "type": "cryptographic-asset",
       "name": "X25519",
       "bom-ref": "crypto:X25519",
+      "evidence": {
+        "identity": [
+          {
+            "field": "name",
+            "confidence": 0.7,
+            "concludedValue": "X25519",
+            "methods": [
+              {
+                "technique": "source-code-analysis",
+                "confidence": 0.7,
+                "value": "crypto_x25519"
+              }
+            ]
+          }
+        ],
+        "occurrences": [
+          {
+            "location": "test/cli.test.cjs",
+            "line": 291,
+            "symbol": "crypto_x25519"
+          },
+          {
+            "location": "test/fixtures/x25519-dh/source.c",
+            "line": 2,
+            "symbol": "crypto_x25519"
+          },
+          {
+            "location": "test/semantic-mapping.test.cjs",
+            "line": 31,
+            "symbol": "crypto_x25519"
+          },
+          {
+            "location": "test/semantic-mapping.test.cjs",
+            "line": 33,
+            "symbol": "crypto_x25519"
+          }
+        ]
+      },
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
-          "primitive": "kem"
+          "primitive": "key-agree"
         }
       },
       "properties": [
@@ -755,15 +2332,7 @@
           "name": "fibemate:quantumSecurity:level",
           "value": "vulnerable"
         }
-      ],
-      "evidence": {
-        "occurrences": [
-          {
-            "location": "test/cli.test.cjs",
-            "line": 284
-          }
-        ]
-      }
+      ]
     }
   ]
 }
