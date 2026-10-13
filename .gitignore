@@ -10,6 +10,7 @@ target/
 **/target/
 
 # Tool artifacts
+node_modules/
 evidence.json
 *.db
 timeline.db
