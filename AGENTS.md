@@ -1,9 +1,9 @@
 # AGENTS.md - fibemate-tools Workspace
 
-> Companion to `Lennonhaha/fibemate` AGENTS.md.
-> This file is fibemate-tools-specific; the main repo's AGENTS.md is the
-> authority on the broader push / encoding / health discipline. Where they
-> disagree, the main repo wins.
+> This file is fibemate-tools-specific and authoritative for this repo.
+> Cross-repo conventions live in the main repository's own contributor
+> documents — `CONTRIBUTING.md` (process) and `docs/STYLE_GUIDE.md`
+> (style and ReDoS checks); where they disagree, the main repo wins.
 
 ## Repository Map (this repo only)
 
@@ -39,7 +39,7 @@ Future showcase pages (time-machine, prover) will follow the same
    `$env:GIT_SSH_COMMAND = "ssh -p 22 -o StrictHostKeyChecking=no"`。
    PowerShell 把 git stderr 当 RemoteException 报 exit 1 是**误报**，
    看 `main -> main` 那一行判断真伪。
-6. **commit 必须 DCO sign-off**（跨仓纪律，与主仓 AGENTS.md 铁律 #7 同源）：
+6. **commit 必须 DCO sign-off**（跨仓纪律）：
    每个 commit 末尾必须有 `Signed-off-by: <name> <email>` trailer。
    DCO check 是 PR 合并门禁，缺签名直接 FAIL。
    推荐 `git config --global --add format.signOff always`；
