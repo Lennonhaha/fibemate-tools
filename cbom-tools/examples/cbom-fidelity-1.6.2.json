@@ -27,12 +27,11 @@
     {
       "type": "cryptographic-asset",
       "bom-ref": "crypto:alg:explicit-zero",
-      "name": "ML-KEM-768",
+      "name": "MD5",
       "cryptoProperties": {
         "assetType": "algorithm",
         "algorithmProperties": {
-          "primitive": "kem",
-          "parameterSetIdentifier": "768",
+          "primitive": "hash",
           "nistQuantumSecurityLevel": 0
         }
       }
