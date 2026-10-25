@@ -284,6 +284,50 @@ test('crossDoc: 同键不同值聚类，通用键 / 短键 / 单文件过滤', (
   assert.ok(keys.indexOf('wns') < 0, '单文件不聚类');
 });
 
+// ---------- 配置基准目录 / deny ----------
+
+test('config: 相对 root 以配置文件目录为基准，不随 cwd 漂移', () => {
+  const os = require('os');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'verifact-base-'));
+  const cfgDir = path.join(base, 'cfg');
+  const docDir = path.join(base, 'docroot');
+  fs.mkdirSync(cfgDir, { recursive: true });
+  fs.mkdirSync(docDir, { recursive: true });
+  fs.writeFileSync(path.join(docDir, 'a.md'), '# a\n', 'utf8');
+  const cfgFile = path.join(cfgDir, 'verifact.json');
+  fs.writeFileSync(cfgFile, JSON.stringify({ docs: { roots: ['../docroot'] }, artifacts: { roots: ['../docroot'] } }), 'utf8');
+
+  // 故意从一个与配置无关的 cwd 加载
+  const cfg = loadConfig({ cwd: FIX, configPath: cfgFile });
+  assert.strictEqual(cfg.__baseDir, cfgDir, '__baseDir 应是配置文件目录');
+  const listed = engine.listDocFiles(cfg);
+  assert.strictEqual(listed.files.length, 1, 'root 应解析到 ../docroot，实际=' + JSON.stringify(listed.files.map((f) => f.full)));
+  assert.deepStrictEqual(listed.missing, [], '不应有落空的 root');
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+test('deny: 命中 file+key 改为拒绑，仍留在声明总数里且不进门禁', async () => {
+  const cfg = loadConfig({
+    cwd: FIX,
+    overrides: {
+      docs: { roots: ['docs'], exclude: ['**/node_modules/**'], maxFiles: 200 },
+      artifacts: { roots: ['artifacts'], exclude: ['**/node_modules/**'], maxFiles: 500 },
+      modules: ['ML-KEM-768', 'SM2'],
+      cache: { enabled: false },
+      gate: { failOn: 'drift' },
+      ignore: [],
+      deny: [{ file: '**/docs/report.md', key: 'p95', kind: 'kv', note: '测试：该行绑错了产出物' }]
+    }
+  });
+  const report = await engine.run(cfg, {});
+  const p95 = report.claims.find((c) => c.key === 'p95');
+  assert.ok(p95, '声明应仍存在');
+  assert.strictEqual(p95.status, 'denied', '应判 denied，实际=' + p95.status);
+  assert.ok(/绑错了产出物/.test(p95.note), 'note 应带出理由，实际=' + p95.note);
+  assert.strictEqual(report.counts.denied >= 1, true, '应有 denied 计数');
+  assert.strictEqual(report.claims.some((c) => c.status === 'drift' && c.key === 'p95'), false, 'p95 不应再算 drift');
+});
+
 // ---------- 运行 ----------
 
 (async function main() {

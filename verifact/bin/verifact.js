@@ -20,10 +20,10 @@ const HELP = `verifact — 事实哨兵：把文档里的硬数字声明绑定�
   verifact init [--dir <dir>]                                生成一份 verifact.json 样例配置
 
 verify 选项:
-  --cwd <dir>          工作目录（配置中的相对路径以此为基准），默认当前目录
+  --cwd <dir>          配置文件查找 / 缓存 / --out 的基准目录，默认当前目录
   --config <file>      配置文件路径，默认依次查找 verifact.json / .verifact.json
-  --docs <dir|file>    追加文档根（可多次，覆盖配置里的 docs.roots）
-  --artifacts <dir>    追加产出物根（可多次）
+  --docs <dir|file>    追加文档根（可多次，覆盖配置里的 docs.roots；相对路径以配置文件目录为基准）
+  --artifacts <dir>    追加产出物根（相对路径同样以配置文件目录为基准）
   --fail-on <policy>   none | drift | review | lint-high   （默认 drift）
   --format <fmt>       text | json | md                     （默认 text）
   --out <file>         结果写入文件（json/md 时尤其有用）
@@ -103,7 +103,8 @@ const STATUS_LABEL = {
   unbound: '· 未绑定',
   'ref-found': '✔ 产出物存在',
   'ref-missing': '✖ 产出物缺失',
-  ignored: '- 已忽略'
+  ignored: '- 已忽略',
+  denied: '- 已拒绑'
 };
 
 function renderText(report, top) {
@@ -117,7 +118,7 @@ function renderText(report, top) {
   const reviewable = c.verified + c.drift + c.ambiguous + c.unbound + c.refFound + c.refMissing;
   const rate = reviewable ? ((c.verified + c.refFound) / reviewable * 100).toFixed(1) : '0.0';
   L.push(`声明总数 ${pad(c.claims, 6)}   已核验 ${pad(c.verified, 5)}   漂移 ${pad(c.drift, 5)}   候选冲突 ${pad(c.ambiguous, 5)}   未绑定 ${pad(c.unbound, 5)}`);
-  L.push(`引用型   ${pad(c.refFound + c.refMissing, 6)}   存在 ${pad(c.refFound, 5)}   缺失 ${pad(c.refMissing, 5)}   忽略 ${pad(c.ignored, 5)}   核验率 ${rate}%`);
+  L.push(`引用型   ${pad(c.refFound + c.refMissing, 6)}   存在 ${pad(c.refFound, 5)}   缺失 ${pad(c.refMissing, 5)}   忽略 ${pad(c.ignored, 5)}   拒绑 ${pad(c.denied, 5)}   核验率 ${rate}%`);
   L.push(`用语线索 high ${pad(report.lintCounts.high, 4)} medium ${pad(report.lintCounts.medium, 4)} low ${pad(report.lintCounts.low, 4)}`);
   L.push('');
 

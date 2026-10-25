@@ -192,7 +192,7 @@ function collectArtifacts(cfg, modules) {
   };
 
   for (const rootInput of cfg.artifacts.roots) {
-    const abs = path.resolve(cfg.__cwd || process.cwd(), rootInput);
+    const abs = path.resolve(cfg.__baseDir || cfg.__cwd || process.cwd(), rootInput);
     let st = null;
     try { st = fs.statSync(abs); } catch (_) { continue; }
     if (st.isDirectory()) { handleDir(abs); continue; }
@@ -213,7 +213,7 @@ function collectArtifacts(cfg, modules) {
 
   // 存在性专用根：只读文件名，不读内容（TSR / TSQ / 哈希清单）
   for (const rootInput of (cfg.artifacts.presenceRoots || [])) {
-    const abs = path.resolve(cfg.__cwd || process.cwd(), rootInput);
+    const abs = path.resolve(cfg.__baseDir || cfg.__cwd || process.cwd(), rootInput);
     let st = null;
     try { st = fs.statSync(abs); } catch (_) { continue; }
     const rootLabel = st.isDirectory() ? (path.basename(abs) || '') : path.basename(path.dirname(abs));

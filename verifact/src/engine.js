@@ -24,7 +24,7 @@ function labelFor(rootAbs, rel, isFileRoot) {
 }
 
 function listDocFiles(cfg) {
-  const { dirs, files, missing } = partitionRoots(cfg.docs.roots, cfg.__cwd);
+  const { dirs, files, missing } = partitionRoots(cfg.docs.roots, cfg.__baseDir || cfg.__cwd);
   const includeRe = compilePatterns(cfg.docs.include);
   const out = [];
   const seen = new Set();
@@ -69,13 +69,28 @@ function applyBinding(claim, cfg) {
   return null;
 }
 
+function matchRule(list, claim) {
+  for (const r of list || []) {
+    if (r.key && normKey(r.key) !== normKey(claim.key)) continue;
+    if (r.kind && r.kind !== claim.kind) continue;
+    if (r.file && !matchesFile(claim.file, r.file)) continue;
+    // module: null 是有效写法 =「没识别出模块的行」；不写 module 则不限制
+    if (r.module !== undefined && (claim.module || null) !== r.module) continue;
+    return r;
+  }
+  return null;
+}
+
+function denyRule(claim, cfg) {
+  return matchRule(cfg.deny, claim);
+}
+
+function isDenied(claim, cfg) {
+  return !!denyRule(claim, cfg);
+}
+
 function isIgnored(claim, cfg) {
-  return (cfg.ignore || []).some((ig) => {
-    if (ig.key && normKey(ig.key) !== normKey(claim.key)) return false;
-    if (ig.kind && ig.kind !== claim.kind) return false;
-    if (ig.file && !matchesFile(claim.file, ig.file)) return false;
-    return true;
-  });
+  return !!matchRule(cfg.ignore, claim);
 }
 
 function evaluateGate(stats, policy) {
@@ -115,7 +130,7 @@ async function run(cfg, opts) {
   }
 
   // 2) 产出物（带指纹增量缓存）
-  const artifactRoots = partitionRoots(cfg.artifacts.roots, cfg.__cwd);
+  const artifactRoots = partitionRoots(cfg.artifacts.roots, cfg.__baseDir || cfg.__cwd);
   const absRoots = artifactRoots.dirs.map((d) => d.abs).concat(artifactRoots.files.map((f) => f.abs));
   const cached = (cfg.cache.enabled && !options.noCache)
     ? readArtifactCache(cfg, cfg.__cwd, absRoots)
@@ -150,13 +165,24 @@ async function run(cfg, opts) {
     docs: listed.files.length,
     artifacts: artifacts.entries.length,
     claims: 0, verified: 0, drift: 0, ambiguous: 0, unbound: 0,
-    refFound: 0, refMissing: 0, ignored: 0
+    refFound: 0, refMissing: 0, ignored: 0, denied: 0
   };
 
   for (const claim of claims) {
     if (isIgnored(claim, cfg)) {
       stats.ignored++;
       results.push(Object.assign({}, claim, { status: 'ignored', note: '命中 ignore 规则' }));
+      continue;
+    }
+    // deny：人工确认「这条声明不能被自动绑定」。与 ignore 的区别是它仍然计入声明总数，
+    // 只是把绑定结果换成拒绑理由——数字继续留在报告里，不会被悄悄抹掉。
+    if (isDenied(claim, cfg)) {
+      stats.denied++;
+      const rule = denyRule(claim, cfg);
+      results.push(Object.assign({}, claim, {
+        status: 'denied',
+        note: '拒绝自动绑定' + (rule && rule.note ? '：' + rule.note : '')
+      }));
       continue;
     }
     stats.claims++;
@@ -204,6 +230,7 @@ async function run(cfg, opts) {
     config: {
       configFile: cfg.__configFile,
       cwd: cfg.__cwd,
+      baseDir: cfg.__baseDir,
       docsRoots: cfg.docs.roots,
       artifactRoots: cfg.artifacts.roots,
       minScore: cfg.resolve.minScore,
@@ -249,4 +276,4 @@ async function run(cfg, opts) {
   return report;
 }
 
-module.exports = { run, evaluateGate, listDocFiles, applyBinding, isIgnored, labelFor };
+module.exports = { run, evaluateGate, listDocFiles, applyBinding, isIgnored, isDenied, denyRule, labelFor };
