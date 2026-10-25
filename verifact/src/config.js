@@ -43,6 +43,7 @@ const DEFAULTS = {
   modules: DEFAULT_MODULES,
   bindings: [],
   ignore: [],
+  deny: [],
   gate: { failOn: 'drift' },
   cache: { enabled: true, dir: '.verifact', maxHistory: 200 },
   server: { host: '127.0.0.1', port: 8787 }
@@ -115,6 +116,10 @@ function loadConfig(opts) {
   const merged = deepMerge(deepMerge(DEFAULTS, fileCfg), deepMerge(envCfg, options.overrides || {}));
   merged.__cwd = cwd;
   merged.__configFile = file;
+  // 配置里的相对 root 以「配置文件所在目录」为基准：换一个 cwd 跑，root 不会集体落空。
+  // root 落空会被静默跳过 → 产出物索引为空 → 声明全体退化成 unbound，drift 门禁假绿。
+  // 没有配置文件时（纯 overrides / 测试）退回 cwd，保持旧行为。
+  merged.__baseDir = file ? path.dirname(file) : cwd;
 
   // --- 校验 ---
   const errs = [];
@@ -123,6 +128,12 @@ function loadConfig(opts) {
   }
   if (!Array.isArray(merged.artifacts.roots)) {
     errs.push('artifacts.roots 必须是数组');
+  }
+  if (!Array.isArray(merged.deny)) {
+    errs.push('deny 必须是数组');
+  }
+  if (!Array.isArray(merged.ignore)) {
+    errs.push('ignore 必须是数组');
   }
   if (!(merged.resolve.minScore >= 0 && merged.resolve.minScore <= 1)) {
     errs.push('resolve.minScore 必须在 [0,1]');

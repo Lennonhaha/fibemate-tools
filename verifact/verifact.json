@@ -2,11 +2,11 @@
   "$comment": "verifact 配置：把 fibemate 相关文档与真实产出物挂钩后逐条核验。deny/ignore 是人工复核后的沉淀，每条都对应一次已确认的误绑。",
   "docs": {
     "roots": [
-      "../fibemate",
-      "../README.md",
-      "../TECHNICAL-VERIFICATION.md",
-      "../fibemate-tools",
-      "../fibemate-core"
+      "../../fibemate",
+      "../../README.md",
+      "../../TECHNICAL-VERIFICATION.md",
+      "../../fibemate-tools",
+      "../../fibemate-core"
     ],
     "include": [
       "**/*.md"
@@ -26,25 +26,25 @@
   },
   "artifacts": {
     "roots": [
-      "../fibemate/tools",
-      "../fibemate/scripts",
-      "../pqc-hw-bench",
-      "../fibemate-core",
-      "../lookingglass",
-      "../ml-kem-768_timestamp_v2",
-      "../tsa_v11",
-      "../fips205_kat",
-      "../pqc_kem1024_mldsa44",
-      "../lg-v3.1-20260716.tsr",
-      "../vwz-076-20260717.tsr"
+      "../../fibemate/tools",
+      "../../fibemate/scripts",
+      "../../pqc-hw-bench",
+      "../../fibemate-core",
+      "../../lookingglass",
+      "../../ml-kem-768_timestamp_v2",
+      "../../tsa_v11",
+      "../../fips205_kat",
+      "../../pqc_kem1024_mldsa44",
+      "../../lg-v3.1-20260716.tsr",
+      "../../vwz-076-20260717.tsr"
     ],
     "presenceRoots": [
-      "../_backup_2026-07-18",
-      "../papers",
-      "../tsa_v11",
-      "../ml-kem-768_timestamp_v2",
-      "../fibemate/www/docs/tsa",
-      "../fibemate/docs/tla"
+      "../../_backup_2026-07-18",
+      "../../papers",
+      "../../tsa_v11",
+      "../../ml-kem-768_timestamp_v2",
+      "../../fibemate/www/docs/tsa",
+      "../../fibemate/docs/tla"
     ],
     "exclude": [
       "**/node_modules/**",
@@ -86,6 +86,45 @@
     "includeCodeBlocks": false
   },
   "bindings": [],
+  "deny": [
+    {
+      "file": "**/docs/launch-announcement-2026-08-31.md",
+      "key": "keygen",
+      "kind": "measure",
+      "note": "脚注引述历史值 103µs 并说明其比例不自洽（1.19ms ÷ 103µs = 11.6×），是纠错说明，不是待核验指标；不与 liboqs CPU 基线 262µs 比对"
+    },
+    {
+      "file": "**/docs/launch-announcement-2026-08-31.md",
+      "key": "native-keygen",
+      "kind": "measure",
+      "note": "49.1µs 是 2026-10 Ryzen 5 5600U 本机实测；pqc-hw-bench README#L99 的 262µs 是 liboqs 0.16.0 CPU 基线（gcc 15.2 + AVX2），不是本仓 C addon 的产出物，绑定为误配"
+    },
+    {
+      "file": "**/fibemate/PROGRESS.md",
+      "key": "31x-keygen",
+      "kind": "measure",
+      "note": "7/22~7/23 历史记录里的 103µs（Linux C addon）；262µs 是 liboqs CPU 基线，非本仓产出物，绑定为误配"
+    },
+    {
+      "file": "**/fibemate/scripts/benchmark-report_2026-07-24.md",
+      "key": "keygen",
+      "kind": "measure",
+      "module": null,
+      "note": "覆盖 L42/L50/L58 三行（module 为 null 才是这三行；L73 的 SM2 keygen 不受影响）：69.0µs = Linux Xeon C addon，1.05ms = Linux JS fallback，1.19ms = Windows JS；262µs 是 liboqs 0.16.0 CPU 基线，三行与其均无同口径关系"
+    },
+    {
+      "file": "**/fibemate/README.md",
+      "key": "kem-keygen",
+      "kind": "measure",
+      "note": "103µs 是 C addon 在 Linux 主机的实测值；262µs 是 liboqs 0.16.0 CPU 基线，不是本仓 C addon 的产出物，绑定为误配"
+    },
+    {
+      "file": "**/fibemate/RELEASE_NOTES.md",
+      "key": "key-protocol",
+      "kind": "count",
+      "note": "OPK 不变式数已由 3 修正为 7（OPK.cfg 自 2026-07-15 首版起即列 7 条）；此处拒绑以防被 cars-scorecard 的 C2 handshake（7 条）对上——两个模型不是一回事"
+    }
+  ],
   "ignore": [
     {
       "file": "**/fibemate/README.md",

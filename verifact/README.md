@@ -69,10 +69,10 @@ node bin/verifact.js serve --port 8080
 
 项目根目录放置 `verifact.json`：
 
-- `docs.roots` — 要扫描的文档目录
+- `docs.roots` / `artifacts.roots` — 要扫描的目录或文件；**相对路径以配置文件所在目录为基准**（不是 cwd）
 - `artifacts` — 产出物目录列表
-- `ignore` — 已知可忽略的 drift 条目（白名单）
-- `deny` — 禁止出现的声明模式
+- `ignore` — 已知可忽略的声明（不计入统计）
+- `deny` — 人工拒绑：声明仍留在报告与总数里，但不做自动绑定，note 写出理由
 
 详见 [`verifact.json.example`](./verifact.json.example)。
 
