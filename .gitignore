@@ -21,6 +21,7 @@ timeline.db
 
 # verifact / xdiff — 运行时缓存、编译二进制、本机实例配置（模板 .example 进仓，实例 .json 不进）
 verifact/.verifact/
+.verifact/
 xdiff/.xdiff/
 *.exe
 verifact/verifact.json
