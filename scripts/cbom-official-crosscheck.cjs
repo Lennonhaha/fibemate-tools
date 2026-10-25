@@ -11,6 +11,11 @@
 //      （容忍 $ref 文件名里的 SNAPSHOT 标记与 description 文案差异）；
 //   2) 装配独立：用官方库的 JsonValidator 重验真产物（现有产物 + 现码新生成）。
 // 并含阴性对照：本该失败的样本必须失败，否则「通过」不算数。
+// 阴性对照再收紧一层（2026-10-25）：José 的两个非法夹具不仅要「被拒」，还必须以
+// **README 写明的那个原因**被拒（keyword + instancePath + 具体违规值）。否则「少个括号/
+// 解析失败」也会被当成 schema 门禁生效 —— 另一种假绿。配套两条元自检：
+//   a) 校验器抛错不得计为「正确拒绝」（基础设施故障 ≠ 判定）；
+//   b) 把诊断条件故意写错后，必须匹配不上 —— 防「断言恒真」。
 //
 // 注意：官方库由 CI ad-hoc 安装，**不是本仓依赖** —— cbom-tools 对外宣称
 // "Zero external dependencies"，本脚本只在验证时用库，不给包引入依赖。
@@ -123,19 +128,59 @@ function typeOf(v) {
   return typeof v;
 }
 
-async function validateText(validator, text, label, expectValid) {
-  let valid;
-  let detail = '';
+// 官方 JsonValidator：合法返回 null，非法返回 Ajv 错误数组，自身故障则抛错。
+async function runValidator(validator, text) {
   try {
     const err = await validator.validate(text);
-    valid = err === null;
-    if (!valid) detail = JSON.stringify(err).slice(0, 200);
+    if (err === null || err === undefined) return { threw: null, errors: [] };
+    return { threw: null, errors: Array.isArray(err) ? err : [err] };
   } catch (e) {
-    valid = false;
-    detail = 'EXCEPTION: ' + String(e && e.message).slice(0, 160);
+    return { threw: e, errors: [] };
   }
-  record(label, valid === expectValid, (valid ? 'VALID' : 'INVALID') + (detail ? ' | ' + detail : ''));
-  return valid;
+}
+
+// 判定与取值分离，便于对「抛错」这一情形做纯函数自检。
+function judge(run, expectValid) {
+  if (run.threw) {
+    return {
+      ok: false,
+      valid: false,
+      detail: 'validator threw (infrastructure failure, not a verdict): ' +
+        String(run.threw && run.threw.message).slice(0, 140),
+    };
+  }
+  const errors = run.errors || [];
+  const valid = errors.length === 0;
+  return {
+    ok: valid === expectValid,
+    valid,
+    detail: (valid ? 'VALID' : 'INVALID') + (errors.length ? ' | ' + JSON.stringify(errors).slice(0, 200) : ''),
+  };
+}
+
+async function validateText(validator, text, label, expectValid) {
+  const v = judge(await runValidator(validator, text), expectValid);
+  record(label, v.ok, v.detail);
+  return v.valid;
+}
+
+function summarizeError(e) {
+  return String((e && e.instancePath) || '/') + ' ' + String((e && e.keyword) || '?') +
+    ' : ' + String((e && e.message) || '').slice(0, 80);
+}
+
+// 期望的诊断必须在同一批错误里被逐项命中（不是「有一个错误就算」）。
+function matchesDiagnostic(errors, spec) {
+  return (errors || []).some((e) => {
+    if (!e || typeof e !== 'object') return false;
+    if (spec.keyword && e.keyword !== spec.keyword) return false;
+    if (spec.pathSuffix && !String(e.instancePath || '').endsWith(spec.pathSuffix)) return false;
+    if (spec.messageIncludes && !String(e.message || '').includes(spec.messageIncludes)) return false;
+    if (spec.additionalProperty && !(e.params && e.params.additionalProperty === spec.additionalProperty)) return false;
+    if (spec.allowedValuesInclude &&
+      !(e.params && Array.isArray(e.params.allowedValues) && e.params.allowedValues.includes(spec.allowedValuesInclude))) return false;
+    return true;
+  });
 }
 
 function scanTo(dir, outFile) {
@@ -154,6 +199,13 @@ function mutate(base, fn) {
   console.log('official: @cyclonedx/cyclonedx-library@' + libVersion + '  (spec 1.6)');
   console.log('repo:     ' + REPO);
   console.log('');
+
+  // --- 0) 元自检：校验器崩溃不得被记成「正确拒绝」---
+  {
+    const v = judge({ threw: new Error('injected validator crash'), errors: [] }, false);
+    record('self-check: validator crash must not count as a rejection', v.ok === false,
+      'judge() on a throw → ok=' + v.ok + ' (must be false)');
+  }
 
   // --- 1) schema 来源独立 ---
   const schemaDir = path.join(libRoot, 'res', 'schema');
@@ -218,14 +270,65 @@ function mutate(base, fn) {
     'control: specVersion "9.9" is NOT constrained by the 1.6 schema (documented)', true);
 
   // --- 4) José 三回归夹具（CycloneDX 1.6 standalone）---
+  // 期望值出处：cbom-tools/test/fixtures/jose-regression/README.md
+  //   invalid-uppercase-primitive.json → 大小写敏感的 primitive enum 违规
+  //   invalid-misplaced-field.json     → cryptoProperties 下的多余属性
+  // 故断言落到 keyword + instancePath + 具体违规值，而非「结果为 invalid / 退出码非零」。
+  const JOSE_CASES = [
+    { file: 'valid-sha256.json', expectValid: true },
+    {
+      file: 'invalid-uppercase-primitive.json',
+      expectValid: false,
+      diagnostic: {
+        keyword: 'enum',
+        pathSuffix: '/cryptoProperties/algorithmProperties/primitive',
+        messageIncludes: 'must be equal to one of the allowed values',
+        allowedValuesInclude: 'hash',
+      },
+    },
+    {
+      file: 'invalid-misplaced-field.json',
+      expectValid: false,
+      diagnostic: {
+        keyword: 'additionalProperties',
+        pathSuffix: '/cryptoProperties',
+        messageIncludes: 'must NOT have additional properties',
+        additionalProperty: 'implementationPlatform',
+      },
+    },
+  ];
   const jose = path.join(FIXTURES, 'jose-regression');
-  if (fs.existsSync(jose)) {
-    for (const name of ['valid-sha256.json', 'invalid-uppercase-primitive.json', 'invalid-misplaced-field.json']) {
-      const p = path.join(jose, name);
-      if (!fs.existsSync(p)) { record('jose fixture: ' + name, false, 'missing'); continue; }
+  if (!fs.existsSync(jose)) {
+    record('jose fixtures dir', false, 'missing: ' + jose);
+  } else {
+    for (const c of JOSE_CASES) {
+      const p = path.join(jose, c.file);
+      const label = 'jose fixture: ' + c.file;
+      if (!fs.existsSync(p)) { record(label, false, 'missing'); continue; }
       const frag = JSON.parse(fs.readFileSync(p, 'utf8'));
       const wrapped = frag.bomFormat ? frag : { bomFormat: 'CycloneDX', specVersion: '1.6', version: 1, components: [frag] };
-      await validateText(validator, JSON.stringify(wrapped), 'jose fixture: ' + name, name.startsWith('valid'));
+      if (c.expectValid) { await validateText(validator, JSON.stringify(wrapped), label, true); continue; }
+
+      const run = await runValidator(validator, JSON.stringify(wrapped));
+      if (run.threw) {
+        record(label, false, 'validator threw (infrastructure failure, not a verdict): ' +
+          String(run.threw.message).slice(0, 140));
+        continue;
+      }
+      if (run.errors.length === 0) { record(label, false, 'expected rejection, but the sample validated'); continue; }
+
+      const hit = matchesDiagnostic(run.errors, c.diagnostic);
+      record(label, hit,
+        (hit ? 'rejected for the documented reason | ' : 'rejected, but NOT for the documented reason | ') +
+        summarizeError(run.errors[0]));
+
+      // 元自检：把诊断条件故意写错（只改 keyword），同一批真实错误必须匹配不上。
+      // 若这条变绿，说明 matchesDiagnostic 恒真，上面那条断言等于没写。
+      const wrongSpec = Object.assign({}, c.diagnostic, {
+        keyword: c.diagnostic.keyword === 'enum' ? 'type' : 'enum',
+      });
+      record('  ^ self-check: wrong diagnostic spec must not match',
+        matchesDiagnostic(run.errors, wrongSpec) === false, 'mutated keyword=' + wrongSpec.keyword);
     }
   }
 
