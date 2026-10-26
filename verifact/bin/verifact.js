@@ -128,6 +128,16 @@ function renderText(report, top) {
     L.push(`处置分类   code-artifact ${pad(dc['code-artifact'] || 0, 5)}   progress ${pad(dc.progress || 0, 5)}   measured-once ${pad(dc['measured-once'] || 0, 5)}   narrative ${pad(dc.narrative || 0, 5)}   已分类 ${pad(c.dispositioned || 0, 5)}`);
   }
   L.push(`核验率     ${rate}%  (code-artifact ${reviewable} 条)      ${rateAll}%  (全部受判 ${allJudged} 条)`);
+
+  const dw = report.counts.dispositionWarnings;
+  if (dw) {
+    if (dw.shareExceedsHalf) {
+      L.push(`⚠ 全报告 ${(dw.share * 100).toFixed(1)}% 的声明被标为非 code-artifact（> 50%）：换分母不等于覆盖率上升，请逐条看归属。`);
+    }
+    for (const f of dw.fullyDispositionedFiles || []) {
+      L.push(`⚠ ${f.file}：整份文件 ${f.claims} 条声明全部非 code-artifact，该文件对覆盖率零贡献。`);
+    }
+  }
   L.push(`用语线索 high ${pad(report.lintCounts.high, 4)} medium ${pad(report.lintCounts.medium, 4)} low ${pad(report.lintCounts.low, 4)}`);
   L.push('');
 

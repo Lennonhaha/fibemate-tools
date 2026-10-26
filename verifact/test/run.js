@@ -473,6 +473,29 @@ test('disposition: 声明过的数字不进判定，只进 disposition 计数（
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('disposition: 整份文件都不是 code-artifact 时给出文件级警示', async () => {
+  const root = tmpProject({
+    'all-narrative.md': [
+      '<!-- verifact: disposition=narrative why="设计方案，不是产物属性" -->',
+      'k = 8, q = 65537'
+    ].join('\n'),
+    'mixed.md': [
+      '<!-- verifact: begin disposition=progress owner=board.md -->',
+      '合计 199/199',
+      '<!-- verifact: end -->',
+      '当前实现 keygen = 103µs'
+    ].join('\n')
+  });
+  const report = await engine.run(dispConfig(root), {});
+  const w = report.counts.dispositionWarnings;
+  assert.ok(w, '应输出 dispositionWarnings');
+  const files = w.fullyDispositionedFiles.map((f) => f.file);
+  assert.strictEqual(files.length, 1, '只有 all-narrative.md 应被列出，实际=' + JSON.stringify(files));
+  assert.ok(/all-narrative\.md$/.test(files[0]), '列出的应是 all-narrative.md，实际=' + files[0]);
+  assert.strictEqual(w.fullyDispositionedFiles[0].claims >= 1, true, '应带出条数');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test('disposition: 写错声明让整次运行失败（不允许静默丢文档）', async () => {
   const root = tmpProject({
     'doc.md': '# 状态\n| 合计 | 199/199 | <!-- verifact: disposition=progress -->\n'
