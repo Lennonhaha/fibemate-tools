@@ -29,7 +29,7 @@ function runInline(files, opts) {
       let text = fs.readFileSync(f.full, 'utf8');
       if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
       if (opts.maxBytes && Buffer.byteLength(text) > opts.maxBytes) {
-        errors.push({ rel: f.rel, reason: 'too_large' });
+        errors.push({ rel: f.rel, reason: 'too_large', fatal: false, bytes: Buffer.byteLength(text), limit: opts.maxBytes });
         continue;
       }
       const claims = extractClaims(text, f.rel, { modules: opts.modules, deep: !!opts.deep });
@@ -42,7 +42,9 @@ function runInline(files, opts) {
         errors.push({ rel: f.rel, reason: 'disposition_error', detail: e.message, fatal: true });
         continue;
       }
-      errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error' });
+      // 扫描崩溃 = 这份文档的声明没进统计。默认必须让整次运行失败：
+      // 报告宁可红，也不能少算一片数字还显示绿色（#95）。
+      errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error', fatal: true });
     }
   }
   return Promise.resolve({ results, errors, workers: 0 });

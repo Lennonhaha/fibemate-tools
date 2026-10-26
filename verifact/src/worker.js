@@ -15,7 +15,7 @@ for (const f of files) {
     let text = fs.readFileSync(f.full, 'utf8');
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     if (maxBytes && Buffer.byteLength(text) > maxBytes) {
-      errors.push({ rel: f.rel, reason: 'too_large' });
+      errors.push({ rel: f.rel, reason: 'too_large', fatal: false, bytes: Buffer.byteLength(text), limit: maxBytes });
       continue;
     }
     const claims = extractClaims(text, f.rel, { modules, deep: !!deep });
@@ -27,7 +27,8 @@ for (const f of files) {
       errors.push({ rel: f.rel, reason: 'disposition_error', detail: e.message, fatal: true });
       continue;
     }
-    errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error' });
+    // 同 runInline：崩溃一律 fatal，除非调用方显式开 --allow-scan-errors（#95）。
+    errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error', fatal: true });
   }
 }
 

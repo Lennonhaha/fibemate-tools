@@ -128,7 +128,8 @@ async function run(cfg, opts) {
 
   // 1) 文档清单 + 并行抽取
   const listed = listDocFiles(cfg);
-  const scan = await scanFiles(listed.files, {
+  // options.scanFiles 是给测试与内嵌调用用的替换点（默认就是真扫描器）。
+  const scan = await (options.scanFiles || scanFiles)(listed.files, {
     modules,
     deep: !!options.deep,
     maxBytes: cfg.docs.maxFileBytes,
@@ -137,14 +138,31 @@ async function run(cfg, opts) {
     concurrency: options.concurrency
   });
 
-  // 处置声明解析失败必须让整次运行失败。若只记成 docScanErrors，这份文档的声明会
-  // 静默消失，报告少了一整片数字却仍然绿色 —— 那正是本工具反对的假绿。
+  // 两类失败都会让这份文档的声明静默消失，报告少了一整片数字却仍然绿色 ——
+  // 那正是本工具反对的假绿（#95）：
+  //   1. 处置声明写错 —— 作者错误，任何参数下都不容忍；
+  //   2. 抽取/读取崩溃 —— 默认不容忍，只有显式 --allow-scan-errors 才继续。
+  // too_large 是有意跳过，不算崩溃，永远非致命。
   const fatal = scan.errors.filter((e) => e && e.fatal);
-  if (fatal.length) {
-    const lines = fatal.map((e) => (e.detail ? e.detail : e.rel + ': ' + e.reason));
-    const err = new Error('处置声明解析失败（' + fatal.length + ' 处）：\n  ' + lines.join('\n  '));
+  const dispositionFatal = fatal.filter((e) => e.reason === 'disposition_error');
+  const tolerate = !!options.allowScanErrors;
+  const tolerated = tolerate ? fatal.filter((e) => e.reason !== 'disposition_error') : [];
+
+  if (dispositionFatal.length) {
+    const lines = dispositionFatal.map((e) => (e.detail ? e.detail : e.rel + ': ' + e.reason));
+    const err = new Error('处置声明解析失败（' + dispositionFatal.length + ' 处）：\n  ' + lines.join('\n  '));
     err.name = 'DispositionError';
-    err.fatal = fatal;
+    err.fatal = dispositionFatal;
+    throw err;
+  }
+
+  const scanFatal = fatal.filter((e) => e.reason !== 'disposition_error');
+  if (scanFatal.length && !tolerate) {
+    const lines = scanFatal.map((e) => e.rel + ': ' + e.reason);
+    const err = new Error('文档扫描失败（' + scanFatal.length + ' 个文件的声明未纳入统计）：\n  ' +
+      lines.join('\n  ') + '\n  如果确认这些文件可以跳过，用 --allow-scan-errors 重跑，报告会把它们逐条列出。');
+    err.name = 'ScanError';
+    err.fatal = scanFatal;
     throw err;
   }
 
@@ -387,6 +405,18 @@ async function run(cfg, opts) {
       pooled: !!scan.pooled,
       docsMissing: listed.missing,
       docScanErrors: scan.errors.length,
+      docScanFatal: fatal.length,
+      // 逐条列出「没进统计」的文件。默认路径下只有 too_large；开了 --allow-scan-errors
+      // 之后，被容忍的崩溃也列在这里，报告不能只说"跳过 1 个"。
+      skippedFiles: scan.errors.map((e) => ({
+        file: e.rel,
+        reason: e.reason,
+        detail: e.detail || null,
+        bytes: e.bytes != null ? e.bytes : null,
+        limit: e.limit != null ? e.limit : null,
+        tolerated: e.fatal === true
+      })),
+      toleratedScanErrors: tolerated.length,
       artifactsScanned: artifacts.scanned,
       artifactsSkipped: artifacts.skipped,
       selfEvidenceRemoved: selfRemoved
