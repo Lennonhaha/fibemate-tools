@@ -330,6 +330,29 @@ test('deny: 命中 file+key 改为拒绑，仍留在声明总数里且不进门�
 });
 
 
+test('reference: 标准编号单列计数，不进判定也不进覆盖率分母', async () => {
+  const root = tmpProject({
+    'doc.md': [
+      '# 合规',
+      '- 遵循 NIST FIPS 203/205 标准',
+      '当前实现 keygen = 103µs'
+    ].join('\n')
+  });
+  const report = await engine.run(dispConfig(root), {});
+  const ref = report.claims.find((c) => c.status === 'reference');
+  assert.ok(ref, '应有 status=reference 的声明，实际=' + JSON.stringify(report.claims.map((c) => [c.key, c.status])));
+  assert.ok(/standard-prefix/.test(ref.note), 'note 应带原因，实际=' + ref.note);
+  assert.strictEqual(report.counts.standardRefs, 1, '应计数 1 条标准编号，实际=' + report.counts.standardRefs);
+  assert.strictEqual(report.counts.claims, 1, '只有 keygen 进入判定，实际=' + report.counts.claims);
+  assert.strictEqual(report.counts.codeArtifactClaims, 1, '分母不应包含标准编号');
+  assert.strictEqual(report.counts.allJudgedClaims, 1, '受判总数也不应包含标准编号');
+  assert.strictEqual(report.counts.drift, 0, '不得产生漂移');
+  // 报告的书面输出要能看到这一条，否则就是「静默删掉」
+  const text = require('../bin/verifact').renderText(report, 3);
+  assert.ok(/标准编号\s+1/.test(text), '报告应单列标准编号条数，实际=\n' + text);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 // ---------- 处置分类（dispositions，RFC docs/rfc-verifact-dispositions.md） ----------
 
 const os = require('os');
@@ -534,6 +557,46 @@ test('disposition: 写错声明让整次运行失败（不允许静默丢文档�
   assert.ok(threw, '应当让整次运行失败，但没有');
   assert.ok(/处置声明解析失败/.test(threw.message), '错误信息应指明处置声明解析失败，实际=' + threw.message);
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+// ---------- 标准编号不是比值（#101） ----------
+
+test('claims: FIPS 203/205 被认成标准编号，不是命中率', () => {
+  const text = '# 合规\n- 密码实现遵循 NIST FIPS 203/205 标准\n';
+  const claims = extractClaims(text, 'docs/a.md', { modules: MODULES });
+  const r = claims.find((c) => c.kind === 'ratio');
+  assert.ok(r, '应抽到一条 ratio 形状的声明，实际=' + JSON.stringify(claims.map((c) => [c.kind, c.value && c.value.raw])));
+  assert.strictEqual(r.notMeasurement, 'standard-prefix', '原因应为 standard-prefix，实际=' + r.notMeasurement);
+});
+
+test('claims: GB/T、ISO/IEC 与 ePrint 编号同样不当比值', () => {
+  const text = [
+    '- 遵循 GB/T 32918/32905 规范',
+    '- 对齐 ISO/IEC 18033/18032 系列',
+    '- 参考文献 ePrint 2025/1986'
+  ].join('\n');
+  const claims = extractClaims(text, 'docs/a.md', { modules: MODULES });
+  const ratios = claims.filter((c) => c.kind === 'ratio');
+  assert.ok(ratios.length >= 1, '应抽到比值形状，实际=' + JSON.stringify(claims.map((c) => c.value && c.value.raw)));
+  assert.ok(ratios.every((c) => c.notMeasurement),
+    '这些必须全部被认成标准编号，实际=' + JSON.stringify(ratios.map((c) => [c.value.raw, c.notMeasurement])));
+  const ep = ratios.find((c) => c.value.raw === '2025/1986');
+  assert.strictEqual(ep.notMeasurement, 'standard-prefix', 'ePrint 编号应由前缀识别，实际=' + ep.notMeasurement);
+});
+
+test('claims: 年份区间 2021/2022 不当比值', () => {
+  const claims = extractClaims('# 时间线\n2021/2022 两年间的迁移记录\n', 'docs/a.md', { modules: MODULES });
+  const r = claims.filter((c) => c.kind === 'ratio');
+  assert.ok(r.length >= 1, '应抽到比值形状');
+  assert.strictEqual(r[0].notMeasurement, 'year-pair', '实际=' + r[0].notMeasurement);
+});
+
+test('claims: 真正的通过率紧跟着 NIST 字样也不能被误杀（防假阴性）', () => {
+  const claims = extractClaims('# 结果\nNIST 测试集通过 10/10\n', 'docs/a.md', { modules: MODULES });
+  const r = claims.find((c) => c.kind === 'ratio');
+  assert.ok(r, '应抽到 10/10');
+  assert.strictEqual(r.notMeasurement, undefined,
+    'NIST … 10/10 是真声明，不得被标准名误杀（窗口必须贴着数字）');
 });
 
 // ---------- stableKey（内容寻址身份，#96） ----------
