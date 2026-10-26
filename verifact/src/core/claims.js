@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const { tokens, mkValue, mkRatio, parseNum } = require('./normalize');
+const { buildDispositionScopes } = require('./dispositions');
 
 /**
  * 硬数字声明抽取器。
@@ -152,6 +153,9 @@ function extractClaims(text, fileRef, opts) {
   const options = opts || {};
   const moduleList = options.modules || [];
   const deep = !!options.deep;
+  // 处置声明读的是原始文本：stripNoise 会把 HTML 注释抹成空格。
+  // opts.dispositions === false 时跳过，供只想看原始抽取的调用方使用。
+  const scopes = options.dispositions === false ? null : buildDispositionScopes(text, fileRef);
   const clean = stripNoise(text);
   const lines = clean.split('\n');
   const baseName = String(fileRef).split('/').pop();
@@ -254,6 +258,13 @@ function extractClaims(text, fileRef, opts) {
         claim.modulesAll = modRes.all.length ? modRes.all : (sectionRes.all || []);
         claim.heading = heading.slice(0, 120);
         claim.sentence = trimmedRaw.slice(0, 240);
+        if (scopes) {
+          const d = scopes.resolve(i + 1);
+          claim.disposition = d.disposition;
+          claim.dispositionSource = d.source;
+          claim.dispositionAt = d.at;
+          if (d.args && Object.keys(d.args).length) claim.dispositionArgs = Object.assign({}, d.args);
+        }
         out.push(claim);
         taken.push([start, end]);
       }

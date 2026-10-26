@@ -36,6 +36,12 @@ function runInline(files, opts) {
       const lint = opts.doLint ? lintDoc(text, f.rel, opts.lintOpts) : [];
       results.push({ rel: f.rel, claims, lint });
     } catch (e) {
+      if (e && e.name === 'DispositionError') {
+        // 处置声明写错必须让整次运行失败：否则这份文档的声明会静默消失，
+        // 报告少了一整片数字却仍然显示绿色 —— 与本工具反对的假绿同类。
+        errors.push({ rel: f.rel, reason: 'disposition_error', detail: e.message, fatal: true });
+        continue;
+      }
       errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error' });
     }
   }

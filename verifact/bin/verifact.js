@@ -104,7 +104,8 @@ const STATUS_LABEL = {
   'ref-found': '✔ 产出物存在',
   'ref-missing': '✖ 产出物缺失',
   ignored: '- 已忽略',
-  denied: '- 已拒绑'
+  denied: '- 已拒绑',
+  disposition: '- 已分类'
 };
 
 function renderText(report, top) {
@@ -117,8 +118,16 @@ function renderText(report, top) {
   L.push('');
   const reviewable = c.verified + c.drift + c.ambiguous + c.unbound + c.refFound + c.refMissing;
   const rate = reviewable ? ((c.verified + c.refFound) / reviewable * 100).toFixed(1) : '0.0';
+  // 双分母：换了分母的「覆盖率上升」不算上升（RFC §2.3）。
+  const allJudged = c.allJudgedClaims != null ? c.allJudgedClaims : reviewable;
+  const rateAll = allJudged ? ((c.verified + c.refFound) / allJudged * 100).toFixed(1) : '0.0';
   L.push(`声明总数 ${pad(c.claims, 6)}   已核验 ${pad(c.verified, 5)}   漂移 ${pad(c.drift, 5)}   候选冲突 ${pad(c.ambiguous, 5)}   未绑定 ${pad(c.unbound, 5)}`);
-  L.push(`引用型   ${pad(c.refFound + c.refMissing, 6)}   存在 ${pad(c.refFound, 5)}   缺失 ${pad(c.refMissing, 5)}   忽略 ${pad(c.ignored, 5)}   拒绑 ${pad(c.denied, 5)}   核验率 ${rate}%`);
+  L.push(`引用型   ${pad(c.refFound + c.refMissing, 6)}   存在 ${pad(c.refFound, 5)}   缺失 ${pad(c.refMissing, 5)}   忽略 ${pad(c.ignored, 5)}   拒绑 ${pad(c.denied, 5)}`);
+  if (c.dispositionCounts) {
+    const dc = c.dispositionCounts;
+    L.push(`处置分类   code-artifact ${pad(dc['code-artifact'] || 0, 5)}   progress ${pad(dc.progress || 0, 5)}   measured-once ${pad(dc['measured-once'] || 0, 5)}   narrative ${pad(dc.narrative || 0, 5)}   已分类 ${pad(c.dispositioned || 0, 5)}`);
+  }
+  L.push(`核验率     ${rate}%  (code-artifact ${reviewable} 条)      ${rateAll}%  (全部受判 ${allJudged} 条)`);
   L.push(`用语线索 high ${pad(report.lintCounts.high, 4)} medium ${pad(report.lintCounts.medium, 4)} low ${pad(report.lintCounts.low, 4)}`);
   L.push('');
 

@@ -22,6 +22,11 @@ for (const f of files) {
     const lint = doLint ? lintDoc(text, f.rel, lintOpts) : [];
     results.push({ rel: f.rel, claims, lint });
   } catch (e) {
+    if (e && e.name === 'DispositionError') {
+      // 与 runInline 同一条规则：声明写错 = 整次运行失败，不允许静默丢文档。
+      errors.push({ rel: f.rel, reason: 'disposition_error', detail: e.message, fatal: true });
+      continue;
+    }
     errors.push({ rel: f.rel, reason: e && e.message ? e.message : 'read_error' });
   }
 }

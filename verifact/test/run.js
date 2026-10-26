@@ -7,6 +7,7 @@ const fs = require('fs');
 
 const { compilePatterns } = require('../src/core/walk');
 const { extractClaims } = require('../src/core/claims');
+const { buildDispositionScopes, DispositionError } = require('../src/core/dispositions');
 const { collectArtifacts, buildIndex } = require('../src/core/artifacts');
 const { resolveClaim } = require('../src/core/resolve');
 const { lintDoc } = require('../src/core/lint');
@@ -159,7 +160,7 @@ test('engine: 端到端跑通并给出门禁结果', async () => {
   assert.ok(report.counts.verified >= 1, '应有已核验项');
   assert.strictEqual(report.counts.drift >= 1, true, 'p95 应判漂移');
   assert.strictEqual(report.gate.failed, true, '存在 drift 时门禁应失败');
-  assert.strictEqual(report.schema, 'verifact-report/1');
+  assert.strictEqual(report.schema, 'verifact-report/2');
 
   const soft = await engine.run(Object.assign({}, cfg, { gate: { failOn: 'none' } }), {});
   assert.strictEqual(soft.gate.failed, false, 'policy=none 时不应失败');
@@ -326,6 +327,161 @@ test('deny: 命中 file+key 改为拒绑，仍留在声明总数里且不进门�
   assert.ok(/绑错了产出物/.test(p95.note), 'note 应带出理由，实际=' + p95.note);
   assert.strictEqual(report.counts.denied >= 1, true, '应有 denied 计数');
   assert.strictEqual(report.claims.some((c) => c.status === 'drift' && c.key === 'p95'), false, 'p95 不应再算 drift');
+});
+
+
+// ---------- 处置分类（dispositions，RFC docs/rfc-verifact-dispositions.md） ----------
+
+const os = require('os');
+
+function tmpProject(files) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verifact-disp-'));
+  for (const [rel, content] of Object.entries(files)) {
+    const full = path.join(root, rel);
+    fs.mkdirSync(path.dirname(full), { recursive: true });
+    fs.writeFileSync(full, content, 'utf8');
+  }
+  return root;
+}
+
+function dispConfig(root, extra) {
+  return loadConfig({
+    cwd: root,
+    overrides: Object.assign({
+      docs: { roots: ['.'], exclude: ['**/node_modules/**'], maxFiles: 50 },
+      artifacts: { roots: ['.'], exclude: ['**/node_modules/**'], maxFiles: 50 },
+      modules: ['ML-KEM-768', 'SM2'],
+      cache: { enabled: false },
+      gate: { failOn: 'drift' },
+      ignore: [],
+      deny: []
+    }, extra || {})
+  });
+}
+
+function expectDispositionError(fn, pattern) {
+  let threw = null;
+  try { fn(); } catch (e) { threw = e; }
+  assert.ok(threw, '应当抛错，但没有');
+  assert.strictEqual(threw.name, 'DispositionError', '错误类型应为 DispositionError，实际=' + threw.name + '：' + threw.message);
+  assert.ok(pattern.test(threw.message), '错误信息应匹配 ' + pattern + '，实际=' + threw.message);
+}
+
+test('disposition: 区域内声明一次 owner，区域内单条 progress 可以省略 owner', () => {
+  const text = [
+    '<!-- verifact: begin disposition=progress owner=docs/CHECKLIST.md -->',
+    '| 合计 | 199/199 | ✅ |',
+    '| 元数据 | 8/10 | <!-- verifact: disposition=progress --> |',
+    '<!-- verifact: end -->'
+  ].join('\n');
+  const scopes = buildDispositionScopes(text, 'docs/a.md');
+  const first = scopes.resolve(2);
+  assert.strictEqual(first.disposition, 'progress');
+  assert.strictEqual(first.source, 'region');
+  assert.strictEqual(first.args.owner, 'docs/CHECKLIST.md');
+  const second = scopes.resolve(3);
+  assert.strictEqual(second.source, 'inline');
+  assert.strictEqual(second.args.owner, 'docs/CHECKLIST.md', 'owner 应从区域继承');
+});
+
+test('disposition: 区域里的单条声明不能借用区域以外的参数（artifact 不可继承）', () => {
+  const text = [
+    '<!-- verifact: begin disposition=measured-once artifact=docs/bench.json -->',
+    '| keygen | 103µs | <!-- verifact: disposition=measured-once --> |',
+    '<!-- verifact: end -->'
+  ].join('\n');
+  expectDispositionError(() => buildDispositionScopes(text, 'docs/a.md'), /必须声明 artifact=/);
+});
+
+test('disposition: progress 缺 owner 必须报错，不允许无主数字', () => {
+  expectDispositionError(
+    () => buildDispositionScopes('| 合计 | 199/199 | <!-- verifact: disposition=progress -->\n', 'docs/a.md'),
+    /progress 必须声明 owner=/
+  );
+});
+
+test('disposition: 未知取值报错，不退化成默认值', () => {
+  expectDispositionError(
+    () => buildDispositionScopes('<!-- verifact: begin disposition=narrativ why="typo" -->\n<!-- verifact: end -->\n', 'docs/a.md'),
+    /未知 disposition="narrativ"/
+  );
+});
+
+test('disposition: begin 没有 end 报错（不允许延伸到文件末尾）', () => {
+  expectDispositionError(
+    () => buildDispositionScopes('<!-- verifact: begin disposition=narrative why="x" -->\n103µs\n', 'docs/a.md'),
+    /没有配对的 end/
+  );
+});
+
+test('disposition: end 没有 begin 报错', () => {
+  expectDispositionError(
+    () => buildDispositionScopes('103µs\n<!-- verifact: end -->\n', 'docs/a.md'),
+    /end 没有对应的 begin/
+  );
+});
+
+test('disposition: 不允许嵌套不同 disposition', () => {
+  const text = [
+    '<!-- verifact: begin disposition=progress owner=x.md -->',
+    '<!-- verifact: begin disposition=narrative why="y" -->',
+    '<!-- verifact: end -->',
+    '<!-- verifact: end -->'
+  ].join('\n');
+  expectDispositionError(() => buildDispositionScopes(text, 'docs/a.md'), /不允许嵌套不同 disposition/);
+});
+
+test('disposition: code-artifact 不接受参数（防止用声明伪装成默认值）', () => {
+  expectDispositionError(
+    () => buildDispositionScopes('<!-- verifact: disposition=code-artifact owner=x.md -->\n', 'docs/a.md'),
+    /code-artifact 不接受参数/
+  );
+});
+
+test('disposition: 引号内的空格保留（why="a b c"）', () => {
+  const scopes = buildDispositionScopes('<!-- verifact: disposition=narrative why="LLL and BKZ snapshot" -->\n40 行\n', 'docs/a.md');
+  const d = scopes.resolve(2);
+  assert.strictEqual(d.disposition, 'narrative');
+  assert.strictEqual(d.args.why, 'LLL and BKZ snapshot');
+  assert.strictEqual(d.source, 'file');
+});
+
+test('disposition: 普通 HTML 注释不被误伤', () => {
+  const scopes = buildDispositionScopes('<!-- TODO: 这是普通注释 -->\n103µs\n', 'docs/a.md');
+  assert.strictEqual(scopes.hasAny, false);
+  assert.strictEqual(scopes.resolve(2).disposition, 'code-artifact');
+});
+
+test('disposition: 声明过的数字不进判定，只进 disposition 计数（分母分开）', async () => {
+  const root = tmpProject({
+    'doc.md': [
+      '# 实验快照',
+      '<!-- verifact: begin disposition=measured-once artifact=log.txt -->',
+      'p95 = 78.5ms',
+      '<!-- verifact: end -->',
+      '当前实现 keygen = 103µs'
+    ].join('\n')
+  });
+  const report = await engine.run(dispConfig(root), {});
+  const measured = report.claims.filter((c) => c.disposition === 'measured-once');
+  assert.ok(measured.length >= 1, '应有一条被分类的声明，实际 claims=' + JSON.stringify(report.claims.map((c) => [c.key, c.disposition, c.status])));
+  assert.ok(measured.every((c) => c.status === 'disposition'), '被分类的声明不应进入判定');
+  assert.strictEqual(report.counts.dispositioned >= 1, true, '应有 dispositioned 计数');
+  assert.strictEqual(report.counts.dispositionCounts['measured-once'] >= 1, true, '处置分布应含 measured-once');
+  assert.strictEqual(report.counts.codeArtifactClaims + report.counts.dispositioned, report.counts.allJudgedClaims, '双分母应自洽');
+  assert.strictEqual(report.counts.claims, report.counts.codeArtifactClaims, 'claims 仍等于进入判定的条数');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('disposition: 写错声明让整次运行失败（不允许静默丢文档）', async () => {
+  const root = tmpProject({
+    'doc.md': '# 状态\n| 合计 | 199/199 | <!-- verifact: disposition=progress -->\n'
+  });
+  let threw = null;
+  try { await engine.run(dispConfig(root), {}); } catch (e) { threw = e; }
+  assert.ok(threw, '应当让整次运行失败，但没有');
+  assert.ok(/处置声明解析失败/.test(threw.message), '错误信息应指明处置声明解析失败，实际=' + threw.message);
+  fs.rmSync(root, { recursive: true, force: true });
 });
 
 // ---------- 运行 ----------
