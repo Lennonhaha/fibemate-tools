@@ -1,10 +1,10 @@
 # RFC: 处置分类（Dispositions）—— 让 verifact 区分「没有证据」与「不适用证据」
 
-- Status: Draft（讨论稿，未实现）
-- Date: 2026-10-26
+- Status: Partially implemented（Phase 1 合并于 2026-10-26 `0756c92`；Phase 2 因 #96 暂缓；第五类未实现）
+- Date: 2026-10-26（同日增补 `external-snapshot` 与已知限制，见 §2.1.1、§4.1.1、§9）
 - Author: 刘天赫 `<research@fibemate.net>`
 - Applies to: `verifact/` 0.1.x
-- Related: `VERIFACT-DESIGN.md` §五（ignore / deny）
+- Related: `VERIFACT-DESIGN.md` §五（ignore / deny）、#95、#96、#97
 - Tracking issue: #92
 
 ---
@@ -17,7 +17,7 @@
 - `ratio` 类 116 条,大量是 `0/28`、`199/199` 这种**清单进度**,不是比值声明;
 - `kv` 类 82 条,大量是 `n=40, q=1009` 这种**实验参数**,属于叙事。
 
-**提议**:引入 `disposition`(处置分类),四个取值 `code-artifact`(默认)、`measured-once`、`progress`、`narrative`。非 `code-artifact` 的声明**不计入覆盖率分母,但仍然被计数、被打印、被可见**;并且每一种豁免都必须**指名这个数字由谁拥有**,否则解析即报错。
+**提议**:引入 `disposition`(处置分类),四个取值 `code-artifact`(默认)、`measured-once`、`progress`、`narrative`,以及 2026-10-26 增补的第五类 `external-snapshot`(外部服务拥有的数字,§2.1.1)。非 `code-artifact` 的声明**不计入覆盖率分母,但仍然被计数、被打印、被可见**;并且每一种豁免都必须**指名这个数字由谁拥有**,否则解析即报错。
 
 **一句话边界**:本 RFC 不会把 6.7% 变成 60%。它只会把**误导性的 6.7%** 变成**诚实的、更小的分母**。真正的覆盖率要靠把性能数字绑到基准产物上(本 RFC 之后的 A 项工作)。
 
@@ -86,7 +86,7 @@ Top 文件:`performance-benchmarks-2026-07-18.md`(90 条,其中 52 unbound)、`T
 
 ## 2. Proposed Solution(提议方案)
 
-### 2.1 四种 disposition
+### 2.1 四种 disposition + 增补第五类
 
 | disposition | 含义 | 绑定要求(必须指名拥有者) | 进分母 |
 |---|---|---|---|
@@ -94,8 +94,31 @@ Top 文件:`performance-benchmarks-2026-07-18.md`(90 条,其中 52 unbound)、`T
 | `measured-once` | 某次运行/某次构建的测量值 | **必须** `artifact=<path>`,且该产物存在;`since=<date>` 建议 | 否 |
 | `progress` | 清单/看板的进度统计 | **必须** `owner=<path or issue url>` | 否 |
 | `narrative` | 实验参数、外部引用、描述性数字 | **必须** `why="<一句话>"` | 否 |
+| `external-snapshot` | 外部服务（Scorecard / 告警数 / 覆盖率）的当前值 | **必须** `source=<命令或 URL>`；`asof=<date>` 建议 | 否 |
 
 `measured-once` 保留一件事:**产物存在性仍然检查**。缺产物的 `measured-once` 不是「豁免」,是**红**(`broken-disposition`),因为它在声称「我有出处」。
+
+### 2.1.1 `external-snapshot`(2026-10-26 增补)
+
+`status-2026-10.md` 里有一整片数字既不属于产物,也不由我们产生:OpenSSF Scorecard `8.1 / 10` 与那张子项表、
+Dependabot / CodeQL 的开放数、ACVP 覆盖。共同特征:
+
+- 数字的所有者是**外部服务**,不是本次构建;
+- 文档本身已写清复核命令(`curl api.securityscorecards.dev/...`、`gh api .../alerts`);
+- 仓里**没有也不该有**对应产物 —— 有产物反而是抄了一份注定过期的快照。
+
+所以它既不能 `measured-once`(要求 `artifact=`),也不该 `progress`(那是看板进度,硬套等于给外部评分发豁免)。
+
+判据不是「产物索引里有没有」,而是「照 `source` 重跑一遍,能不能得到同一个数」。
+写成 `source=` 的必须是**一条可执行命令或一个稳定 URL**,不能是一句描述。
+
+**明确它不做什么**:verifact 无出站网络(§8),因此它**不代为复核**。这条 disposition 只做一件事:
+把一个「我们控制不了、但能复核」的数字,与其复核方式绑在一起,并移出「本该由代码证明」的分母。
+真正判定它是否过期是另一个工具的活(读 `source`、对比、报 `stale-external`)。
+
+**实现状态:本条未实现(Phase 4)。** 当前解析器遇到 `external-snapshot` 会 fail closed
+(`未知 disposition="external-snapshot"`),这是正确行为 —— 不要为了试用去放宽解析器。
+实现时需要一并处理 `source="..."`:它包含空格与 `:`、`/`,必须走带引号的参数解析(与 `why="..."` 同一条路径)。
 
 ### 2.2 反洗白条款(anti-laundering)
 
@@ -108,6 +131,7 @@ Disposition 的天然风险是被用来把「没证据」改名成「不需要�
 5. **全部声明中非 `code-artifact` 占比 > 50% → 报告顶部警示**。这个数是有意义的健康指标:一个仓库如果一半以上的硬数字都不针对产物,那它的问题不在 verifact。
 6. **`progress` 的 `owner` 可以继承,但不可以缺席**。单条 `disposition=progress` 未写 `owner=` 时,继承所在 `region` 在 `begin` 声明的 `owner=`;单条与区域都没有 → **报错**。写清单的人只需在区域头写一次 owner,不必逐条重复,但「无主数字」永远不被接受。
 7. **只有 `owner` 可以继承**。`artifact` / `since` / `why` 必须就地声明 —— 它们是逐条不同的事实,继承会把「每条都有自己的出处」变成「整个区域共用一句借口」。
+8. **`external-snapshot` 必须给非空 `source=`**,且不得是自然语言描述。没有复核方式的「外部数字」等于不可复核的外部数字,按报错处理。
 
 ### 2.3 报告形态:双数并列,永不折叠成一个数
 
@@ -136,7 +160,7 @@ drift 0   ambiguous 51   unbound 214
 **区域级**(必须成对,显式 `end`):
 
 ```markdown
-<!-- verifact: begin disposition=measured-once artifact=docs/bench/2026-07-18.json since=2026-07-18 -->
+<!-- verifact: begin disposition=measured-once artifact=<产物路径，必须存在> since=2026-07-18 -->
 ... 52 条基准数字 ...
 <!-- verifact: end -->
 ```
@@ -147,6 +171,14 @@ drift 0   ambiguous 51   unbound 214
 <!-- verifact: begin disposition=progress owner=docs/SECURITY-AUDIT-CHECKLIST.md -->
 | 合计 | 199/199 | ✅ |
 | 元数据 | 8/10 | ⚠️ |
+<!-- verifact: end -->
+```
+
+外部服务拥有的数字(§2.1.1):
+
+```markdown
+<!-- verifact: begin disposition=external-snapshot source="curl -s https://api.securityscorecards.dev/projects/github.com/Lennonhaha/fibemate" asof=2026-10-25 -->
+- 主仓 OpenSSF Scorecard **8.1 / 10**
 <!-- verifact: end -->
 ```
 
@@ -252,6 +284,23 @@ deny  >  disposition  >  ignore  >  正常判定
 
 真正的杠杆在别处:`measure` 类 99 条里只有 2 条可核验 —— 说明**基准产物的键名和文档的键名对不上**,或产物根本没导出成机器可读格式。那是 A 项的活,不是 B 项的。
 
+#### 4.1.1 修正(2026-10-26,实测后)
+
+上面「文件级 disposition 后 161 条 / 7.5%」那一行**建立在错误假设上,已作废**:
+它假设那四份文档整份都不是 `code-artifact` 声明。实际打开看不是 —— 它们大多是**真声明、只是缺产物**
+(基准页 52 条测量、校验页 29 条 `N=5,000` 的 TVLA 样本量)。真正整份叙事的只有两份文档,实测:
+
+| | 分母 | verified | 覆盖率 |
+|---|---:|---:|---:|
+| 标注前 | 285 | 19 | 6.7% |
+| 标注后(两份文档) | 247 | **18** | **7.3%** |
+
+注意 verified 19 → 18:移出的 38 条里有 **1 条本来是 verified**(`ok-e2e = 31/31`)。
+所以 6.7% → 7.3% 是**分子减少 + 分母减少**共同造成的比值变化,**连「0.8 pt 的诚实提升」都算不上,是纯分母效应**。
+
+结论更新:**B 项不会带来任何覆盖率改善。** 它的收益只有两条:报告不再把「不适用证据」算成「缺证据」,
+以及每条豁免都带名字。
+
 ### 4.2 定性收益
 
 | 收益 | 说明 |
@@ -301,6 +350,8 @@ deny  >  disposition  >  ignore  >  正常判定
 1. **`progress` 的 `owner` 强制,通过区域级声明 + 单条继承来平衡易用性**(§2.2 规则 6、7)。只在整个区域写一次 `owner`,下面的条目自动继承;单条与区域都缺 → 报错。守住了「无主数字不能存在」,又没让写文档变成重复劳动。
 2. **`ratio` 必须显式声明,禁止推断**(§3.8)。缺声明 → 默认 `code-artifact`;绑不上 → 留在 `unbound`。解析器不得依据数值形状、上下文或邻近文本推断语义。
 3. **`expires` 不纳入 disposition**。新鲜度检查是独立机制,读 `measured_at` / `source_artifact`(允许但不强制),不由 disposition 的取值变化触发。理由:一旦 `expires` 能让 CI 变红,最省力的做法就是把 `measured-once` 改成 `narrative` 消红,而不是去重测 —— 那是标准的指标腐化路径。
+4. **增补第五类 `external-snapshot`**(2026-10-26,§2.1.1)。分数/告警数/覆盖率的拥有者在外部服务,且文档已给出复核命令;塞进 `measured-once` 或 `progress` 都会污染那两类的语义。**实现待做。**
+5. **drift 历史不能用 `id` 比对**(2026-10-26)。`id` 含行号,插一行注释即全文件改名,`diffRuns` 会把纯排版改动读成大规模迁移(#96)。稳定键是 Phase 2 的前置条件,不是可选项。
 
 **仍待议**
 
@@ -310,10 +361,10 @@ deny  >  disposition  >  ignore  >  正常判定
 
 ## 7. Rollout(落地顺序)
 
-1. **Phase 1(无行为变化)**:解析 + JSON 字段 + 报告双数并列。此时所有声明默认 `code-artifact`,输出与今天等价,便于对比。
-2. **Phase 2**:迁移 29 条 `ignore`,在报告里加 `dispositionCounts` 与 `brokenDispositions`。
-3. **Phase 3**:加 §2.2 的警示项(all-narrative file、占比)。
-4. **Phase 4**(可选):视情况把 `broken-disposition` 纳入门禁。
+1. **Phase 1(已完成,`0756c92`)**:解析 + JSON 字段 + 报告双数并列。当时所有声明默认 `code-artifact`,314 条声明逐条比对 0 差异。
+2. **Phase 2(暂缓)**:迁移 29 条 `ignore`;加 `brokenDispositions`(缺产物的 `measured-once`)。**前置条件:稳定 claim 键(#96)** —— 否则标注动作本身就在制造假迁移。
+3. **Phase 3(部分完成,#97)**:§2.2 第 4、5 条警示已实现(整文件全非 `code-artifact` 单列;占比 > 50% 顶部警示)。
+4. **Phase 4(待做)**:实现 `external-snapshot`;决定 `broken-disposition` 是否进 CI。
 
 每一步都可单独回退:disposition 是增量字段,删掉注释即回到今天的行为。
 
@@ -325,3 +376,17 @@ deny  >  disposition  >  ignore  >  正常判定
 - 不自动改文档:verifact 只报,不改
 - 不追溯 git 历史:disposition 只描述当前文件
 - **不提高覆盖率数字**:本 RFC 只让分母诚实
+
+---
+
+## 9. 已知限制(实测发现,2026-10-26)
+
+1. **没留下产物的基准页无法诚实标 `measured-once`**。`performance-benchmarks-2026-07-18.md` 的 52 条测量,
+   那一次运行没有导出机器可读结果,`artifact=` 无从指。只剩两条路:今后基准必须提交输出产物;
+   或标 `narrative` —— 而后者会触发 §2.2 第 4 条警示。**那是设计意图,不是缺陷。**
+2. **TSA 存证目录永远不能标注**。`www/docs/tsa/**` 里有些文件本身就是被时间戳的对象(`lg-075-README.md`),
+   插注释会改哈希、破坏存证。这里只能靠 config 层 scope 排除,不能靠 disposition。
+3. **claim 的 `id` 含行号**(`src/core/claims.js:254`),插注释会让整份文件的 id 改名,drift 历史被造假迁移(#96)。
+   所以 Phase 2 的第一步是稳定键,不是标注释。
+4. **一般抽取崩溃仍被降级成计数**(`src/pooled-scan.js`,#95):文档整份解析失败时声明数变少、报告仍绿。
+   处置声明写错已经是 fatal,一般抽取崩溃还不是。
