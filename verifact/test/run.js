@@ -353,6 +353,59 @@ test('reference: 标准编号单列计数，不进判定也不进覆盖率分母
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---------- ignore 必须带 why（2026-10-26） ----------
+
+test('ignore: 缺 why 直接是配置致命错（不降级、不补默认值）', () => {
+  let threw = null;
+  try {
+    loadConfig({ cwd: FIX, overrides: { docs: { roots: ['.'] }, ignore: [{ file: '**/a.md', key: 'k' }] } });
+  } catch (e) { threw = e; }
+  assert.ok(threw, '应当报错，但没有');
+  assert.strictEqual(threw.code, 'config_error', '错误码应为 config_error，实际=' + threw.code);
+  assert.ok(/缺少可读的 why/.test(JSON.stringify(threw.details)), '应指出缺 why，实际=' + JSON.stringify(threw.details));
+});
+
+test('ignore: 只写 note 不写 why 也不放行（字段已改名）', () => {
+  let threw = null;
+  try {
+    loadConfig({ cwd: FIX, overrides: { docs: { roots: ['.'] }, ignore: [{ file: '**/a.md', note: '这一条的理由写得足够长但没有用 why 字段' }] } });
+  } catch (e) { threw = e; }
+  assert.ok(threw, '应当报错，但没有');
+  assert.ok(/仍用 note 而没有 why/.test(JSON.stringify(threw.details)), '应指出字段已改名，实际=' + JSON.stringify(threw.details));
+});
+
+test('ignore: why 写占位符（todo / n\/a）不放行', () => {
+  let threw = null;
+  try {
+    loadConfig({ cwd: FIX, overrides: { docs: { roots: ['.'] }, ignore: [{ file: '**/a.md', why: 'TODO' }] } });
+  } catch (e) { threw = e; }
+  assert.ok(threw, '应当报错，但没有');
+  assert.ok(threw.code === 'config_error', '错误码应为 config_error，实际=' + threw.code);
+});
+
+test('ignore: 合法的 why 会跟着声明进报告（不只活在配置里）', async () => {
+  const root = tmpProject({ 'doc.md': ['# 文档', '全量测试 100/100 通过'].join('\n') });
+  const why = '这是 JS 基准表，与硬件 C addon 不同口径，不应互比';
+  const cfg = dispConfig(root, { ignore: [{ key: '全量测试', why }] });
+  const report = await engine.run(cfg, {});
+  const ig = report.claims.find((c) => c.status === 'ignored');
+  assert.ok(ig, '应有一条 ignored，实际=' + JSON.stringify(report.claims.map((c) => [c.key, c.status])));
+  assert.ok(ig.note.includes(why), 'note 应包含 why，实际=' + ig.note);
+  assert.strictEqual(report.counts.ignored, 1);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('deny 仍然用 note（本次只收紧 ignore，不改 deny 语义）', () => {
+  const cfg = loadConfig({
+    cwd: FIX,
+    overrides: {
+      docs: { roots: ['.'] },
+      deny: [{ file: '**/a.md', key: 'k', note: '对照组不能比：这是 liboqs 基线，不是本仓产出物' }]
+    }
+  });
+  assert.strictEqual(cfg.deny.length, 1, 'deny 不应受 ignore 新规影响');
+});
+
 // ---------- sealed：哈希存证目录（2026-10-26） ----------
 
 test('sealed: 存证目录的声明单列，不进判定也不进分母', async () => {
