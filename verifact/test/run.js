@@ -866,6 +866,121 @@ test('stableKey: 同一行写了两次同一个数时，报告列出重复声明
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---------- 扫描崩溃必须变红（#95） ----------
+
+const { scanFiles } = require('../src/pooled-scan');
+const { spawnSync } = require('child_process');
+
+test('scan: 真实读取失败被标成 fatal（too_large 不是同类）', async () => {
+  const res = await scanFiles([
+    { rel: 'docs/missing.md', full: path.join(FIX, 'docs', '__does_not_exist__.md') }
+  ], { modules: MODULES });
+  assert.strictEqual(res.errors.length, 1, '应记录 1 条错误，实际=' + JSON.stringify(res.errors));
+  assert.strictEqual(res.errors[0].fatal, true, '读取崩溃必须标记 fatal');
+  assert.strictEqual(res.errors[0].rel, 'docs/missing.md');
+});
+
+test('scan: 超过 maxFileBytes 只算跳过，不算 fatal', async () => {
+  const root = tmpProject({ 'big.md': '| KAT | 1/2 |\n' + 'x'.repeat(4000) });
+  const res = await scanFiles([{ rel: 'big.md', full: path.join(root, 'big.md') }], { modules: MODULES, maxBytes: 100 });
+  assert.strictEqual(res.errors.length, 1);
+  assert.strictEqual(res.errors[0].reason, 'too_large');
+  assert.ok(!res.errors[0].fatal, 'too_large 不应是 fatal');
+  assert.ok(res.errors[0].bytes > 100, '应记录实际字节数，实际=' + res.errors[0].bytes);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+function crashScanner(rel) {
+  return async () => ({
+    results: [],
+    errors: [{ rel, reason: 'EIO: simulated read failure', fatal: true }],
+    workers: 0
+  });
+}
+
+test('engine: 扫描崩溃默认中止，报出文件名与逃生阀', async () => {
+  const root = tmpProject({ 'a.md': '| KAT | 10,000/10,000 |\n' });
+  const cfg = dispConfig(root);
+  await assert.rejects(
+    () => engine.run(cfg, { scanFiles: crashScanner('docs/crash.md') }),
+    (e) => {
+      assert.strictEqual(e.name, 'ScanError', '错误类型应是 ScanError，实际=' + e.name);
+      assert.ok(e.message.includes('docs/crash.md'), '错误必须点名文件，实际=' + e.message);
+      assert.ok(e.message.includes('--allow-scan-errors'), '错误必须给出逃生阀，实际=' + e.message);
+      return true;
+    }
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('engine: --allow-scan-errors 时继续，但把被跳过的文件逐条列出', async () => {
+  const root = tmpProject({ 'a.md': '| KAT | 10,000/10,000 |\n' });
+  const cfg = dispConfig(root);
+  const report = await engine.run(cfg, { scanFiles: crashScanner('docs/crash.md'), allowScanErrors: true });
+  assert.strictEqual(report.meta.toleratedScanErrors, 1, '应记录 1 条被容忍的错误');
+  assert.strictEqual(report.meta.skippedFiles.length, 1, 'skippedFiles 必须逐条列出');
+  assert.strictEqual(report.meta.skippedFiles[0].file, 'docs/crash.md');
+  assert.strictEqual(report.meta.skippedFiles[0].tolerated, true);
+  assert.strictEqual(report.counts.claims, 0, '被跳过的文件不能凭空贡献声明');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('engine: 处置声明错误即使开了 --allow-scan-errors 也必须中止', async () => {
+  const root = tmpProject({ 'a.md': '| KAT | 10,000/10,000 |\n' });
+  const cfg = dispConfig(root);
+  const scanner = async () => ({
+    results: [],
+    errors: [{ rel: 'docs/bad.md', reason: 'disposition_error', detail: '未知 disposition', fatal: true }],
+    workers: 0
+  });
+  await assert.rejects(
+    () => engine.run(cfg, { scanFiles: scanner, allowScanErrors: true }),
+    (e) => e.name === 'DispositionError'
+  );
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('CLI: 崩溃文件默认 exit 1；--allow-scan-errors 时 exit 0 且报告点名', () => {
+  const root = tmpProject({
+    'verifact.json': JSON.stringify({
+      docs: { roots: ['docs'] },
+      artifacts: { roots: ['.'] },
+      cache: { enabled: false },
+      gate: { failOn: 'none' }
+    }, null, 2),
+    'docs/a.md': '# 状态\n\n| KAT | 10,000/10,000 |\n',
+    'docs/crash.md': '# 崩溃\n\n| TVLA | 10,000/10,000 |\n',
+    // NODE_OPTIONS 预加载：让读取 crash.md 时抛 EIO。这是唯一能在子进程里
+    // 稳定复现"读失败"而不依赖操作系统权限的办法。
+    'crash-hook.cjs': [
+      "'use strict';",
+      "const fs = require('fs');",
+      'const orig = fs.readFileSync;',
+      'fs.readFileSync = function (file, ...rest) {',
+      "  if (typeof file === 'string' && file.endsWith('crash.md')) {",
+      "    const e = new Error('EIO: simulated read failure');",
+      "    e.code = 'EIO';",
+      '    throw e;',
+      '  }',
+      '  return orig.call(fs, file, ...rest);',
+      '};',
+      ''
+    ].join('\n')
+  });
+  const cli = path.join(__dirname, '..', 'bin', 'verifact.js');
+  const env = Object.assign({}, process.env, { NODE_OPTIONS: '--require ' + path.join(root, 'crash-hook.cjs') });
+
+  const red = spawnSync(process.execPath, [cli, 'verify', '--format', 'json'], { cwd: root, env, encoding: 'utf8' });
+  assert.strictEqual(red.status, 1, '崩溃必须 exit 1，实际=' + red.status + ' stderr=' + red.stderr);
+  assert.ok((red.stderr || '').includes('crash.md'), 'stderr 必须点名崩溃文件，实际=' + red.stderr);
+
+  const green = spawnSync(process.execPath, [cli, 'verify', '--allow-scan-errors'], { cwd: root, env, encoding: 'utf8' });
+  assert.strictEqual(green.status, 0, '逃生阀下应 exit 0，实际=' + green.status + ' stderr=' + green.stderr);
+  assert.ok(green.stdout.includes('1 个文件扫描失败'), '报告必须承认有文件没进统计');
+  assert.ok(green.stdout.includes('docs/crash.md'), '报告必须点名被跳过的文件');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 // ---------- 运行 ----------
 
 (async function main() {

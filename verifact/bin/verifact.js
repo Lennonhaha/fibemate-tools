@@ -24,6 +24,7 @@ verify 选项:
   --config <file>      配置文件路径，默认依次查找 verifact.json / .verifact.json
   --docs <dir|file>    追加文档根（可多次，覆盖配置里的 docs.roots；相对路径以配置文件目录为基准）
   --artifacts <dir>    追加产出物根（相对路径同样以配置文件目录为基准）
+  --allow-scan-errors  扫描崩溃时不中止（默认中止并 exit 1）；被跳过的文件会逐条列出
   --fail-on <policy>   none | drift | review | lint-high   （默认 drift）
   --format <fmt>       text | json | md                     （默认 text）
   --out <file>         结果写入文件（json/md 时尤其有用）
@@ -48,7 +49,7 @@ function parseArgs(argv) {
     if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      const booleanFlags = ['deep', 'no-cache', 'quiet', 'version'];
+      const booleanFlags = ['deep', 'no-cache', 'quiet', 'version', 'allow-scan-errors'];
       if (booleanFlags.indexOf(key) >= 0 || next === undefined || next.startsWith('--')) {
         out.flags[key] = true;
         i++;
@@ -149,6 +150,22 @@ function renderText(report, top) {
     L.push(`警告：sealed 规则未命中任何声明（路径可能写错，存证目录实际未受保护）：${sw.emptyPatterns.join('；')}`);
   }
   L.push(`核验率     ${rate}%  (code-artifact ${reviewable} 条)      ${rateAll}%  (全部受判 ${allJudged} 条)`);
+
+  const skipped = (report.meta && report.meta.skippedFiles) || [];
+  if (skipped.length) {
+    const tolerated = skipped.filter((x) => x.tolerated);
+    if (tolerated.length) {
+      L.push(`警告：${tolerated.length} 个文件扫描失败，已按 --allow-scan-errors 跳过，它们的声明没有进入上面的数字：`);
+      for (const x of tolerated) L.push(`  ${x.file}  （${x.reason}）`);
+    }
+    const tooLarge = skipped.filter((x) => x.reason === 'too_large');
+    if (tooLarge.length) {
+      const limit = tooLarge[0].limit ? ` > ${tooLarge[0].limit} B` : '';
+      L.push(`跳过（超限${limit}）：${tooLarge.length} 个文件`);
+      for (const x of tooLarge.slice(0, 5)) L.push(`  ${x.file}  ${x.bytes != null ? x.bytes + ' B' : ''}`);
+      if (tooLarge.length > 5) L.push(`  … 另有 ${tooLarge.length - 5} 个`);
+    }
+  }
 
   const dw = report.counts.dispositionWarnings;
   if (dw) {
@@ -271,6 +288,7 @@ async function cmdVerify(rawArgv, args) {
   const report = await engine.run(cfg, {
     deep: !!flags.deep,
     noCache: !!flags['no-cache'],
+    allowScanErrors: !!flags['allow-scan-errors'],
     concurrency: flags.concurrency ? Number(flags.concurrency) : undefined,
     logger: log
   });
