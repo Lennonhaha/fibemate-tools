@@ -105,7 +105,8 @@ const STATUS_LABEL = {
   'ref-missing': '✖ 产出物缺失',
   ignored: '- 已忽略',
   denied: '- 已拒绑',
-  disposition: '- 已分类'
+  disposition: '- 已分类',
+  reference: '- 标准编号（不按比值）'
 };
 
 function renderText(report, top) {
@@ -130,6 +131,11 @@ function renderText(report, top) {
   if (c.dispositionCounts) {
     const dc = c.dispositionCounts;
     L.push(`处置分类   code-artifact ${pad(dc['code-artifact'] || 0, 5)}   progress ${pad(dc.progress || 0, 5)}   measured-once ${pad(dc['measured-once'] || 0, 5)}   narrative ${pad(dc.narrative || 0, 5)}   已分类 ${pad(c.dispositioned || 0, 5)}`);
+  }
+  if (c.standardRefs) {
+    const refs = (report.claims || []).filter((x) => x.status === 'reference');
+    const shown = refs.slice(0, 3).map((x) => x.file + ':L' + x.line + ' ' + String(x.value && x.value.raw || '').trim());
+    L.push(`标准编号   ${pad(c.standardRefs, 5)}   条（不当比值解析，例：${shown.join('；')}${refs.length > 3 ? ' …' : ''}）`);
   }
   L.push(`核验率     ${rate}%  (code-artifact ${reviewable} 条)      ${rateAll}%  (全部受判 ${allJudged} 条)`);
 

@@ -180,10 +180,23 @@ async function run(cfg, opts) {
     refFound: 0, refMissing: 0, ignored: 0, denied: 0,
     // 新增维度：处置分类。claimsTotal = 抽到的全部声明（含 ignored/denied），
     // dispositioned = 因处置分类而未进入判定的条数。
-    claimsTotal: claims.length, dispositioned: 0, dispositionCounts: {}
+    claimsTotal: claims.length, dispositioned: 0, dispositionCounts: {},
+    standardRefs: 0
   };
 
   for (const claim of claims) {
+    // 标准编号引用（`FIPS 203/205`、`GB/T 32918/32905`）：形状是比值，语义不是。
+    // 提取层已标记，这里单列计数：不进判定、不进覆盖率分母，但必须能在报告里被看见。
+    // 放在 deny 之前——它是抽取层的真相，不该被配置层的规则再摆一道。
+    if (claim.notMeasurement) {
+      stats.standardRefs++;
+      results.push(Object.assign({}, claim, {
+        status: 'reference',
+        note: '标准编号引用（' + claim.notMeasurement + '）：不按比值解析'
+      }));
+      continue;
+    }
+
     // 优先级：deny > disposition > ignore > 正常判定（RFC §3.5）。
     // deny 是结构性的（对照组不能比），优先于任何作者声明。
     if (isDenied(claim, cfg)) {
@@ -245,7 +258,7 @@ async function run(cfg, opts) {
   // 报告就出现「处置分类 code-artifact 247」而「分母 246」（1 条拒绑的差，#102）。
   stats.dispositionCounts = { 'code-artifact': 0, 'measured-once': 0, progress: 0, narrative: 0 };
   for (const c of results) {
-    if (c.status === 'ignored' || c.status === 'denied') continue;
+    if (c.status === 'ignored' || c.status === 'denied' || c.status === 'reference') continue;
     const key = c.disposition || 'code-artifact';
     if (stats.dispositionCounts[key] == null) stats.dispositionCounts[key] = 0;
     stats.dispositionCounts[key]++;
@@ -259,7 +272,7 @@ async function run(cfg, opts) {
   // 「把分母搬走」的合法外衣。
   const perFile = new Map();
   for (const c of results) {
-    if (c.status === 'ignored') continue;
+    if (c.status === 'ignored' || c.status === 'reference') continue;
     if (!perFile.has(c.file)) perFile.set(c.file, []);
     perFile.get(c.file).push(c);
   }

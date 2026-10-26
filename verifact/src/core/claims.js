@@ -60,6 +60,29 @@ const PATTERNS = [
 
 const DEEP_BARE = { kind: 'bare', re: /(?:^|[|\s(])(\d[\d,]{3,})(?=[|\s.,;)\]]|$)/g, numGroup: 1, ctx: true };
 
+// 标准编号不是命中率。`FIPS 203/205` 与 `204/205` 形状相同，形状匹配器就会
+// 把两条标准编号绑成一对「文档值 vs 产物值」，于是产生一次从没发生过的漂移
+// （issue #101，lg-075-README.md:171）。这类引用要在提取阶段就排除。
+//
+// 判定必须「贴着数字」：只在数字左侧很短的前缀上找标准名，并且中间只能有空白/点号。
+// 用一个大窗口宽泛地找 `NIST` 会把「NIST 测试集通过 10/10」也误杀——那是真声明。
+const STANDARD_PREFIX_RE = /(?:FIPS|RFC|GB\s*\/?\s*T|GB|ISO\s*\/?\s*IEC|ISO|NIST|ITU-T|IEEE|PKCS\s*#?|SP\s?800-\d+|ePrint|IACR)\.?\s*$/;
+const STANDARD_SUFFIX_RE = /^\s*(?:标准|规范|standards?)\b/i;
+const STANDARD_NEAR_CHARS = 24;
+
+/** 返回排除原因，或 null 表示这确实是个比值。 */
+function standardNumberReason(line, start, end, num, den) {
+  const before = line.slice(Math.max(0, start - STANDARD_NEAR_CHARS), start);
+  if (STANDARD_PREFIX_RE.test(before)) return 'standard-prefix';
+  const after = line.slice(end, end + 12);
+  if (STANDARD_SUFFIX_RE.test(after)) return 'standard-suffix';
+  // 年份区间：两边都是 19xx/20xx，人类不会用这种比值表达通过率
+  const n = parseInt(String(num).replace(/,/g, ''), 10);
+  const d = parseInt(String(den).replace(/,/g, ''), 10);
+  if (n >= 1900 && n <= 2099 && d >= 1900 && d <= 2099) return 'year-pair';
+  return null;
+}
+
 function blank(match) {
   return match.replace(/[^\n]/g, ' ');
 }
@@ -200,14 +223,23 @@ function extractClaims(text, fileRef, opts) {
           const keyTokens = ctxRaw.keyTokens;
           const primaryToken = ctxRaw.primaryToken;
           const numerator = m[1], denominator = m[2];
-          if (isNoiseNumber(numerator, null, primaryToken) && keyTokens.length === 0) { continue; }
-          claim = {
+          const standard = standardNumberReason(line, start, end, numerator, denominator);
+          const common = {
             kind: 'ratio',
             key: keyTokens.length ? ctxRaw.key : 'ratio',
             keyTokens: keyTokens.length ? keyTokens : ['ratio'],
             primaryToken: primaryToken || 'ratio',
             value: mkRatio(numerator, denominator)
           };
+          if (standard) {
+            // 不静默丢掉：留成一条声明，但标上「不是度量」，由引擎单列计数——
+            // 不进判定、不进覆盖率分母。直接删掉就变成「看不见」，与假绿同宗。
+            claim = Object.assign(common, { notMeasurement: standard });
+          } else if (isNoiseNumber(numerator, null, primaryToken) && keyTokens.length === 0) {
+            continue;
+          } else {
+            claim = common;
+          }
         } else if (p.kind === 'loc') {
           // 行号引用（第 45 行）不是规模声明，丢弃
           if (/第\s*$/.test(line.slice(Math.max(0, start - 4), start))) { continue; }

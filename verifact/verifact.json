@@ -123,12 +123,6 @@
       "key": "key-protocol",
       "kind": "count",
       "note": "OPK 不变式数已由 3 修正为 7（OPK.cfg 自 2026-07-15 首版起即列 7 条）；此处拒绑以防被 cars-scorecard 的 C2 handshake（7 条）对上——两个模型不是一回事"
-    },
-    {
-      "file": "**/docs/tsa/**/lg-075-README.md",
-      "key": "nist-fips",
-      "kind": "ratio",
-      "note": "「NIST FIPS 203/205 标准」是标准编号引用，不是 203/205 的比值声明；被绑到 tools/cars-verification.md#L86 的 204/205（score 0.53）纯属同形状巧合。TSA 目录内的文件已盖时间戳，不能插注释，故在 config 层拒绑；抽取器把标准编号当比值的缺陷另开 issue"
     }
   ],
   "ignore": [
