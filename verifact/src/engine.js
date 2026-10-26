@@ -250,6 +250,29 @@ async function run(cfg, opts) {
   }
   const codeArtifactClaims = stats.dispositionCounts['code-artifact'] || 0;
 
+  // 反洗白警示：整份文件一条 code-artifact 都没有 → 单列出来的文件级声明；
+  // 全报告非 code-artifact 占比 > 50% → 顶部警示。没有这两条，整文件标注就成了
+  // 「把分母搬走」的合法外衣。
+  const perFile = new Map();
+  for (const c of results) {
+    if (c.status === 'ignored') continue;
+    if (!perFile.has(c.file)) perFile.set(c.file, []);
+    perFile.get(c.file).push(c);
+  }
+  const fullyDispositionedFiles = [];
+  for (const [file, list] of perFile) {
+    if (!list.length) continue;
+    if (list.every((c) => (c.disposition || 'code-artifact') !== 'code-artifact')) {
+      fullyDispositionedFiles.push({ file, claims: list.length });
+    }
+  }
+  const judgedTotal = codeArtifactClaims + stats.dispositioned;
+  stats.dispositionWarnings = {
+    fullyDispositionedFiles,
+    share: judgedTotal ? stats.dispositioned / judgedTotal : 0,
+    shareExceedsHalf: judgedTotal > 0 && stats.dispositioned / judgedTotal > 0.5
+  };
+
   // 跨文档互证：同一个键在不同文档里给了不同的值（没有产出物可锚时的第二层信号）
   let crossDoc = [];
   if (!cfg.crossDoc || cfg.crossDoc.enabled !== false) {
