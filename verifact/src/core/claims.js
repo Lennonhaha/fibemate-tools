@@ -123,11 +123,28 @@ function cleanTokens(arr) {
   return out;
 }
 
+const UNIT_TOKENS = new Set(['s', 'ms', 'us', 'µs', 'μs', 'ns']);
+
+/**
+ * 前一个单元格的数字+单位不能当前面那一格的键。
+ * 「| keygen | 48 µs | ~0.522 ms |」里 µs 会被 token 成 's'，
+ * 于是第三格得到 key `keygen-s`（而不是 `keygen`）—— 键是错的，绑定也就错。
+ * 只在「数字紧跟单位且单位就是 prefix 末尾」时剔除，不影响 “延迟(ms)” 这类表头。
+ */
+function dropForeignUnit(rawPrefix, tokensArr) {
+  if (!tokensArr.length) return tokensArr;
+  const last = tokensArr[tokensArr.length - 1];
+  if (!UNIT_TOKENS.has(String(last).toLowerCase())) return tokensArr;
+  if (!/\d(?:[.,]\d+)?\s*(?:µs|μs|us|ms|ns|s)\s*[~≈]?\s*$/i.test(rawPrefix)) return tokensArr;
+  return tokensArr.slice(0, -1);
+}
+
 function contextKey(line, startIdx, endIdx, unitToken) {
   // 表格行的 "|" 会切断上下文，换成空格（等长，安全）
-  let prefix = line.slice(Math.max(0, startIdx - 64), startIdx).replace(/\|/g, ' ');
+  const rawPrefix = line.slice(Math.max(0, startIdx - 64), startIdx);
+  let prefix = rawPrefix.replace(/\|/g, ' ');
   prefix = prefix.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
-  const before = cleanTokens(tokens(prefix));
+  const before = dropForeignUnit(prefix, cleanTokens(tokens(prefix)));
   if (!before.length) {
     // 数字在行首时（"43/43 cross-validation tests PASS"），用后面的描述词充当键
     let afterRaw0 = '';
