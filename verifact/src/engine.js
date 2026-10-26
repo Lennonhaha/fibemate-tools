@@ -93,6 +93,21 @@ function isIgnored(claim, cfg) {
   return !!matchRule(cfg.ignore, claim);
 }
 
+/**
+ * 哈希存证目录（sealed）：返回命中的那条 glob，未命中返回 null。
+ *
+ * 存在理由：`www/docs/tsa/**` 里的文件本身就是 TSA 时间戳的对象，
+ * 插一行 `<!-- verifact: ... -->` 就改变哈希、破坏存证。disposition 要改文件，
+ * 所以这条路走不通；ignore/deny 又只能按 key/kind 逐条写、治不了「整个目录」。
+ * sealed 是目录级的「连碰都不碰」声明。
+ */
+function sealedPattern(claim, cfg) {
+  for (const p of cfg.sealed || []) {
+    if (matchesFile(claim.file, p)) return p;
+  }
+  return null;
+}
+
 function evaluateGate(stats, policy) {
   const failOn = policy || 'drift';
   if (failOn === 'none') return { failed: false, policy: failOn };
@@ -181,8 +196,12 @@ async function run(cfg, opts) {
     // 新增维度：处置分类。claimsTotal = 抽到的全部声明（含 ignored/denied），
     // dispositioned = 因处置分类而未进入判定的条数。
     claimsTotal: claims.length, dispositioned: 0, dispositionCounts: {},
-    standardRefs: 0
+    standardRefs: 0, sealed: 0
   };
+
+  // sealed 规则命中率：一条规则零命中就是「配了但没生效」，
+  // 滴漏地让人以为存证目录已受保护——必须报出来。
+  const sealedHits = new Map((cfg.sealed || []).map((p) => [p, 0]));
 
   for (const claim of claims) {
     // 标准编号引用（`FIPS 203/205`、`GB/T 32918/32905`）：形状是比值，语义不是。
@@ -193,6 +212,18 @@ async function run(cfg, opts) {
       results.push(Object.assign({}, claim, {
         status: 'reference',
         note: '标准编号引用（' + claim.notMeasurement + '）：不按比值解析'
+      }));
+      continue;
+    }
+
+    // 哈希存证目录：连碰都不碰。放在 deny 之前——目录级保护比逐条规则更强。
+    const sealedBy = sealedPattern(claim, cfg);
+    if (sealedBy) {
+      stats.sealed++;
+      sealedHits.set(sealedBy, (sealedHits.get(sealedBy) || 0) + 1);
+      results.push(Object.assign({}, claim, {
+        status: 'sealed',
+        note: '哈希存证目录（sealed: ' + sealedBy + '）：不能插注释，不参与判定'
       }));
       continue;
     }
@@ -258,7 +289,7 @@ async function run(cfg, opts) {
   // 报告就出现「处置分类 code-artifact 247」而「分母 246」（1 条拒绑的差，#102）。
   stats.dispositionCounts = { 'code-artifact': 0, 'measured-once': 0, progress: 0, narrative: 0 };
   for (const c of results) {
-    if (c.status === 'ignored' || c.status === 'denied' || c.status === 'reference') continue;
+    if (c.status === 'ignored' || c.status === 'denied' || c.status === 'reference' || c.status === 'sealed') continue;
     const key = c.disposition || 'code-artifact';
     if (stats.dispositionCounts[key] == null) stats.dispositionCounts[key] = 0;
     stats.dispositionCounts[key]++;
@@ -272,7 +303,7 @@ async function run(cfg, opts) {
   // 「把分母搬走」的合法外衣。
   const perFile = new Map();
   for (const c of results) {
-    if (c.status === 'ignored' || c.status === 'reference') continue;
+    if (c.status === 'ignored' || c.status === 'reference' || c.status === 'sealed') continue;
     if (!perFile.has(c.file)) perFile.set(c.file, []);
     perFile.get(c.file).push(c);
   }
@@ -312,6 +343,10 @@ async function run(cfg, opts) {
     share: judgedTotal ? stats.dispositioned / judgedTotal : 0,
     shareExceedsHalf: judgedTotal > 0 && stats.dispositioned / judgedTotal > 0.5
   };
+
+  // sealed 规则零命中 = 规则写了但没生效（路径写错、或目录被改名）。
+  // 不说的话，存证目录就处在「以为被保护、实际在裸奔」的状态。
+  stats.sealedWarnings = { emptyPatterns: [...sealedHits.entries()].filter(([, n]) => n === 0).map(([p]) => p) };
 
   // 跨文档互证：同一个键在不同文档里给了不同的值（没有产出物可锚时的第二层信号）
   let crossDoc = [];
@@ -394,4 +429,4 @@ async function run(cfg, opts) {
   return report;
 }
 
-module.exports = { run, evaluateGate, listDocFiles, applyBinding, isIgnored, isDenied, denyRule, labelFor };
+module.exports = { run, evaluateGate, listDocFiles, applyBinding, isIgnored, isDenied, denyRule, sealedPattern, labelFor };

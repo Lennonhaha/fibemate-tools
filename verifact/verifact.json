@@ -263,6 +263,9 @@
       "note": "BOUND-BUG：verifact auto-binding 将 X25519 keygen 5.97ms 误关联到 SM2 verify 50ms；TODO: 修绑定"
     }
   ],
+  "sealed": [
+    "docs/tsa/**"
+  ],
   "gate": {
     "failOn": "drift"
   },

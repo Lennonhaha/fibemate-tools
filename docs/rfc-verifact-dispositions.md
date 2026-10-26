@@ -1,6 +1,6 @@
 # RFC: 处置分类（Dispositions）—— 让 verifact 区分「没有证据」与「不适用证据」
 
-- Status: Partially implemented（Phase 1 合并于 2026-10-26 `0756c92`；Phase 2 因 #96 暂缓；第五类未实现）
+- Status: Partially implemented（Phase 1 合并于 2026-10-26 `0756c92`；Phase 2 因 #96 暂缓；第五类 `external-snapshot` 未实现；`sealed` 已于 2026-10-26 实现）
 - Date: 2026-10-26（同日增补 `external-snapshot` 与已知限制，见 §2.1.1、§4.1.1、§9）
 - Author: 刘天赫 `<research@fibemate.net>`
 - Applies to: `verifact/` 0.1.x
@@ -119,6 +119,18 @@ Dependabot / CodeQL 的开放数、ACVP 覆盖。共同特征:
 **实现状态:本条未实现(Phase 4)。** 当前解析器遇到 `external-snapshot` 会 fail closed
 (`未知 disposition="external-snapshot"`),这是正确行为 —— 不要为了试用去放宽解析器。
 实现时需要一并处理 `source="..."`:它包含空格与 `:`、`/`,必须走带引号的参数解析(与 `why="..."` 同一条路径)。
+
+### 2.1.2 `sealed`：配置层，不是 disposition（2026-10-26 已实现）
+
+前四类都是**作者声明**，必须改文件；而存证目录恰恰不能改文件。所以 `sealed` 只能写在 `verifact.json`：
+`"sealed": ["docs/tsa/**"]`。命中即 `status: sealed`，不进判定、不进分母，也不算 `unbound` / `ignored`，
+报告单列 `Sealed (by hash): N 条`。
+
+它不是 disposition：`disposition=sealed` 会 fail closed 报「未知 disposition」。理由：能改文件的目录不需要它，
+需要它的目录改不了文件。
+
+两条防空转：① `sealed` 只接受路径 glob 字符串，写成 `{file: ...}` 规则对象直接报配置错误；
+② 某条 sealed 规则零命中 → 报告告警「存证目录实际未受保护」。
 
 ### 2.2 反洗白条款(anti-laundering)
 
@@ -386,6 +398,8 @@ deny  >  disposition  >  ignore  >  正常判定
    或标 `narrative` —— 而后者会触发 §2.2 第 4 条警示。**那是设计意图,不是缺陷。**
 2. **TSA 存证目录永远不能标注**。`www/docs/tsa/**` 里有些文件本身就是被时间戳的对象(`lg-075-README.md`),
    插注释会改哈希、破坏存证。这里只能靠 config 层 scope 排除,不能靠 disposition。
+   **2026-10-26 已实现**:这个排除口现在叫 `sealed`（见 `VERIFACT-DESIGN.md`）,实测命中 `lg-075-README.md` 的 24 条声明,
+   报告单列 `Sealed (by hash): 24 条`;零命中的 sealed 规则会告警。
 3. **claim 的 `id` 含行号**(`src/core/claims.js:254`),插注释会让整份文件的 id 改名,drift 历史被造假迁移(#96)。
    所以 Phase 2 的第一步是稳定键,不是标注释。
 4. **一般抽取崩溃仍被降级成计数**(`src/pooled-scan.js`,#95):文档整份解析失败时声明数变少、报告仍绿。

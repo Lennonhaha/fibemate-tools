@@ -353,6 +353,57 @@ test('reference: 标准编号单列计数，不进判定也不进覆盖率分母
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---------- sealed：哈希存证目录（2026-10-26） ----------
+
+test('sealed: 存证目录的声明单列，不进判定也不进分母', async () => {
+  const root = tmpProject({
+    'docs/tsa/2026-07-17-lg-gen/lg-readme.md': [
+      '# 存证',
+      '本次测试 43/43 通过，keygen = 103µs'
+    ].join('\n'),
+    'docs/normal.md': ['# 普通', '全量测试 100/100 通过'].join('\n')
+  });
+  const cfg = dispConfig(root, { sealed: ['**/docs/tsa/**'] });
+  const report = await engine.run(cfg, {});
+  const sealed = report.claims.filter((c) => c.status === 'sealed');
+  assert.strictEqual(sealed.length, 2, '存证目录内 2 条声明应全部 sealed，实际=' + JSON.stringify(report.claims.map((c) => [c.file, c.status])));
+  assert.ok(sealed.every((c) => /sealed: \*\*\/docs\/tsa\/\*\*/.test(c.note)), 'note 应指出命中的规则');
+  assert.strictEqual(report.counts.sealed, 2, 'counts.sealed 应为 2，实际=' + report.counts.sealed);
+  assert.strictEqual(report.counts.claims, 1, '只有 normal.md 的 1 条进入判定，实际=' + report.counts.claims);
+  assert.strictEqual(report.counts.codeArtifactClaims, 1, '分母不得包含存证声明');
+  assert.strictEqual(report.counts.allJudgedClaims, 1, '受判总数也不得包含存证声明');
+  assert.strictEqual(report.counts.unbound, 1, '存证声明不得被算成 unbound');
+  assert.strictEqual(report.counts.dispositionCounts['code-artifact'], 1, 'code-artifact 桶只应有 1 条');
+  const text = require('../bin/verifact').renderText(report, 3);
+  assert.ok(/Sealed \(by hash\): 2 条/.test(text), '报告应打印 Sealed (by hash): 2 条，实际=\n' + text);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('sealed: 规则零命中时必须告警（写了规则但没生效）', async () => {
+  const root = tmpProject({ 'doc.md': ['# 文档', '全量测试 100/100 通过'].join('\n') });
+  const cfg = dispConfig(root, { sealed: ['docs/archive/**'] });
+  const report = await engine.run(cfg, {});
+  assert.deepStrictEqual(report.counts.sealedWarnings.emptyPatterns, ['docs/archive/**'],
+    '零命中的规则要被点名，实际=' + JSON.stringify(report.counts.sealedWarnings));
+  const text = require('../bin/verifact').renderText(report, 3);
+  assert.ok(/sealed 规则未命中任何声明/.test(text), '报告必须有告警行');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('sealed: 作者不能用 disposition=sealed 自封存证（只能配置层声明）', () => {
+  expectDispositionError(() => buildDispositionScopes('<!-- verifact: disposition=sealed -->\n正文\n'), /未知 disposition/);
+});
+
+test('sealed: 配置写成规则对象时直接报错，不允许静默不生效', () => {
+  let threw = null;
+  try {
+    loadConfig({ cwd: FIX, overrides: { docs: { roots: ['.'] }, sealed: [{ file: 'docs/tsa/**' }] } });
+  } catch (e) { threw = e; }
+  assert.ok(threw, '应当报错，但没有');
+  assert.strictEqual(threw.code, 'config_error', '错误码应为 config_error，实际=' + threw.code);
+  assert.ok(/sealed 的每一项必须是非空路径 glob 字符串/.test(JSON.stringify(threw.details)), '错误信息应说明原因，实际=' + JSON.stringify(threw.details));
+});
+
 // ---------- 处置分类（dispositions，RFC docs/rfc-verifact-dispositions.md） ----------
 
 const os = require('os');

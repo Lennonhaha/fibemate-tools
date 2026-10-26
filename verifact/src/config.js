@@ -44,6 +44,9 @@ const DEFAULTS = {
   bindings: [],
   ignore: [],
   deny: [],
+  // 哈希存证目录：文件本身被时间戳盖过，插一行注释就改变哈希、破坏存证。
+  // 这类目录不能靠 disposition（那要改文件），只能靠配置登记。
+  sealed: [],
   gate: { failOn: 'drift' },
   cache: { enabled: true, dir: '.verifact', maxHistory: 200 },
   server: { host: '127.0.0.1', port: 8787 }
@@ -134,6 +137,15 @@ function loadConfig(opts) {
   }
   if (!Array.isArray(merged.ignore)) {
     errs.push('ignore 必须是数组');
+  }
+  if (!Array.isArray(merged.sealed)) {
+    errs.push('sealed 必须是数组');
+  } else {
+    // sealed 只接受「路径 glob 字符串」。写成规则对象时静默不生效，
+    // 会让人以为存证目录已经受保护（假安全）——所以一律报错。
+    for (const s of merged.sealed) {
+      if (typeof s !== 'string' || !s.trim()) errs.push('sealed 的每一项必须是非空路径 glob 字符串，实际=' + JSON.stringify(s));
+    }
   }
   if (!(merged.resolve.minScore >= 0 && merged.resolve.minScore <= 1)) {
     errs.push('resolve.minScore 必须在 [0,1]');
