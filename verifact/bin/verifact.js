@@ -177,8 +177,23 @@ function renderText(report, top) {
     L.push('');
   }
 
+  const dups = report.duplicateClaims || [];
+  if (dups.length) {
+    L.push('重复声明（同一文件内完全相同的数字，身份用 #n 区分）');
+    L.push('─'.repeat(78));
+    for (const d of dups.slice(0, top)) {
+      L.push(`  ${pad(d.file + ':' + d.lines.join(','), 46)} ${pad(d.kind, 8)} ${d.key} = ${d.value}`);
+      L.push('    同一个值出现了 ' + d.lines.length + ' 次；不是错误，但请确认不是复制粘贴的残骸。');
+    }
+    L.push('');
+  }
+
   L.push('─'.repeat(78));
   L.push(`门禁策略 ${report.gate.policy} → ${report.gate.failed ? 'FAILED' : 'PASSED'}`);
+  if (report.meta.history && report.meta.history.legacyDropped) {
+    L.push('提示：history 已升级到 schema ' + report.meta.history.schema
+      + '，' + report.meta.history.legacyDropped + ' 条旧记录（行号 id）已丢弃；本次是新基线。');
+  }
   if (report.meta.docsMissing.length) {
     L.push(`注意：以下 root 不存在，已跳过 → ${report.meta.docsMissing.join(', ')}`);
   }
@@ -302,6 +317,10 @@ async function cmdDiff(rawArgv, args) {
   const cwd = path.resolve(flags.cwd || process.cwd());
   const cfg = loadConfig({ cwd, configPath: flags.config, overrides: buildOverrides(rawArgv, flags) });
   const runs = readRuns(cfg, cwd, 60);
+  if (runs.legacyDropped) {
+    process.stdout.write('注意：history 里 ' + runs.legacyDropped + ' 条旧 schema 1 记录已忽略'
+      + '（行号 id 无法映射到内容寻址键，见 #96）。本次比较只使用 schema 2 记录。\n');
+  }
   if (runs.length < 2) {
     process.stdout.write('历史里不足两次运行，先跑两次 verify 再 diff。当前：' + runs.length + ' 次\n');
     return 0;
@@ -326,7 +345,7 @@ async function cmdDiff(rawArgv, args) {
     L.push(`${title}（${list.length}）`);
     if (!list.length) { L.push('  无。'); L.push(''); return; }
     for (const c of list.slice(0, Number(flags.top) || 30)) {
-      L.push('  ' + pad(c.from, 12) + ' → ' + pad(c.to, 12) + '  ' + c.id);
+      L.push('  ' + pad(c.from, 12) + ' → ' + pad(c.to, 12) + '  ' + c.key);
     }
     L.push('');
   };

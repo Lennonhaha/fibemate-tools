@@ -166,13 +166,13 @@ test('engine: 端到端跑通并给出门禁结果', async () => {
   assert.strictEqual(soft.gate.failed, false, 'policy=none 时不应失败');
 });
 
-test('history.diff: 识别新增 / 消除的 drift', () => {
-  const A = { states: { 'a:1:ratio:kat': 'drift', 'b:2:kv:p95': 'verified', 'c:3:ratio:tvla': 'verified' } };
-  const B = { states: { 'a:1:ratio:kat': 'verified', 'b:2:kv:p95': 'drift', 'd:4:count:samples': 'drift' } };
+test('history.diff: 识别新增 / 消除的 drift（键为 stableKey）', () => {
+  const A = { states: { 'a.md:ratio:kat:aaaaaaaaaaaa': 'drift', 'b.md:kv:p95:bbbbbbbbbbbb': 'verified', 'c.md:ratio:tvla:cccccccccccc': 'verified' } };
+  const B = { states: { 'a.md:ratio:kat:aaaaaaaaaaaa': 'verified', 'b.md:kv:p95:bbbbbbbbbbbb': 'drift', 'd.md:count:samples:dddddddddddd': 'drift' } };
   const d = diffRuns(A, B);
   assert.strictEqual(d.newDrift.length, 2, 'p95 由 verified 退化为 drift，samples 新增');
   assert.strictEqual(d.resolvedDrift.length, 1, 'kat 已修复');
-  assert.strictEqual(d.resolvedDrift[0].id, 'a:1:ratio:kat');
+  assert.strictEqual(d.resolvedDrift[0].key, 'a.md:ratio:kat:aaaaaaaaaaaa');
   assert.strictEqual(d.lostVerified.length, 2, 'p95 与 tvla 都不再 verified');
 });
 
@@ -504,6 +504,169 @@ test('disposition: 写错声明让整次运行失败（不允许静默丢文档�
   try { await engine.run(dispConfig(root), {}); } catch (e) { threw = e; }
   assert.ok(threw, '应当让整次运行失败，但没有');
   assert.ok(/处置声明解析失败/.test(threw.message), '错误信息应指明处置声明解析失败，实际=' + threw.message);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+// ---------- stableKey（内容寻址身份，#96） ----------
+
+const { assignStableKeys, normalizeContext } = require('../src/core/stable-key');
+
+function keysOf(doc, file) {
+  const claims = extractClaims(doc, file || 'docs/a.md', { modules: MODULES });
+  assignStableKeys(claims);
+  return claims;
+}
+
+function byKey(claims, key) {
+  return claims.filter((c) => c.key === key);
+}
+
+test('stableKey: 在声明上方插入一行，身份不变（而 id 会变）', () => {
+  const before = ['# 状态', '', '| KAT | 10,000/10,000 |'].join('\n');
+  const after = ['# 状态', '', '<!-- 新增的一行说明 -->', '', '| KAT | 10,000/10,000 |'].join('\n');
+  const a = byKey(keysOf(before), 'kat')[0];
+  const b = byKey(keysOf(after), 'kat')[0];
+  assert.ok(a && b, '两次都应抽到 KAT 声明');
+  assert.notStrictEqual(a.id, b.id, 'id 含行号，插行后必然改变（这是要修的问题本身）');
+  assert.strictEqual(a.stableKey, b.stableKey, 'stableKey 必须不变，实际 ' + a.stableKey + ' vs ' + b.stableKey);
+});
+
+test('stableKey: CRLF 与 LF 得到同一个键（Windows 本地与 Actions Linux 必须一致）', () => {
+  const lf = ['# 状态', '', '| KAT | 10,000/10,000 |', '| p95 | 78.5ms |'].join('\n');
+  const crlf = lf.replace(/\n/g, '\r\n');
+  const a = keysOf(lf).map((c) => c.stableKey).sort();
+  const b = keysOf(crlf).map((c) => c.stableKey).sort();
+  assert.deepStrictEqual(b, a, 'CRLF 与 LF 的身份必须一致');
+});
+
+test('stableKey: 行首缩进变化不改变身份', () => {
+  const a = byKey(keysOf('| KAT | 10,000/10,000 |'), 'kat')[0];
+  const b = byKey(keysOf('    | KAT | 10,000/10,000 |'), 'kat')[0];
+  assert.strictEqual(a.stableKey, b.stableKey, '缩进属于排版，不该改身份');
+});
+
+test('stableKey: 行尾追加 disposition 注释不改变身份（否则标注动作本身制造假迁移）', () => {
+  const plain = '| KAT | 10,000/10,000 |';
+  const annotated = '| KAT | 10,000/10,000 | <!-- verifact: disposition=progress owner=board.md -->';
+  const a = byKey(keysOf(plain), 'kat')[0];
+  const b = byKey(keysOf(annotated), 'kat')[0];
+  assert.strictEqual(b.disposition, 'progress', '注释应被处置层识别');
+  assert.strictEqual(a.stableKey, b.stableKey, 'stableKey 不该把注释算进上下文');
+  assert.strictEqual(normalizeContext(annotated), '| KAT | 10,000/10,000 |', '注释必须被剥掉');
+});
+
+test('stableKey: 改数字本身必须换身份（不能拿旧历史冒充同一条）', () => {
+  const a = byKey(keysOf('| KAT | 10,000/10,000 |'), 'kat')[0];
+  const b = byKey(keysOf('| KAT | 9,999/10,000 |'), 'kat')[0];
+  assert.notStrictEqual(a.stableKey, b.stableKey, '值变了就不该复用同一个身份');
+});
+
+test('stableKey: 同一文件两条完全相同的声明给两个身份，并有 #2 后缀', () => {
+  const doc = ['| KAT | 10,000/10,000 |', '| KAT | 10,000/10,000 |'].join('\n');
+  const claims = keysOf(doc);
+  assert.strictEqual(claims.length, 2, '应抽到两条，实际 ' + claims.length);
+  assert.notStrictEqual(claims[0].stableKey, claims[1].stableKey, '完全相同的两行也必须是两个身份');
+  assert.ok(!/#/.test(claims[0].stableKey), '第一条不带后缀，实际 ' + claims[0].stableKey);
+  assert.ok(/#2$/.test(claims[1].stableKey), '第二条应带 #2，实际 ' + claims[1].stableKey);
+  assert.strictEqual(claims[0].stableKeyGroupSize, 2, '两条都应标记组大小，供报告告警');
+  assert.strictEqual(claims[1].stableKeyIndex, 2);
+});
+
+test('stableKey: 重复声明的后缀在无关行插入后保持稳定', () => {
+  const base = ['| KAT | 10,000/10,000 |', '| KAT | 10,000/10,000 |'];
+  const shifted = ['# 标题', ''].concat(base);
+  const a = keysOf(base.join('\n')).map((c) => c.stableKey);
+  const b = keysOf(shifted.join('\n')).map((c) => c.stableKey);
+  assert.deepStrictEqual(b, a, '插入无关行不应让 #2 变成 #1');
+});
+
+test('stableKey: normalizeContext 剥注释、压空白、统一换行', () => {
+  assert.strictEqual(normalizeContext('  a\tb  \r\nc  '), 'a b c');
+  assert.strictEqual(normalizeContext('| K | 1 | <!-- verifact: disposition=narrative why="x" -->'), '| K | 1 |');
+  assert.strictEqual(normalizeContext('x\r\ny'), normalizeContext('x\ny'), 'CRLF 与 LF 必须等价');
+  assert.strictEqual(normalizeContext('    | K | 1 |'), normalizeContext('| K | 1 |'), '缩进必须被吃掉');
+});
+
+test('stableKey: 形状为 file:kind:key:12位十六进制', () => {
+  const c = byKey(keysOf('| KAT | 10,000/10,000 |', 'docs/sub/a.md'), 'kat')[0];
+  assert.ok(/^docs\/sub\/a\.md:ratio:kat:[0-9a-f]{12}$/.test(c.stableKey), '实际 ' + c.stableKey);
+});
+
+// ---------- history schema 2：稳定键与迁移（#96） ----------
+
+const os2 = require('os');
+const { readRuns, appendRun, HISTORY_SCHEMA } = require('../src/history');
+
+function projectForHistory(files, extra) {
+  const root = tmpProject(files);
+  const cfg = loadConfig({
+    cwd: root,
+    overrides: Object.assign({
+      docs: { roots: ['.'], exclude: ['**/node_modules/**'], maxFiles: 20, maxFileBytes: 1048576 },
+      artifacts: { roots: ['.'], exclude: ['**/node_modules/**'], maxFiles: 20, maxFileBytes: 1048576 },
+      modules: ['ML-KEM-768', 'SM2'],
+      cache: { enabled: true, dir: '.verifact', maxHistory: 20 },
+      gate: { failOn: 'none' },
+      ignore: [],
+      deny: [],
+      // 用错值做人工绑定：状态恒为 drift —— 既非 unbound，也不依赖产出物
+      bindings: [{ kind: 'ratio', expect: '10000/10000' }]
+    }, extra || {})
+  });
+  return { root, cfg };
+}
+
+test('history: schema 1 记录被丢弃并计数，不做启发式映射', () => {
+  const { root, cfg } = projectForHistory({ 'doc.md': '| KAT | 9,999/10,000 |\n' });
+  const dir = path.join(root, '.verifact');
+  fs.mkdirSync(dir, { recursive: true });
+  const legacy = { generatedAt: '2026-10-01T00:00:00.000Z', counts: {}, states: { 'doc.md:L1:ratio:kat': 'drift' } };
+  fs.writeFileSync(path.join(dir, 'history.jsonl'), JSON.stringify(legacy) + '\n', 'utf8');
+  const runs = readRuns(cfg, root, 10);
+  assert.strictEqual(runs.length, 0, 'schema 1 记录不应被当作可比基准，实际=' + runs.length);
+  assert.strictEqual(runs.legacyDropped, 1, '应报告被丢弃的旧记录条数，实际=' + runs.legacyDropped);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('history: 在声明上方插入 N 行，diffRuns 产生零迁移（#96 的 DoD）', async () => {
+  const base = [
+    '| KAT | 9,999/10,000 |',
+    '| TVLA | 9,999/10,000 |'
+  ].join('\n');
+  const shifted = ['# 标题', '', '<!-- 三行新注释之一 -->', '', '<!-- 又一行 -->', '', base].join('\n');
+  const { root, cfg } = projectForHistory({ 'doc.md': base });
+
+  const first = await engine.run(cfg, {});
+  assert.ok(first.claims.length >= 2, '第一次运行应抽到声明，实际=' + first.claims.length);
+  assert.strictEqual(first.claims.every((c) => c.status !== 'unbound'), true, '测试前提：声明必须非 unbound');
+
+  // 在原文件上方插入 6 行（含标题、空行、注释），行号整体位移
+  fs.writeFileSync(path.join(root, 'doc.md'), shifted, 'utf8');
+  const second = await engine.run(cfg, {});
+
+  const runs = readRuns(cfg, root, 10);
+  assert.strictEqual(runs.length, 2, '两次运行都应进历史，实际=' + runs.length);
+  assert.strictEqual(runs[0].schema, HISTORY_SCHEMA, '历史记录应标记 schema 2');
+  const d = diffRuns(runs[0], runs[1]);
+  assert.strictEqual(d.all.length, 0, '插入无关行不应产生任何迁移，实际=' + JSON.stringify(d.all.map((c) => c.key + ' ' + c.from + '->' + c.to)));
+
+  // 对照：如果用行号 id 当键，同一份改动会显示成迁移 —— 证明这条测试有辨别力
+  const asIdStates = (r) => { const m = {}; for (const c of r.claims) if (c.status !== 'unbound') m[c.id] = c.status; return m; };
+  const byId = diffRuns({ states: asIdStates(first) }, { states: asIdStates(second) });
+  assert.ok(byId.all.length > 0, '按行号 id 比对应当出现迁移（否则测试无辨别力）');
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('stableKey: 同一行写了两次同一个数时，报告列出重复声明', async () => {
+  const { root, cfg } = projectForHistory({
+    'doc.md': '| KeyGen | 1.58 ms | **2.04 ms** | 1.71 ms | 2.77 ms | 11.77 ms | 11.77 ms | **489/s** |\n'
+  });
+  const report = await engine.run(cfg, {});
+  const dups = report.duplicateClaims || [];
+  assert.strictEqual(dups.length, 1, '应报告 1 组重复声明，实际=' + JSON.stringify(dups.map((d) => d.key)));
+  assert.strictEqual(dups[0].lines.length, 2, '该组应含两处，实际=' + JSON.stringify(dups[0].lines));
+  assert.strictEqual(report.counts.duplicateClaimGroups, 1, '计数应与列表一致');
   fs.rmSync(root, { recursive: true, force: true });
 });
 
