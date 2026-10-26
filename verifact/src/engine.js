@@ -122,6 +122,17 @@ async function run(cfg, opts) {
     concurrency: options.concurrency
   });
 
+  // 处置声明解析失败必须让整次运行失败。若只记成 docScanErrors，这份文档的声明会
+  // 静默消失，报告少了一整片数字却仍然绿色 —— 那正是本工具反对的假绿。
+  const fatal = scan.errors.filter((e) => e && e.fatal);
+  if (fatal.length) {
+    const lines = fatal.map((e) => (e.detail ? e.detail : e.rel + ': ' + e.reason));
+    const err = new Error('处置声明解析失败（' + fatal.length + ' 处）：\n  ' + lines.join('\n  '));
+    err.name = 'DispositionError';
+    err.fatal = fatal;
+    throw err;
+  }
+
   const claims = [];
   const lintFindings = [];
   for (const r of scan.results) {
@@ -164,18 +175,17 @@ async function run(cfg, opts) {
   const stats = {
     docs: listed.files.length,
     artifacts: artifacts.entries.length,
+    // claims 仍是「进入判定」的条数（code-artifact 且未被 ignore/deny）——语义不变。
     claims: 0, verified: 0, drift: 0, ambiguous: 0, unbound: 0,
-    refFound: 0, refMissing: 0, ignored: 0, denied: 0
+    refFound: 0, refMissing: 0, ignored: 0, denied: 0,
+    // 新增维度：处置分类。claimsTotal = 抽到的全部声明（含 ignored/denied），
+    // dispositioned = 因处置分类而未进入判定的条数。
+    claimsTotal: claims.length, dispositioned: 0, dispositionCounts: {}
   };
 
   for (const claim of claims) {
-    if (isIgnored(claim, cfg)) {
-      stats.ignored++;
-      results.push(Object.assign({}, claim, { status: 'ignored', note: '命中 ignore 规则' }));
-      continue;
-    }
-    // deny：人工确认「这条声明不能被自动绑定」。与 ignore 的区别是它仍然计入声明总数，
-    // 只是把绑定结果换成拒绑理由——数字继续留在报告里，不会被悄悄抹掉。
+    // 优先级：deny > disposition > ignore > 正常判定（RFC §3.5）。
+    // deny 是结构性的（对照组不能比），优先于任何作者声明。
     if (isDenied(claim, cfg)) {
       stats.denied++;
       const rule = denyRule(claim, cfg);
@@ -183,6 +193,25 @@ async function run(cfg, opts) {
         status: 'denied',
         note: '拒绝自动绑定' + (rule && rule.note ? '：' + rule.note : '')
       }));
+      continue;
+    }
+
+    const disposition = claim.disposition || 'code-artifact';
+    const judgedDisposition = claim.disposition && claim.disposition !== 'code-artifact';
+    if (judgedDisposition) {
+      // 声明者已表态：这条数字不是产物属性。它不进判定，也不进覆盖率分母，
+      // 但仍然逐条留在报告里（status=disposition），不允许静默丢弃。
+      stats.dispositioned++;
+      results.push(Object.assign({}, claim, {
+        status: 'disposition',
+        note: '处置分类：' + disposition + (claim.dispositionArgs ? '（' + Object.keys(claim.dispositionArgs).map((k) => k + '=' + claim.dispositionArgs[k]).join(' ') + '）' : '')
+      }));
+      continue;
+    }
+
+    if (isIgnored(claim, cfg)) {
+      stats.ignored++;
+      results.push(Object.assign({}, claim, { status: 'ignored', note: '命中 ignore 规则' }));
       continue;
     }
     stats.claims++;
@@ -211,6 +240,16 @@ async function run(cfg, opts) {
     results.push(Object.assign({}, claim, res, { note: explain(res) }));
   }
 
+  // 处置分布：只统计参与报告的声明（ignored 已单独计数，不重复计入）
+  stats.dispositionCounts = { 'code-artifact': 0, 'measured-once': 0, progress: 0, narrative: 0 };
+  for (const c of results) {
+    if (c.status === 'ignored') continue;
+    const key = c.disposition || 'code-artifact';
+    if (stats.dispositionCounts[key] == null) stats.dispositionCounts[key] = 0;
+    stats.dispositionCounts[key]++;
+  }
+  const codeArtifactClaims = stats.dispositionCounts['code-artifact'] || 0;
+
   // 跨文档互证：同一个键在不同文档里给了不同的值（没有产出物可锚时的第二层信号）
   let crossDoc = [];
   if (!cfg.crossDoc || cfg.crossDoc.enabled !== false) {
@@ -224,7 +263,7 @@ async function run(cfg, opts) {
   const gate = evaluateGate(withGate, cfg.gate.failOn);
 
   const report = {
-    schema: 'verifact-report/1',
+    schema: 'verifact-report/2',
     generatedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
     config: {
@@ -249,7 +288,14 @@ async function run(cfg, opts) {
       artifactsSkipped: artifacts.skipped,
       selfEvidenceRemoved: selfRemoved
     },
-    counts: Object.assign({ lint: lintFindings.length, crossDoc: crossDoc.length, crossDocWarn: crossDoc.filter((x) => x.severity === 'warn').length }, stats),
+    counts: Object.assign({
+      lint: lintFindings.length,
+      crossDoc: crossDoc.length,
+      crossDocWarn: crossDoc.filter((x) => x.severity === 'warn').length,
+      // 双分母：覆盖率必须能同时说出「以 code-artifact 为分母」和「以全部受判声明为分母」
+      codeArtifactClaims,
+      allJudgedClaims: codeArtifactClaims + stats.dispositioned
+    }, stats),
     lintCounts,
     gate,
     claims: results,
