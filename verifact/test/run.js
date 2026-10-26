@@ -82,6 +82,26 @@ test('claims: 良好样例零 finding（不误报优先）', () => {
   assert.strictEqual(lint.length, 0, '干净文本必须零用语线索');
 });
 
+test('claims: 前一个单元格的单位不污染键（48 µs 不会把下一格变成 keygen-s）', () => {
+  const text = [
+    '| 操作 | C Native | 纯 JS |',
+    '|---|---|---|',
+    '| keygen | 48 µs | 0.522 ms |'
+  ].join('\n');
+  const claims = extractClaims(text, 'docs/a.md', { modules: MODULES });
+  const c = claims.find((x) => String(x.value.raw).indexOf('0.522') === 0);
+  assert.ok(c, '应抽到 0.522ms');
+  assert.strictEqual(c.key, 'keygen', '键不应带上前一格的单位后缀，实际=' + c.key);
+});
+
+test('claims: 键里本来就有的单位不被误剔（控制项）', () => {
+  const text = '| keygen ms | 0.52 ms |';
+  const claims = extractClaims(text, 'docs/a.md', { modules: MODULES });
+  const c = claims.find((x) => String(x.value.raw).indexOf('0.52') === 0);
+  assert.ok(c, '应抽到 0.52ms');
+  assert.ok(c.keyTokens.indexOf('ms') >= 0, '“keygen ms”是键的一部分，不应被当作外来单位剔掉');
+});
+
 test('claims: 行号准确（代码块/链接清洗后不漂移）', () => {
   const text = read('docs/report.md');
   const claims = extractClaims(text, 'docs/report.md', { modules: MODULES });
@@ -577,6 +597,70 @@ test('disposition: 普通 HTML 注释不被误伤', () => {
   const scopes = buildDispositionScopes('<!-- TODO: 这是普通注释 -->\n103µs\n', 'docs/a.md');
   assert.strictEqual(scopes.hasAny, false);
   assert.strictEqual(scopes.resolve(2).disposition, 'code-artifact');
+});
+
+test('disposition: 围栏代码块里的示例声明不生效（不是生效声明）', () => {
+  const text = [
+    '文档示例：',
+    '```markdown',
+    '<!-- verifact: begin disposition=external-snapshot source="curl -s https://example.org" -->',
+    '- 分数 **8.1 / 10**',
+    '<!-- verifact: end -->',
+    '```',
+    '真实数字 103µs'
+  ].join('\n');
+  const scopes = buildDispositionScopes(text, 'docs/a.md');
+  assert.strictEqual(scopes.hasAny, false, '围栏里的示例不应被算作声明');
+  assert.strictEqual(scopes.resolve(7).disposition, 'code-artifact');
+});
+
+test('disposition: 围栏代码块里的非法示例不能把整个仓的门禁拖红', () => {
+  // 回归：docs/rfc-verifact-dispositions.md 举例未实现的 external-snapshot，旧解析器直接抛错
+  const text = [
+    '```md',
+    '<!-- verifact: begin disposition=narrativ why="typo" -->',
+    '```',
+    '正文 103µs'
+  ].join('\n');
+  assert.doesNotThrow(() => buildDispositionScopes(text, 'docs/a.md'));
+});
+
+test('disposition: 未闭合围栏按 CommonMark 一直遮到文件末', () => {
+  const text = [
+    '```markdown',
+    '<!-- verifact: disposition=progress -->',
+    '| 合计 | 199/199 |'
+  ].join('\n');
+  const scopes = buildDispositionScopes(text, 'docs/a.md');
+  assert.strictEqual(scopes.hasAny, false);
+  assert.strictEqual(scopes.resolve(3).disposition, 'code-artifact');
+});
+
+test('disposition: 行内代码里的示例声明不生效（RFC 里 `<!-- verifact: ... -->` 这种）', () => {
+  const text = [
+    '- 逐行扫描时优先匹配 `<!-- verifact: ... -->`;',
+    '真实数字 103µs'
+  ].join('\n');
+  const scopes = buildDispositionScopes(text, 'docs/a.md');
+  assert.strictEqual(scopes.hasAny, false);
+  assert.strictEqual(scopes.resolve(2).disposition, 'code-artifact');
+});
+
+test('disposition: 遮罩不过宽 —— 围栏外的真实声明仍然生效（控制项）', () => {
+  const text = [
+    '```md',
+    '<!-- verifact: disposition=progress -->',
+    '```',
+    '<!-- verifact: begin disposition=measured-once artifact=log.txt -->',
+    'p95 = 78.5ms',
+    '<!-- verifact: end -->'
+  ].join('\n');
+  const scopes = buildDispositionScopes(text, 'docs/a.md');
+  assert.strictEqual(scopes.hasAny, true, '真实声明必须仍被识别');
+  const d = scopes.resolve(5);
+  assert.strictEqual(d.disposition, 'measured-once');
+  assert.strictEqual(d.source, 'region');
+  assert.strictEqual(d.args.artifact, 'log.txt');
 });
 
 test('disposition: 声明过的数字不进判定，只进 disposition 计数（分母分开）', async () => {
