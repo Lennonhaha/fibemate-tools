@@ -92,8 +92,43 @@ const newCBOM = loadCBOM(newHash);
 // ════════════════════════════
 // 比较逻辑
 // ════════════════════════════
-const OLD = oldCBOM ? oldCBOM.version || 0 : 0;
-const NEW = newCBOM ? newCBOM.version || 0 : 0;
+// CycloneDX `bom.version` is optional with `minimum: 1, default: 1`. An absent
+// field therefore means "the default version", not 0 and not "no version".
+// Coercing absence to 0 made one side omitted look like a version change
+// (false "bumped") or a rollback (false "downgraded").
+const BOM_VERSION_DEFAULT = 1;
+
+function readBomVersion(bom) {
+  const raw = bom ? bom.version : undefined;
+  if (raw === undefined || raw === null) {
+    return { value: BOM_VERSION_DEFAULT, explicit: false, valid: true };
+  }
+  if (!Number.isInteger(raw) || raw < 1) {
+    return { value: raw, explicit: true, valid: false };
+  }
+  return { value: raw, explicit: true, valid: true };
+}
+
+function compareBomVersion(older, newer) {
+  // A schema-invalid value is reported, never silently ordered.
+  if (!older.valid || !newer.valid) return 'unknown';
+  if (newer.value > older.value) return 'bumped';
+  if (newer.value < older.value) return 'downgraded';
+  return 'same';
+}
+
+const OLD_VERSION = readBomVersion(oldCBOM);
+const NEW_VERSION = readBomVersion(newCBOM);
+const OLD = OLD_VERSION.value;
+const NEW = NEW_VERSION.value;
+
+const versionNotes = [];
+if (!OLD_VERSION.valid) {
+  versionNotes.push(`old: version ${JSON.stringify(OLD_VERSION.value)} is not a valid BOM version (integer >= 1)`);
+}
+if (!NEW_VERSION.valid) {
+  versionNotes.push(`new: version ${JSON.stringify(NEW_VERSION.value)} is not a valid BOM version (integer >= 1)`);
+}
 
 const diff = {
   meta: {
@@ -101,9 +136,12 @@ const diff = {
     newHash: newHash,
     oldVersion: OLD,
     newVersion: NEW,
+    oldVersionExplicit: OLD_VERSION.explicit,
+    newVersionExplicit: NEW_VERSION.explicit,
+    versionNotes: versionNotes,
     date: new Date().toISOString(),
   },
-  version: NEW > OLD ? 'bumped' : (NEW < OLD ? 'downgraded' : 'same'),
+  version: compareBomVersion(OLD_VERSION, NEW_VERSION),
   components: { added: [], removed: [], changed: [], unchanged: 0 },
   dependencies: { added: [], removed: [] },
   severity: 'none', // 'none' | 'info' | 'warning' | 'critical'
@@ -277,8 +315,10 @@ if (format === 'json') {
   lines.push('');
   lines.push(`| 属性 | 值 |`);
   lines.push(`|------|-----|`);
-  lines.push(`| 旧版本 | ${OLD} |`);
-  lines.push(`| 新版本 | ${NEW} |`);
+  const oldLabel = OLD_VERSION.explicit ? `${OLD}` : `${OLD} (default)`;
+  const newLabel = NEW_VERSION.explicit ? `${NEW}` : `${NEW} (default)`;
+  lines.push(`| 旧版本 | ${oldLabel} |`);
+  lines.push(`| 新版本 | ${newLabel} |`);
   lines.push(`| 版本 | ${diff.version} |`);
   lines.push(`| 严重性 | **${diff.severity}** (exit=${diff.exitCode}) |`);
   lines.push('');
