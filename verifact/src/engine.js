@@ -240,15 +240,19 @@ async function run(cfg, opts) {
     results.push(Object.assign({}, claim, res, { note: explain(res) }));
   }
 
-  // 处置分布：只统计参与报告的声明（ignored 已单独计数，不重复计入）
+  // 处置分布：只统计「作者表过态」的声明。ignored 与 denied 都不是作者的分类判断，
+  // 各自单独计数、不重复计入这里。denied 若混进来，会以默认值 code-artifact 落进桶里，
+  // 报告就出现「处置分类 code-artifact 247」而「分母 246」（1 条拒绑的差，#102）。
   stats.dispositionCounts = { 'code-artifact': 0, 'measured-once': 0, progress: 0, narrative: 0 };
   for (const c of results) {
-    if (c.status === 'ignored') continue;
+    if (c.status === 'ignored' || c.status === 'denied') continue;
     const key = c.disposition || 'code-artifact';
     if (stats.dispositionCounts[key] == null) stats.dispositionCounts[key] = 0;
     stats.dispositionCounts[key]++;
   }
-  const codeArtifactClaims = stats.dispositionCounts['code-artifact'] || 0;
+  // code-artifact 桶与覆盖率分母必须同源：进入判定的条数只从一个地方来，
+  // 不允许两处各算一次（那正是 #102 的成因）。
+  const codeArtifactClaims = stats.claims;
 
   // 反洗白警示：整份文件一条 code-artifact 都没有 → 单列出来的文件级声明；
   // 全报告非 code-artifact 占比 > 50% → 顶部警示。没有这两条，整文件标注就成了
@@ -338,9 +342,10 @@ async function run(cfg, opts) {
       lint: lintFindings.length,
       crossDoc: crossDoc.length,
       crossDocWarn: crossDoc.filter((x) => x.severity === 'warn').length,
-      // 双分母：覆盖率必须能同时说出「以 code-artifact 为分母」和「以全部受判声明为分母」
+      // 双分母：覆盖率必须能同时说出「以 code-artifact 为分母」和「以全部受判声明为分母」。
+      // 受判 = 进入判定的 + 作者声明非产物属性的 + 被拒绑的（拒绑也是判定结论，只是不绑定）。
       codeArtifactClaims,
-      allJudgedClaims: codeArtifactClaims + stats.dispositioned
+      allJudgedClaims: codeArtifactClaims + stats.dispositioned + stats.denied
     }, stats),
     lintCounts,
     gate,

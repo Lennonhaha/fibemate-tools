@@ -174,6 +174,15 @@ stableKey = <file>:<kind>:<key>:<sha256(file, kind, key, value.raw, context)[0..
 同一文件里出现两条**完全相同**的声明（同一行写了两次同一个数，或复制粘贴的残骸），第二条起追加 `#2`、`#3`，
 并在报告里单列「重复声明」。不合并它们：合并会让两条不同的声明共用一个历史位，那是静默丢数据。
 
+### 分母只能有一个来源（2026-10-26，issue #102）
+
+覆盖率的分母不再现场重算，只取 `counts.codeArtifactClaims`，而它直接等于进入判定的条数（`stats.claims`）。
+`dispositionCounts` 只统计作者表过态的声明，`ignored` 与 `denied` 各自单列——否则被拒绑的那条会以默认值
+混进 `code-artifact` 桶，报告上出现「处置分类 code-artifact 247」但「核验率分母 246」。
+
+`allJudgedClaims = 进入判定 + 已分类 + 已拒绑`：拒绑也是判定结论，只是不绑定，所以它留在「全部受判」的分母里，
+但不属于任何一个作者分类。
+
 `history.jsonl` 随之升到 `schema 2`：state map 的键换成 `stableKey`。**旧记录不迁移**——行号制的旧记录没有保存上下文，
 任何启发式映射都会在多条声明共用 key 时误判，还会把「插了一行」读成迁移。宁可让比较基准断一次，也不制造假迁移。
 
