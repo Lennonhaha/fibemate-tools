@@ -106,7 +106,8 @@ const STATUS_LABEL = {
   ignored: '- 已忽略',
   denied: '- 已拒绑',
   disposition: '- 已分类',
-  reference: '- 标准编号（不按比值）'
+  reference: '- 标准编号（不按比值）',
+  sealed: '- 哈希存证'
 };
 
 function renderText(report, top) {
@@ -136,6 +137,16 @@ function renderText(report, top) {
     const refs = (report.claims || []).filter((x) => x.status === 'reference');
     const shown = refs.slice(0, 3).map((x) => x.file + ':L' + x.line + ' ' + String(x.value && x.value.raw || '').trim());
     L.push(`标准编号   ${pad(c.standardRefs, 5)}   条（不当比值解析，例：${shown.join('；')}${refs.length > 3 ? ' …' : ''}）`);
+  }
+  if (c.sealed) {
+    // 存证目录里的声明既不是 unbound 也不是 ignored：它们从来就不该被整体评判，
+    // 但也不能凭空消失。单独一行，名字写清楚。
+    const files = new Set((report.claims || []).filter((x) => x.status === 'sealed').map((x) => x.file));
+    L.push(`Sealed (by hash): ${c.sealed} 条（${files.size} 个文件，不插注释、不参与判定）`);
+  }
+  const sw = report.counts.sealedWarnings;
+  if (sw && sw.emptyPatterns && sw.emptyPatterns.length) {
+    L.push(`警告：sealed 规则未命中任何声明（路径可能写错，存证目录实际未受保护）：${sw.emptyPatterns.join('；')}`);
   }
   L.push(`核验率     ${rate}%  (code-artifact ${reviewable} 条)      ${rateAll}%  (全部受判 ${allJudged} 条)`);
 

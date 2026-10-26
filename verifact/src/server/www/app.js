@@ -6,7 +6,8 @@
 
   var STATUS_TEXT = {
     verified: '已核验', drift: '漂移', ambiguous: '候选冲突', unbound: '未绑定',
-    ignored: '已忽略', denied: '已拒绑', disposition: '已分类', 'ref-found': '产出物存在', 'ref-missing': '产出物缺失'
+    ignored: '已忽略', denied: '已拒绑', disposition: '已分类', 'ref-found': '产出物存在', 'ref-missing': '产出物缺失',
+  reference: '标准编号', sealed: '哈希存证'
   };
 
   function $(id) { return document.getElementById(id); }
