@@ -116,7 +116,11 @@ function renderText(report, top) {
   L.push(`生成时间   ${report.generatedAt}   耗时 ${report.durationMs}ms   cache=${report.meta.cache}${report.meta.cacheReason ? '(' + report.meta.cacheReason + ')' : ''}   workers=${report.meta.workers}`);
   L.push(`文档       ${c.docs} 份      产出物条目 ${c.artifacts} 条      缓存 ${report.meta.cache}`);
   L.push('');
-  const reviewable = c.verified + c.drift + c.ambiguous + c.unbound + c.refFound + c.refMissing;
+  // 覆盖率分母只取一个来源（counts.codeArtifactClaims），不再现场重算；
+  // 现场重算会与「处置分类」那一行各说一套（#102）。
+  const reviewable = c.codeArtifactClaims != null
+    ? c.codeArtifactClaims
+    : c.verified + c.drift + c.ambiguous + c.unbound + c.refFound + c.refMissing;
   const rate = reviewable ? ((c.verified + c.refFound) / reviewable * 100).toFixed(1) : '0.0';
   // 双分母：换了分母的「覆盖率上升」不算上升（RFC §2.3）。
   const allJudged = c.allJudgedClaims != null ? c.allJudgedClaims : reviewable;

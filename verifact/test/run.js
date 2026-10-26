@@ -473,6 +473,35 @@ test('disposition: 声明过的数字不进判定，只进 disposition 计数（
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+test('deny: 被拒绑的声明不落进 code-artifact 桶，报告两个数必须相等（#102）', async () => {
+  const root = tmpProject({
+    'doc.md': [
+      '# 状态',
+      '| p95 | 78.5 ms |',
+      '当前实现 keygen = 103µs'
+    ].join('\n')
+  });
+  const report = await engine.run(dispConfig(root, {
+    deny: [{ file: '**/doc.md', key: 'p95', kind: 'measure', note: '测试：该行绑错了产出物' }]
+  }), {});
+  const c = report.counts;
+  assert.strictEqual(c.denied, 1, '应有一条被拒绑，实际=' + c.denied);
+  assert.strictEqual(c.dispositionCounts['code-artifact'], c.claims,
+    'code-artifact 桶应等于进入判定的条数，实际桶=' + c.dispositionCounts['code-artifact'] + ' claims=' + c.claims);
+  assert.strictEqual(c.codeArtifactClaims, c.claims, '覆盖率分母应与 claims 同源');
+  assert.strictEqual(c.allJudgedClaims, c.codeArtifactClaims + c.dispositioned + c.denied,
+    '受判总数 = 判定 + 分类 + 拒绑');
+
+  // 报告的书面输出也不允许两个数各说一套：处置分类行与核验率行必须是同一个分母。
+  const text = require('../bin/verifact').renderText(report, 3);
+  const bucket = text.match(/处置分类\s+code-artifact\s+(\d+)/);
+  const denom = text.match(/\(code-artifact (\d+) 条\)/);
+  assert.ok(bucket && denom, '报告应同时打印处置分类与分母，实际=\n' + text);
+  assert.strictEqual(bucket[1], denom[1],
+    '处置分类 code-artifact 与核验率分母必须是同一个数，实际 ' + bucket[1] + ' vs ' + denom[1]);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 test('disposition: 整份文件都不是 code-artifact 时给出文件级警示', async () => {
   const root = tmpProject({
     'all-narrative.md': [
