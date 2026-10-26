@@ -3,6 +3,7 @@
 
 const { tokens, mkValue, mkRatio, parseNum } = require('./normalize');
 const { buildDispositionScopes } = require('./dispositions');
+const { assignStableKeys } = require('./stable-key');
 
 /**
  * 硬数字声明抽取器。
@@ -270,6 +271,9 @@ function extractClaims(text, fileRef, opts) {
       }
     }
   }
+  // stableKey 必须按抽取顺序分配：同一 baseKey 的第 2 条起带 #2、#3 后缀。
+  // id 仍按行号生成，保留给人看（定位用）；身份一律用 stableKey（见 #96）。
+  assignStableKeys(out);
   return out;
 }
 
