@@ -137,6 +137,27 @@ function loadConfig(opts) {
   }
   if (!Array.isArray(merged.ignore)) {
     errs.push('ignore 必须是数组');
+  } else {
+    // 没有 why 的豁免就是洗白：读者看不到「为什么这条不该核」，只能选择相信。
+    // 配置层就把它当致命错——不降级、不补默认值。
+    const PLACEHOLDER = /^(todo|tbd|n\/a|na|none|-+|\.+|x+|修绑定)$/i;
+    for (const r of merged.ignore) {
+      if (!r || typeof r !== 'object' || Array.isArray(r)) {
+        errs.push('ignore 的每一项必须是规则对象，实际=' + JSON.stringify(r));
+        continue;
+      }
+      if (r.note !== undefined && r.why === undefined) {
+        errs.push('ignore 条目仍用 note 而没有 why（' + JSON.stringify(r.key || r.file) + '）：字段已改名，请写 why 说明理由');
+        continue;
+      }
+      if (typeof r.why !== 'string' || r.why.trim().length < 12) {
+        errs.push('ignore 条目缺少可读的 why（至少 12 字，说明为什么这条不该核）：' + JSON.stringify(r.key || r.file));
+        continue;
+      }
+      if (PLACEHOLDER.test(r.why.trim())) {
+        errs.push('ignore 的 why 是占位符（' + r.why.trim() + '）：' + JSON.stringify(r.key || r.file));
+      }
+    }
   }
   if (!Array.isArray(merged.sealed)) {
     errs.push('sealed 必须是数组');

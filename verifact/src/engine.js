@@ -255,7 +255,12 @@ async function run(cfg, opts) {
 
     if (isIgnored(claim, cfg)) {
       stats.ignored++;
-      results.push(Object.assign({}, claim, { status: 'ignored', note: '命中 ignore 规则' }));
+      const rule = matchRule(cfg.ignore, claim);
+      // why 不只用于校验：它要跟着声明一起进报告，否则「为什么忽略」就只活在配置里。
+      results.push(Object.assign({}, claim, {
+        status: 'ignored',
+        note: '命中 ignore 规则' + (rule && rule.why ? '：' + rule.why : '')
+      }));
       continue;
     }
     stats.claims++;
