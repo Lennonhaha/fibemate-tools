@@ -36,7 +36,8 @@
       "../../fips205_kat",
       "../../pqc_kem1024_mldsa44",
       "../../lg-v3.1-20260716.tsr",
-      "../../vwz-076-20260717.tsr"
+      "../../vwz-076-20260717.tsr",
+      "../../fibemate-tools/bench"
     ],
     "presenceRoots": [
       "../../_backup_2026-07-18",
@@ -69,7 +70,9 @@
       "**/*#dv",
       "**/*#signature-size",
       "**/tsa_v11/**SHA256SUMS*",
-      "**/paper/eprint-submission-form.txt"
+      "**/paper/eprint-submission-form.txt",
+      "**/bench-js-results.json::run.*",
+      "**/bench-js-results.json::schema"
     ],
     "maxFileBytes": 8388608,
     "maxFiles": 4000,
@@ -178,46 +181,6 @@
       "why": "完整 KEM 往返耗时，不与 keygen 单步比对"
     },
     {
-      "key": "ntt-roundtrip",
-      "why": "NTT 往返耗时 10µs，被键名带到了 WNS 上；应单独立绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/PQC_MIGRATION_PLAN.md",
-      "key": "kem-keygen",
-      "kind": "measure",
-      "why": "JS 估算值 vs 硬件基准，口径不同。TODO: 修绑定指向 JS benchmark；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/TECHNICAL-VERIFICATION.md",
-      "key": "wns",
-      "kind": "measure",
-      "why": "时序约束 vs 成本模型，口径不同。TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/TECHNICAL-VERIFICATION.md",
-      "key": "keygen-s",
-      "kind": "measure",
-      "why": "JS 列性能 vs 硬件基准，口径不同。TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/TECHNICAL-VERIFICATION.md",
-      "key": "decaps-s",
-      "kind": "measure",
-      "why": "JS 列性能 vs 硬件基准，口径不同。TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/performance-benchmarks-2026-07-18.md",
-      "key": "keygen",
-      "kind": "measure",
-      "why": "JS benchmark vs 硬件基准，口径不同。TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
-      "file": "**/performance-benchmarks-2026-07-18.md",
-      "key": "keygen-ms",
-      "kind": "measure",
-      "why": "JS benchmark vs 硬件基准（5 值 1.71~11.77ms），口径不同。TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
-    },
-    {
       "file": "**/performance-benchmarks-2026-07-18.md",
       "key": "rsa-sign",
       "why": "口径不同：JS benchmark vs 硬件基准"
@@ -256,11 +219,6 @@
       "file": "**/performance-benchmarks-2026-07-18.md",
       "key": "sign",
       "why": "口径不同：JS benchmark vs 硬件基准"
-    },
-    {
-      "file": "**/tls-hybrid-deployment.md",
-      "key": "ms-op",
-      "why": "BOUND-BUG：verifact auto-binding 将 X25519 keygen 5.97ms 误关联到 SM2 verify 50ms；TODO: 修绑定；本条属「比较器口径不对」的豁免，删掉它会在门禁上暴露真实漂移，待把绑定改到正确的 JS benchmark 产出物后必须删除本条（#106）"
     }
   ],
   "sealed": [
