@@ -33,6 +33,46 @@ jobs:
             exit 1
           fi
 
+  # #111: the unit suite only ever scanned test/fixtures, so a parser bug could
+  # ship green. This job runs the gate against a committed corpus of real-shaped
+  # documents and then mutates one number to prove the gate can still go red.
+  gate-corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+      - name: Gate on the committed corpus (clean baseline)
+        working-directory: verifact
+        run: |
+          node bin/verifact.js verify --docs test/corpus/docs --artifacts test/corpus/artifacts --no-cache --fail-on drift --format json --out /tmp/corpus.json
+          node -e "
+            const r = require('/tmp/corpus.json');
+            console.log('docs scanned: ' + r.counts.docs + ', claims: ' + r.counts.claims + ', verified: ' + r.counts.verified + ', drift: ' + r.counts.drift);
+            if (r.counts.docs === 0) { console.error('0 documents scanned is never a pass'); process.exit(1); }
+            if (r.counts.claims === 0) { console.error('0 claims extracted is never a pass'); process.exit(1); }
+            if (r.counts.drift !== 0 || r.gate.failed) { console.error('corpus baseline is not clean'); process.exit(1); }
+          "
+      - name: Mutation check (a changed number must turn the gate red)
+        working-directory: verifact
+        run: |
+          rm -rf /tmp/corpus-mut && cp -r test/corpus /tmp/corpus-mut
+          sed -i 's/99\.1%/97.3%/' /tmp/corpus-mut/docs/status.md
+          set +e
+          node bin/verifact.js verify --docs /tmp/corpus-mut/docs --artifacts /tmp/corpus-mut/artifacts --no-cache --fail-on drift --format json --out /tmp/corpus-mut.json
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "expected exit 1 after mutating a claim, got $code"
+            exit 1
+          fi
+          node -e "
+            const r = require('/tmp/corpus-mut.json');
+            console.log('mutated run: docs ' + r.counts.docs + ', drift ' + r.counts.drift);
+            if (r.counts.drift < 1) { console.error('mutation did not produce drift'); process.exit(1); }
+          "
+
   # 只对 verifact 自身的文档做稿规自检；不改仓库里任何既有文件。
   self-lint:
     runs-on: ubuntu-latest

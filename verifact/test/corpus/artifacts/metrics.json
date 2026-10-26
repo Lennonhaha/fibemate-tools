@@ -1,0 +1,13 @@
+{
+  "ml_kem_768": {
+    "verification": "KAT 10000/10000"
+  },
+  "latency": {
+    "p95_ms": 78.5
+  },
+  "coverage": 99.1,
+  "cross_validation": "43/43",
+  "payload": {
+    "signature_bytes": 1024
+  }
+}
