@@ -36,6 +36,48 @@ const INHERITABLE = new Set(['owner']);
 const ANNOTATION_RE = /<!--\s*verifact:\s*([\s\S]*?)-->/;
 const OWN_LINE_RE = /^\s*<!--\s*verifact:[\s\S]*?-->\s*$/;
 
+/** 等长空白替换，保留换行，行号不变。 */
+function blank(text) {
+  return String(text).replace(/[^\n]/g, ' ');
+}
+
+/**
+ * 遮蔽围栏代码块（``` / ~~~），保留行号。
+ *
+ * 理由：文档里的示例声明写在围栏里，那是**示例**，不是生效声明。
+ * 本仓 claims 抽取早已这么做了（claims.js stripNoise），dispositions 之前漏了这一步：
+ * `docs/rfc-verifact-dispositions.md:192` 举例 `external-snapshot`（未实现的第五类），
+ * 解析器把示例当真 → 整份仓的门禁以 disposition_error 崩掉。
+ * 未闭合的围栏按 CommonMark 语义一直遮到文件末尾。
+ */
+function blankFencedBlocks(text) {
+  const lines = String(text).split('\n');
+  let fence = null; // { marker: '`' | '~', len: number }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (fence) {
+      lines[i] = blank(line);
+      const close = new RegExp('^[ \\t]{0,3}' + fence.marker + '{' + fence.len + ',}[ \\t]*$');
+      if (close.test(line)) fence = null;
+      continue;
+    }
+    const open = /^[ \t]{0,3}(`{3,}|~{3,})[^\n]*$/.exec(line);
+    if (open) {
+      fence = { marker: open[1][0], len: open[1].length };
+      lines[i] = blank(line);
+    }
+  }
+  return lines.join('\n');
+}
+
+/**
+ * 不可执行的散文之外：围栏代码块 + 行内代码。与 claims.js stripNoise 一致。
+ * RFC 里 `- 逐行扫描时优先匹配 `<!-- verifact: ... -->`;` 这种行内示例也是示例。
+ */
+function maskNonProse(text) {
+  return blankFencedBlocks(text).replace(/`[^`\n]*`/g, (m) => blank(m));
+}
+
 class DispositionError extends Error {
   constructor(fileRef, line, message) {
     super(fileRef + ':' + line + ': ' + message);
@@ -145,7 +187,9 @@ function requireArgs(directive, inherited, fileRef, lineNo) {
  */
 function buildDispositionScopes(text, fileRef) {
   const normalized = String(text).replace(/\r\n?/g, '\n');
-  const lines = normalized.split('\n');
+  // 围栏 / 行内代码里的示例声明不生效（与 claims 抽取的遮蔽口径一致）
+  const masked = maskNonProse(normalized);
+  const lines = masked.split('\n');
 
   const regions = [];
   const sameLine = new Map();      // 行号 -> 声明（写在代码行尾）
@@ -154,7 +198,7 @@ function buildDispositionScopes(text, fileRef) {
   const stack = [];
 
   const DEFAULT = { disposition: 'code-artifact', args: {}, source: 'default', at: null };
-  const hasAny = /<!--\s*verifact:/.test(normalized);
+  const hasAny = /<!--\s*verifact:/.test(masked);
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
@@ -239,6 +283,8 @@ module.exports = {
   INHERITABLE,
   FILE_LEVEL_MAX_LINE,
   DispositionError,
+  blankFencedBlocks,
+  maskNonProse,
   buildDispositionScopes,
   parseDirective,
   requireArgs,
