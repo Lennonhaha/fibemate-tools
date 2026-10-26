@@ -10,7 +10,7 @@ const { resolveClaim, explain } = require('./core/resolve');
 const { readArtifactCache, writeArtifactCache } = require('./core/cache');
 const { compareValues, valueFromString, normKey } = require('./core/normalize');
 const { scanFiles } = require('./pooled-scan');
-const { appendRun } = require('./history');
+const { appendRun, readRuns, HISTORY_SCHEMA } = require('./history');
 
 /**
  * 服务层：编排「扫文档 → 收产出物 → 绑定 → 判定 → 统计 → 门禁」。
@@ -267,6 +267,29 @@ async function run(cfg, opts) {
     }
   }
   const judgedTotal = codeArtifactClaims + stats.dispositioned;
+  // 同一文件里完全相同的两条声明（同一行写了两次同一个数，或复制粘贴的残骸）：
+  // 它们有两个身份，但作者大概不知道。报告要指出来，否则「重复」永远没人收拾。
+  const dupGroups = new Map();
+  for (const c of results) {
+    if (!(c.stableKeyGroupSize > 1)) continue;
+    const base = String(c.stableKey).replace(/#\d+$/, '');
+    if (!dupGroups.has(base)) dupGroups.set(base, []);
+    dupGroups.get(base).push(c);
+  }
+  const duplicateClaims = [];
+  for (const [stableKey, list] of dupGroups) {
+    duplicateClaims.push({
+      stableKey,
+      file: list[0].file,
+      key: list[0].key,
+      kind: list[0].kind,
+      value: list[0].value ? list[0].value.raw : null,
+      lines: list.map((c) => c.line),
+      ids: list.map((c) => c.id)
+    });
+  }
+  stats.duplicateClaimGroups = duplicateClaims.length;
+
   stats.dispositionWarnings = {
     fullyDispositionedFiles,
     share: judgedTotal ? stats.dispositioned / judgedTotal : 0,
@@ -322,16 +345,23 @@ async function run(cfg, opts) {
     lintCounts,
     gate,
     claims: results,
+    duplicateClaims,
     crossDoc,
     lint: lintFindings
   };
 
   if (cfg.cache.enabled && !options.noCache) {
     // state map 只收录非 unbound 的声明：unbound 占比高且没有迁移信息量。
-    // id 形如 <file>:L<line>:<kind>:<key>，同一行同键的两条声明会合并，够看趋势即可。
+    // 键是 stableKey（内容寻址），不是含行号的 id —— 否则在声明上方插一行注释，
+    // 整份文件的身份全部改名，drift 历史会把排版改动读成大规模迁移（#96）。
     const states = {};
-    for (const c of results) if (c.status !== 'unbound') states[c.id] = c.status;
-    appendRun(cfg, cfg.__cwd, {
+    for (const c of results) if (c.status !== 'unbound') states[c.stableKey] = c.status;
+    // 先读后写：读出来的 legacyDropped 说明有多少条 schema 1 记录被丢弃，
+    // 用户需要知道「这次比较的基准为什么变短了」，否则会以为工具丢了数据。
+    const prevRuns = readRuns(cfg, cfg.__cwd, 1);
+    const legacyDropped = (prevRuns && prevRuns.legacyDropped) || 0;
+    const appended = appendRun(cfg, cfg.__cwd, {
+      schema: HISTORY_SCHEMA,
       generatedAt: report.generatedAt,
       durationMs: report.durationMs,
       counts: report.counts,
@@ -340,6 +370,7 @@ async function run(cfg, opts) {
       cache: cacheState,
       states
     });
+    if (appended) report.meta.history = { schema: HISTORY_SCHEMA, legacyDropped };
   }
 
   return report;
