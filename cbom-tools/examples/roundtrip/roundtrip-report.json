@@ -1,0 +1,164 @@
+{
+  "tool": {
+    "library": "cyclonedx-python-lib",
+    "library_version": "11.12.0",
+    "python": "3.11.10",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "command": "python roundtrip_cbom.py"
+  },
+  "cases": {
+    "1.6.2": {
+      "input": "cbom-fidelity-1.6.2.json",
+      "input_sha256": "61b8a721628c794068e67e5b6b260de60ccfd2919189fb68df2e9704e8726247",
+      "output_json": "roundtrip-1.6.2-json.json",
+      "output_json_sha256": "5b6e0f3e41839229f8042eb3468af2eea46eef53766ea9184186ae66b4a6629b",
+      "output_xml": "roundtrip-1.6.2-xml.xml",
+      "output_xml_sha256": "544344d8e5455f7c2d2e9545b1a83215a1b277168bbf3622406273cf3d8f8fca",
+      "features_in": {
+        "ML-KEM": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "MD5": {
+          "algorithmProperties_keys": [
+            "nistQuantumSecurityLevel",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": 0,
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "SM2": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {
+            "fibemate:nistQuantumSecurityLevel": "notEvaluated"
+          }
+        }
+      },
+      "features_out_json": {
+        "MD5": {
+          "algorithmProperties_keys": [
+            "nistQuantumSecurityLevel",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": 0,
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "ML-KEM": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "SM2": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {
+            "fibemate:nistQuantumSecurityLevel": "notEvaluated"
+          }
+        }
+      },
+      "field_level_diff": []
+    },
+    "1.7.2": {
+      "input": "cbom-fidelity-1.7.2.json",
+      "input_sha256": "28016a574d812b0405b572ece2fedd65e82a06606333b63e0213f6d6aa5b2937",
+      "output_json": "roundtrip-1.7.2-json.json",
+      "output_json_sha256": "51cd09381d89d1c5181238d4bcb34d6b412b1a166cf47c8b6ec7792d97242732",
+      "output_xml": "roundtrip-1.7.2-xml.xml",
+      "output_xml_sha256": "58a028b7465a2b400a9209b7e87f15df5bd9e364f78e675d34fcfa927ad6aefb",
+      "features_in": {
+        "ML-KEM": {
+          "algorithmProperties_keys": [
+            "algorithmFamily",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "ML-KEM",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "MD5": {
+          "algorithmProperties_keys": [
+            "algorithmFamily",
+            "nistQuantumSecurityLevel",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": 0,
+          "algorithmFamily": "MD5",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "SM2": {
+          "algorithmProperties_keys": [
+            "algorithmFamily",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "SM2",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {
+            "fibemate:nistQuantumSecurityLevel": "notEvaluated"
+          }
+        }
+      },
+      "features_out_json": {
+        "MD5": {
+          "algorithmProperties_keys": [
+            "nistQuantumSecurityLevel",
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": 0,
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "ML-KEM": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {}
+        },
+        "SM2": {
+          "algorithmProperties_keys": [
+            "primitive"
+          ],
+          "nistQuantumSecurityLevel": "<absent>",
+          "algorithmFamily": "<absent>",
+          "parameterSetIdentifier": "<absent>",
+          "namespaced": {
+            "fibemate:nistQuantumSecurityLevel": "notEvaluated"
+          }
+        }
+      },
+      "field_level_diff": [
+        "ML-KEM.algorithmFamily: 'ML-KEM' -> '<absent>'",
+        "MD5.algorithmFamily: 'MD5' -> '<absent>'",
+        "SM2.algorithmFamily: 'SM2' -> '<absent>'"
+      ]
+    }
+  }
+}
