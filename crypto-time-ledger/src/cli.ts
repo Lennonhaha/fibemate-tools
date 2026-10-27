@@ -503,7 +503,7 @@ if (import.meta.main) {
 
   if (gv.version) {
     // eslint-disable-next-line no-console
-    console.log("crypto-time-ledger v0.1.0");
+    console.log("crypto-time-ledger v0.1.2");
     process.exit(EXIT_OK);
   }
 
