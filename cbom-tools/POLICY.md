@@ -53,7 +53,9 @@ emitted BOM does not imply the package lacks it.
 | Keccak-512 | Keccak |
 | SLH-DSA | (family only) |
 
-## CycloneDX 1.6 mapping
+## CycloneDX 1.6 / 1.7 mapping
+
+The mapping below is identical in 1.6 and 1.7; only `specVersion` differs.
 
 - `manifest-analysis` → `methods[]: { technique: "manifest-analysis", confidence, value: <pkg> }`
 - `source-code-analysis` → `methods[]: { technique: "source-code-analysis", confidence, value: <matched text> }`

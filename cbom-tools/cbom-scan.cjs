@@ -3,7 +3,7 @@
 // Copyright (c) 2026 刘天赫
 //
 // cbom-scan.cjs — scan a directory tree for cryptographic assets,
-// emit CycloneDX 1.6 CBOM with provenance-aware merge policy.
+// emit a CycloneDX 1.6 or 1.7 CBOM with provenance-aware merge policy.
 
 'use strict';
 
@@ -333,10 +333,10 @@ function mergeEvidence(fromDeps, fromSource) {
 
 // ── Output ──────────────────────────────────────────────────────────
 
-function toCycloneDX(components) {
+function toCycloneDX(components, specVersion) {
   return {
     bomFormat: 'CycloneDX',
-    specVersion: '1.6',
+    specVersion,
     version: 1,
     metadata: {
       timestamp: new Date().toISOString(),
@@ -348,31 +348,68 @@ function toCycloneDX(components) {
 
 // ── Entry point ─────────────────────────────────────────────────────
 
+const SPEC_VERSIONS = ['1.6', '1.7'];
+const DEFAULT_SPEC = '1.7';
+const USAGE = 'usage: cbom-scan [--dir <path>] [--out <file>] [--spec 1.6|1.7]';
+
+/**
+ * Read `--flag value` or `--flag=value`.
+ *
+ * The equals form used to be invisible to the parser: `--dir=./x` left the
+ * directory at process.cwd() and scanned the wrong tree without complaining.
+ * A flag that is silently ignored is worse than a flag that errors.
+ */
+function readFlag(args, name) {
+  const eqPrefix = name + '=';
+  let value = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === name) {
+      const next = args[i + 1];
+      if (next === undefined || next.startsWith('--')) return { error: name + ' needs a value' };
+      value = next;
+    } else if (args[i].startsWith(eqPrefix)) {
+      value = args[i].slice(eqPrefix.length);
+    }
+  }
+  if (value === '') return { error: name + ' needs a value' };
+  return { value };
+}
+
+function fail(message) {
+  console.error(USAGE);
+  console.error('  ' + message);
+  process.exit(2);
+}
+
 function main() {
   const args = process.argv.slice(2);
-  const dirFlag = args.indexOf('--dir');
-  let dir = process.cwd();
-  if (dirFlag !== -1) {
-    const v = args[dirFlag + 1];
-    if (!v || v.startsWith('--')) {
-      console.error('usage: cbom-scan [--dir <path>] [--out <file>]');
-      process.exit(2);
-    }
-    dir = v;
+
+  const dirFlag = readFlag(args, '--dir');
+  if (dirFlag.error) fail(dirFlag.error);
+  const dir = dirFlag.value === null ? process.cwd() : dirFlag.value;
+
+  const outFlag = readFlag(args, '--out');
+  if (outFlag.error) fail(outFlag.error);
+  const outPath = outFlag.value;
+
+  const specFlag = readFlag(args, '--spec');
+  if (specFlag.error) fail(specFlag.error);
+  const specVersion = specFlag.value === null ? DEFAULT_SPEC : specFlag.value;
+  if (!SPEC_VERSIONS.includes(specVersion)) {
+    fail('--spec must be one of ' + SPEC_VERSIONS.join(', ') + ' (got "' + specVersion + '")');
   }
-  const outPath = args.includes('--out') ? args[args.indexOf('--out') + 1] : null;
 
   const deps = loadPackageDeps(dir);
   const fromDeps = matchDeps(deps, DEFAULT_RULES);
   const rawSource = scanSource(dir, DEFAULT_RULES);
   const fromSource = deduplicateOccurrences(rawSource);
   const components = mergeEvidence(fromDeps, fromSource);
-  const bom = toCycloneDX(components);
+  const bom = toCycloneDX(components, specVersion);
 
   const output = JSON.stringify(bom, null, 2);
   if (outPath) {
     fs.writeFileSync(outPath, output, 'utf-8');
-    console.error(`cbom-scan: wrote ${components.length} algorithms to ${outPath}`);
+    console.error(`cbom-scan: wrote ${components.length} algorithms to ${outPath} (CycloneDX ${specVersion})`);
   } else {
     console.log(output);
   }
