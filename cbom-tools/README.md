@@ -8,6 +8,16 @@ detect algorithm additions, removals, and metadata changes.
 
 Zero external dependencies. Pure Node.js.
 
+## What this tool does not do
+
+Three things that are easy to misread:
+
+- **It does not find vulnerabilities.** No CVE lookup, no taint analysis, no judgement about whether an algorithm choice is sound. It reports *where cryptographic APIs are called*, and says nothing about whether they are called well.
+- **It does not guarantee a complete inventory.** Detection is pattern-based per language and library. A clean scan means "no match against the patterns this version knows" — not "there is no cryptography here". Dynamic loading, generated code, native bindings and vendored binaries can all be missed. The CBOM is evidence of what was found, not a certificate of what exists.
+- **It does not execute the code it scans.** Files are read and parsed. Nothing in the scanned tree is run.
+
+A CBOM is an inventory to review. It is not a compliance conclusion, and it cannot replace an audit.
+
 ## Try it without installing
 
 ```
