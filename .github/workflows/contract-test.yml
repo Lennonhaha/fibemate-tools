@@ -1,6 +1,14 @@
 name: contract-test
 
-# Cross-repo contract gate for the Blind-Spot Map.
+# Cross-repo contract gates: the Blind-Spot Map page and the verifact viewer.
+#
+# Gate 1 (scripts/test-contract.js): the published Blind-Spot Map page carries
+# a hardcoded copy of the 30 samples and falls back to it when the network
+# fails; nothing else ties that copy to the JSON corpus in this repo.
+#
+# Gate 2 (scripts/test-verifact-demo.js): the verifact viewer must only render
+# what the report says - no judgement in the browser - and must label synthetic
+# samples and sample subsets.
 #
 # The published page (Lennonhaha/fibemate, www/tools/blind-spot-map/index.html)
 # carries a hardcoded EMBEDDED copy of the 30 samples and falls back to it when
@@ -17,11 +25,13 @@ on:
     paths:
       - 'data/blind-spot-map/**'
       - 'scripts/test-contract.js'
+      - 'scripts/test-verifact-demo.js'
       - '.github/workflows/contract-test.yml'
   pull_request:
     paths:
       - 'data/blind-spot-map/**'
       - 'scripts/test-contract.js'
+      - 'scripts/test-verifact-demo.js'
       - '.github/workflows/contract-test.yml'
   schedule:
     - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
@@ -46,6 +56,7 @@ jobs:
           path: fibemate
           sparse-checkout: |
             www/tools/blind-spot-map
+            www/tools/verifact-demo
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -58,6 +69,14 @@ jobs:
       - name: Page vs corpus vs docs
         working-directory: tools
         run: node scripts/test-contract.js --page=../fibemate/www/tools/blind-spot-map/index.html
+
+      - name: Verifact demo gate self-test
+        working-directory: tools
+        run: node scripts/test-verifact-demo.js --dir=../fibemate/www/tools/verifact-demo --self-test
+
+      - name: Verifact demo renders only what the report says
+        working-directory: tools
+        run: node scripts/test-verifact-demo.js --dir=../fibemate/www/tools/verifact-demo
 
       - name: Page vs corpus vs docs, plus live source URLs
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
