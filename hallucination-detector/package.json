@@ -1,6 +1,6 @@
 {
   "name": "crypto-hallucination-detector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Heuristic static detector for AI-hallucinated or side-channel-unsafe crypto patterns",
   "main": "src/index.js",
   "bin": { "crypto-hallucination-detector": "src/cli.js" },
@@ -10,7 +10,8 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git"
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git",
+    "directory": "hallucination-detector"
   },
   "files": ["src"],
   "engines": { "node": ">=16" }
