@@ -217,6 +217,19 @@ check('hygiene.dry_run_guards_the_publish', () => {
   return 'publish is gated by dry_run';
 });
 
+check('hygiene.dry_run_does_not_touch_the_registry', () => {
+  // Learned the hard way: npm publish --dry-run still asks the registry whether
+  // the version already exists, so a rehearsal of an already-shipped version
+  // fails. A dry run must stop after packing.
+  const at = code.indexOf('dry_run }}" = "true"');
+  assert(at >= 0, 'no dry_run branch');
+  const block = code.slice(at, code.indexOf('exit 0', at));
+  assert(block, 'dry_run branch does not exit early');
+  const calls = block.split('\n').filter((l) => /^\s*npm\s+publish\b/.test(l));
+  assert(calls.length === 0, 'dry_run branch still calls npm publish, which queries the registry');
+  return 'dry run stops after pack';
+});
+
 check('hygiene.runs_tests_before_publishing', () => {
   assert(/npm test|node --test/.test(src), 'workflow publishes without running the package tests');
   return 'tests run in the same job';

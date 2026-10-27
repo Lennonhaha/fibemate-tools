@@ -28,6 +28,11 @@ const mutations = [
   ['M7 mismatch branch no longer exits', (s) => s.replace('            exit 2\n          fi\n          DRY=', '            true\n          fi\n          DRY=')],
   ['M8 publish without tests', (s) => s.replace('        run: npm test', '        run: echo skipped')],
   ['M9 verification step no longer verifies', (s) => s.replace('          cosign verify-blob \\', '          cosign help-blob \\')],
+  // A rehearsal that queries the registry fails for any version already on it;
+  // that is how the first real run of this workflow died, so it stays pinned.
+  ['M12 dry run calls the registry', (s) => s.replace(
+    '      echo "dry_run is true - tarball built, nothing is sent to the registry"',
+    '      npm publish --dry-run')],
   ['M10 release carries no assets', (s) => all(all(s, 'gh release create "$TAG" artifacts/*', 'gh release create "$TAG" --draft'), 'gh release upload "$TAG" artifacts/*', 'gh release upload "$TAG" README.md')],
 ];
 
