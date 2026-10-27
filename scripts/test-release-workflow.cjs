@@ -122,21 +122,33 @@ check('packaging.publish_uses_provenance', () => {
 });
 
 check('packaging.id_token_write_present', () => {
-  const idx = codeLines.findIndex((l) => /^\s*permissions:\s*$/.test(l));
-  assert(idx >= 0, 'no standalone permissions block');
-  // Scope the assertion to the block itself: a comment or an unrelated step
-  // mentioning id-token must not satisfy it.
-  const indent = codeLines[idx].search(/\S/);
-  const block = [];
-  for (let i = idx + 1; i < codeLines.length; i++) {
-    const line = codeLines[i];
-    if (line.trim() === '') continue;
-    if (line.search(/\S/) <= indent) break;
-    block.push(line.trim());
+  // Find the *job-level* permissions block, not the first one in the file.
+  // Since every workflow now declares a read-only top level, the first block is
+  // no longer the one that publishes, and asserting against it was a check that
+  // could not pass for the right reason.
+  const blocks = [];
+  for (let i = 0; i < codeLines.length; i++) {
+    if (!/^\s*permissions:\s*$/.test(codeLines[i])) continue;
+    const indent = codeLines[i].search(/\S/);
+    if (indent === 0) continue; // top level: read-only by policy
+    const block = [];
+    for (let j = i + 1; j < codeLines.length; j++) {
+      const line = codeLines[j];
+      if (line.trim() === '') continue;
+      if (line.search(/\S/) <= indent) break;
+      block.push(line.trim());
+    }
+    blocks.push({ indent, block });
   }
-  assert(block.some((l) => /^id-token:\s*write$/.test(l)), 'id-token: write missing inside permissions');
-  assert(block.some((l) => /^contents:\s*write$/.test(l)), 'contents: write missing inside permissions');
-  return 'contents + id-token write';
+  assert(blocks.length > 0, 'no job-level permissions block');
+  // Scope the assertion to a block: a comment or an unrelated step mentioning
+  // id-token must not satisfy it.
+  const publishing = blocks.filter((b) =>
+    b.block.some((l) => /^id-token:\s*write$/.test(l)) &&
+    b.block.some((l) => /^contents:\s*write$/.test(l)));
+  assert(publishing.length > 0,
+    'no job-level permissions block grants both contents: write and id-token: write');
+  return 'job-level contents + id-token write';
 });
 
 // --- Scorecard Signed-Releases matcher --------------------------------------

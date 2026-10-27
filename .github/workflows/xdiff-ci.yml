@@ -12,6 +12,9 @@ on:
       - '.github/workflows/xdiff-ci.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   unit:
     name: 回归与语法（降级）
