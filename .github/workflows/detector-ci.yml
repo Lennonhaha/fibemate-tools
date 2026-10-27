@@ -11,8 +11,8 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '20'
-      - name: Run sample tests (zero-dependency static analysis)
+      - name: Run the detector test suites (samples + contract + mutation self-test)
         working-directory: hallucination-detector
-        run: node test/sample.test.js
+        run: npm test
       - name: Check whitelist version stamps
         run: node scripts/check-whitelist-version.js
