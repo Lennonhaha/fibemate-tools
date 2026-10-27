@@ -35,6 +35,8 @@ on:
       - 'scripts/test-scorecard-workflow.cjs'
       - 'scripts/test-workflow-permissions.cjs'
       - 'scripts/test-publish-metadata.cjs'
+      - 'scripts/test-resign-workflow.cjs'
+      - '.github/workflows/resign-release.yml'
       - '.github/workflows/contract-test.yml'
   pull_request:
     paths:
@@ -50,6 +52,8 @@ on:
       - 'scripts/test-scorecard-workflow.cjs'
       - 'scripts/test-workflow-permissions.cjs'
       - 'scripts/test-publish-metadata.cjs'
+      - 'scripts/test-resign-workflow.cjs'
+      - '.github/workflows/resign-release.yml'
       - '.github/workflows/contract-test.yml'
   schedule:
     - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
@@ -99,6 +103,10 @@ jobs:
       - name: Release workflow gate can fail
         working-directory: tools
         run: node scripts/test-release-workflow-mutations.cjs
+
+      - name: Release re-signing (digest preserved, signatures skippable)
+        working-directory: tools
+        run: node scripts/test-resign-workflow.cjs --self-test && node scripts/test-resign-workflow.cjs
 
       - name: Publish metadata (provenance-ready repository blocks)
         working-directory: tools
