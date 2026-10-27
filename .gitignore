@@ -28,3 +28,9 @@ verifact/verifact.json
 xdiff/xdiff.json
 
 scripts/tmp-*
+
+# 打包产物（npm pack）
+verifact/*.tgz
+
+# Lake 构建产物
+undecryptable-prover/proof/.lake/

@@ -20,6 +20,8 @@
    非恢复性本身来自 axiom，不是本文件证出来的 —— 这正是它必须显式登记的原因。
 -/
 
+namespace UndecryptableProver
+
 /-- 证据链中的一轮覆写记录。 -/
 structure RoundEvidence where
   round : Nat
@@ -41,7 +43,7 @@ opaque NonRecoverable : List RoundEvidence → Prop
 /-- 威胁模型假设（唯一未证明处，显式登记为 axiom 而非 theorem）。
 
     这不是「已经证明的东西」，而是「若要结论成立，必须成立的前提」。
-    任何评审者都可以通过 `#print axioms undecryptable_after_N_rounds` 看到它。 -/
+    任何评审者都可以通过 `#print axioms` 看到它。 -/
 axiom overwrite_erases :
   ∀ (ev : List RoundEvidence) (rounds : Nat),
     0 < rounds →
@@ -80,5 +82,7 @@ example : observedChain.length = 3 := rfl
 example : ¬ FinalRoundZero [⟨0, 32, 32, 0⟩] := by
   simp [FinalRoundZero]
 
+end UndecryptableProver
+
 -- 审计出口：每次编译都会打印主定理依赖的假设。
-#print axioms undecryptable_after_N_rounds
+#print axioms UndecryptableProver.undecryptable_after_N_rounds
