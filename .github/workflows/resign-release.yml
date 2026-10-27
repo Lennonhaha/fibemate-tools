@@ -1,0 +1,118 @@
+name: resign-release
+# Sign the assets of an already-published release with cosign, keyless, using the
+# workflow identity. Nothing about the artifacts changes: each file is downloaded,
+# its digest recorded, signed, its digest recorded again, and the two must match.
+#
+# Why this exists: releases published before release.yml existed carry no
+# signature, and OpenSSF Scorecard's Signed-Releases counts a fixed window of the
+# first five releases by tag name. A signature added later is the only way those
+# entries can ever be verifiable - the alternative would be re-publishing, which
+# changes bytes people may already have.
+#
+# Default is dry_run=true: download and sign locally, publish nothing. Flipping it
+# to false is a public, permanent change to a release page.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag whose assets should be signed'
+        required: true
+        type: string
+      dry_run:
+        description: 'true = sign but do not upload (.sig/.pem stay local)'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    name: sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out the workflow
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb
+
+      - name: Resolve the release and list its assets
+        id: rel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" > release.json
+          ID="$(node -e "process.stdout.write(String(require('./release.json').id))")"
+          node -e "const r=require('./release.json');for(const a of r.assets)console.log(a.id+'\t'+a.name+'\t'+a.size)" > assets.tsv
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "assets=$(wc -l < assets.tsv)" >> "$GITHUB_OUTPUT"
+          echo "release id=$ID, assets=$(wc -l < assets.tsv)"
+          cut -f2 assets.tsv
+
+      - name: Sign every asset that has no signature yet
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          RELEASE_ID: ${{ steps.rel.outputs.id }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          # Scorecard matches these suffixes; .bundle is NOT one of them.
+          SIG_SUFFIXES='.sig .pem .sha256'
+          signed=0
+          skipped=0
+          while IFS=$'\t' read -r id name size; do
+            case "$name" in
+              *.sig|*.pem|*.sha256|SHA256SUMS)
+                echo "skip $name (not a signable artifact)"
+                continue
+                ;;
+            esac
+            if grep -qx "$name.sig" <(cut -f2 assets.tsv); then
+              echo "skip $name (already has $name.sig)"
+              skipped=$((skipped + 1))
+              continue
+            fi
+            echo "::group::$name ($size B)"
+            gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$id" > "out/$name"
+            before="$(sha256sum "out/$name" | cut -d' ' -f1)"
+            echo "sha256 before: $before"
+            cosign sign-blob --yes --output-signature "out/$name.sig" --output-certificate "out/$name.pem" "out/$name"
+            after="$(sha256sum "out/$name" | cut -d' ' -f1)"
+            echo "sha256 after:  $after"
+            if [ "$before" != "$after" ]; then
+              echo "::error::signing changed the bytes of $name ($before -> $after)"
+              exit 1
+            fi
+            test -s "out/$name.sig"
+            test -s "out/$name.pem"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "dry run: not uploading $name.sig / $name.pem"
+            else
+              gh release upload "$TAG" "out/$name.sig" "out/$name.pem" --clobber
+            fi
+            echo "::endgroup::"
+            signed=$((signed + 1))
+          done < assets.tsv
+          echo "signed=$signed skipped=$skipped dry_run=$DRY_RUN"
+          if [ "$signed" -eq 0 ] && [ "$skipped" -eq 0 ]; then
+            echo "::error::release has no signable assets"
+            exit 1
+          fi
+
+      - name: Upload the signatures as a workflow artifact
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: signatures-${{ inputs.tag }}
+          path: out/*.sig
+          if-no-files-found: error
