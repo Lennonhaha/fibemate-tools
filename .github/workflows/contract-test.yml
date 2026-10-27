@@ -31,6 +31,8 @@ on:
       - '.github/workflows/release.yml'
       - '.github/workflows/prover-binaries.yml'
       - 'scripts/test-prover-binaries-workflow.cjs'
+      - '.github/workflows/scorecard.yml'
+      - 'scripts/test-scorecard-workflow.cjs'
       - '.github/workflows/contract-test.yml'
   pull_request:
     paths:
@@ -42,6 +44,8 @@ on:
       - '.github/workflows/release.yml'
       - '.github/workflows/prover-binaries.yml'
       - 'scripts/test-prover-binaries-workflow.cjs'
+      - '.github/workflows/scorecard.yml'
+      - 'scripts/test-scorecard-workflow.cjs'
       - '.github/workflows/contract-test.yml'
   schedule:
     - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
@@ -83,6 +87,10 @@ jobs:
       - name: Prover binaries workflow contract
         working-directory: tools
         run: node scripts/test-prover-binaries-workflow.cjs --self-test
+
+      - name: Scorecard workflow contract
+        working-directory: tools
+        run: node scripts/test-scorecard-workflow.cjs --self-test
 
       - name: Release workflow gate can fail
         working-directory: tools
