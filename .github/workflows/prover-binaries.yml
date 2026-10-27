@@ -1,0 +1,131 @@
+# Build the prover on both platforms, run the built binary, and publish the
+# binaries with digests attached to a GitHub release.
+#
+# Why each job exists:
+#   - a cross-compiled binary that is never executed is a guess, so each runner
+#     builds natively and then runs its own artifact with fixed parameters and
+#     requires the evidence line to appear in the output;
+#   - the tests run with --release because the interesting failure mode (dead
+#     code elimination removing the overwrite loop) only exists in optimised
+#     builds;
+#   - the release job only publishes what the build job already ran, and ships
+#     a SHA256SUMS next to the binaries so a downloader can check them.
+
+name: prover-binaries
+
+on:
+  push:
+    tags:
+      - 'undecryptable-prover-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, example undecryptable-prover-v0.1.0'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and run on both platforms, but do not create a release'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build and run (${{ matrix.artifact }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+            exe: ''
+          - os: windows-latest
+            artifact: windows-x86_64
+            exe: '.exe'
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Show the Rust toolchain the runner ships with
+        run: |
+          rustc --version
+          cargo --version
+
+      - name: Tests (release profile - DCE only matters when optimised)
+        working-directory: undecryptable-prover
+        run: cargo test --release --locked
+
+      - name: Build the release binary
+        working-directory: undecryptable-prover
+        run: cargo build --release --locked
+
+      - name: Run the built binary and demand the evidence line
+        shell: bash
+        working-directory: undecryptable-prover
+        run: |
+          set -euo pipefail
+          BIN="target/release/undecryptable-prover${{ matrix.exe }}"
+          test -f "$BIN" || { echo "no binary at $BIN" >&2; exit 1; }
+          OUT="$("$BIN" --len 32 --rounds 3)"
+          echo "$OUT"
+          echo "$OUT" | grep -q 'final: buffer is all-zero after 3 rounds'
+          echo "$OUT" | grep -q 'evidence only, not a proof'
+          test -f evidence.json
+          echo "executed $BIN natively on ${{ matrix.os }}"
+
+      - name: Copy the binary and record its digest
+        shell: bash
+        working-directory: undecryptable-prover
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/dist"
+          BIN="target/release/undecryptable-prover${{ matrix.exe }}"
+          OUT="$GITHUB_WORKSPACE/dist/undecryptable-prover-${{ matrix.artifact }}${{ matrix.exe }}"
+          cp "$BIN" "$OUT"
+          sha256sum "$OUT" | tee "$OUT.sha256"
+
+      - name: Upload the binary and its digest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: prover-${{ matrix.artifact }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: ${{ github.event.inputs.dry_run != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download both platform artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksum every published file
+        run: |
+          set -euo pipefail
+          cd dist
+          ls -l
+          sha256sum undecryptable-prover-* > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "undecryptable-prover ${TAG##*-v}" \
+              --notes "Binaries built and executed on their own platform before upload (see the build jobs). Each file has a sha256 in SHA256SUMS."
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
