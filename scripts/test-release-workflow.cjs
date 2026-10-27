@@ -24,7 +24,9 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const WF_REL = '.github/workflows/release.yml';
-const WF = path.join(ROOT, WF_REL);
+// RELEASE_WF lets the mutation suite point this gate at a deliberately
+// broken copy instead of editing the real workflow.
+const WF = process.env.RELEASE_WF ? path.resolve(process.env.RELEASE_WF) : path.join(ROOT, WF_REL);
 
 const results = [];
 function check(name, fn) {
@@ -246,6 +248,23 @@ check('hygiene.dry_run_does_not_touch_the_registry', () => {
 check('hygiene.runs_tests_before_publishing', () => {
   assert(/npm test|node --test/.test(src), 'workflow publishes without running the package tests');
   return 'tests run in the same job';
+});
+
+check('hygiene.installs_declared_dependencies_before_tests', () => {
+  // cbom-tools declares ajv as a devDependency for its schema tests. This
+  // workflow ran `npm test` without ever installing, so the tests passed on a
+  // machine that already had node_modules and failed on a clean runner with
+  // Cannot find module 'ajv' - after the version had been tagged.
+  assert(/npm ci\b/.test(code), 'no "npm ci" anywhere: declared dependencies are never installed');
+  assert(/package-lock\.json/.test(code), 'npm ci is not guarded by a package-lock.json check');
+  const installAt = code.search(/if \[ -f package-lock\.json \]/);
+  const testAt = code.search(/npm test/);
+  assert(installAt >= 0, 'no lockfile-guarded install block');
+  assert(testAt >= 0, 'no npm test');
+  assert(installAt < testAt, 'dependencies are installed after the tests, not before');
+  assert(/no dependencies declared - nothing to install/.test(code),
+    'no zero-dependency path: packages without deps would still run npm install');
+  return 'lockfile-guarded install runs before the tests';
 });
 
 // --- report ----------------------------------------------------------------

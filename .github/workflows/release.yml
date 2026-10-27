@@ -92,6 +92,17 @@ jobs:
       - name: Install an npm that can do trusted publishing
         run: npm install --global npm@11.6.0
 
+      - name: Install dependencies when the package declares any
+        working-directory: ${{ steps.meta.outputs.dir }}
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          elif node -e "const p=require('./package.json');process.exit(p.dependencies||p.devDependencies?0:1)"; then
+            npm install --no-audit --no-fund
+          else
+            echo "no dependencies declared - nothing to install"
+          fi
       - name: Run the package tests before anything is published
         working-directory: ${{ steps.meta.outputs.dir }}
         run: npm test
