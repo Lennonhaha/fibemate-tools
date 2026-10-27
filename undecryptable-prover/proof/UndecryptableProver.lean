@@ -28,7 +28,6 @@ structure RoundEvidence where
   nonzeroBefore : Nat
   nonzeroAfter : Nat
   fingerprintAfter : Nat
-deriving Repr, DecidableEq
 
 /-- 「最后一轮结束后缓冲区为零」。空链不满足（没有末轮就谈不上归零）。 -/
 def FinalRoundZero (ev : List RoundEvidence) : Prop :=

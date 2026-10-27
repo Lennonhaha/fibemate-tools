@@ -38,9 +38,12 @@ jobs:
           lint: "false"
           use-mathlib-cache: "false"
           # Fails on anything outside this list, which covers `sorry` (sorryAx),
-          # `native_decide` (Lean.ofReduceBool), and any newly added axiom. The
-          # only allowed axiom is the storage-medium threat model; widening this
-          # list is a deliberate, reviewable change.
+          # `native_decide` (Lean.ofReduceBool), and any newly added axiom.
+          # `propext` is Lean core logic: every structure gets a generated
+          # `mk.injEq` lemma whose `↔` statement needs propositional
+          # extensionality. Allowing it is not an assumption about the world.
+          # The only domain assumption is the storage-medium threat model below;
+          # widening this list is a deliberate, reviewable change.
           axiom-audit: "true"
-          axiom-audit-allow: "UndecryptableProver.overwrite_erases"
+          axiom-audit-allow: "propext,UndecryptableProver.overwrite_erases"
           axiom-audit-root: "UndecryptableProver"
