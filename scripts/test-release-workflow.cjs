@@ -84,6 +84,7 @@ check('workflow.tag_triggers_are_package_prefixed', () => {
   assert(tags.length > 0, 'no package-prefixed tag patterns, e.g. - \'verifact-v*\'');
   assert(tags.includes('verifact'), 'verifact-v* trigger missing');
   assert(tags.includes('cbom-tools'), 'cbom-tools-v* trigger missing');
+  assert(tags.includes('hallucination-detector'), 'hallucination-detector-v* trigger missing');
   return tags.join(', ');
 });
 

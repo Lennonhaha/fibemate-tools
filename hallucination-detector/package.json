@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "bin": { "crypto-hallucination-detector": "src/cli.js" },
   "scripts": {
-    "test": "node test/sample.test.js"
+    "test": "node test/sample.test.js && node test/contract.test.js"
   },
   "license": "Apache-2.0",
   "repository": {

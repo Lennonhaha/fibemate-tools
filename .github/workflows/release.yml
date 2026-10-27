@@ -23,6 +23,7 @@ on:
     tags:
       - 'verifact-v*'
       - 'cbom-tools-v*'
+      - 'hallucination-detector-v*'
   workflow_dispatch:
     inputs:
       tag:
