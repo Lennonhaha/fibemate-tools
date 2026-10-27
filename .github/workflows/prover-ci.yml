@@ -9,6 +9,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          components: rustfmt, clippy
+      - name: Format and lint
+        working-directory: undecryptable-prover
+        run: |
+          cargo fmt --check
+          cargo clippy --all-targets -- -D warnings
+      - name: Tests (release; dead-code elimination only happens with optimisations)
+        working-directory: undecryptable-prover
+        run: cargo test --release
       - name: Build (release) and run evidence generation
         working-directory: undecryptable-prover
         run: |

@@ -78,10 +78,18 @@ fn evidence_text(out: &Outcome) -> String {
 /// Read `"key": <digits>` from the flat part of the evidence file.
 fn scalar(json: &str, key: &str) -> u64 {
     let needle = format!("\"{key}\":");
-    let at = json.find(&needle).unwrap_or_else(|| panic!("missing key {key}"));
+    let at = json
+        .find(&needle)
+        .unwrap_or_else(|| panic!("missing key {key}"));
     let rest = &json[at + needle.len()..];
-    let digits: String = rest.chars().skip_while(|c| c.is_whitespace()).take_while(|c| c.is_ascii_digit()).collect();
-    digits.parse().unwrap_or_else(|_| panic!("key {key} is not a number"))
+    let digits: String = rest
+        .chars()
+        .skip_while(|c| c.is_whitespace())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits
+        .parse()
+        .unwrap_or_else(|_| panic!("key {key} is not a number"))
 }
 
 /// Parse the `chain` array, which is serialised as rows of four integers.
@@ -103,7 +111,11 @@ fn rows(json: &str) -> Vec<Row> {
         let body = body.trim_end_matches(',').trim_end_matches(']');
         let nums: Vec<u64> = body
             .split(',')
-            .map(|n| n.trim().parse::<u64>().unwrap_or_else(|_| panic!("bad chain row: {line}")))
+            .map(|n| {
+                n.trim()
+                    .parse::<u64>()
+                    .unwrap_or_else(|_| panic!("bad chain row: {line}"))
+            })
             .collect();
         assert_eq!(nums.len(), 4, "chain row must have four columns: {line}");
         out.push((nums[0], nums[1], nums[2], nums[3]));
@@ -113,7 +125,13 @@ fn rows(json: &str) -> Vec<Row> {
 
 fn normalised(json: &str) -> String {
     json.lines()
-        .map(|l| if l.trim_start().starts_with("\"timestamp_unix\"") { "\"timestamp_unix\": <t>," } else { l })
+        .map(|l| {
+            if l.trim_start().starts_with("\"timestamp_unix\"") {
+                "\"timestamp_unix\": <t>,"
+            } else {
+                l
+            }
+        })
         .collect::<Vec<_>>()
         .join("\n")
 }
@@ -123,7 +141,12 @@ fn normalised(json: &str) -> String {
 #[test]
 fn writes_evidence_next_to_the_working_directory() {
     let out = run("writes", &[]);
-    assert_eq!(out.code, Some(0), "expected success, stdout:\n{}", out.stdout);
+    assert_eq!(
+        out.code,
+        Some(0),
+        "expected success, stdout:\n{}",
+        out.stdout
+    );
     assert!(
         evidence_path(&out).is_file(),
         "evidence.json was not written to the working directory ({})",
@@ -141,23 +164,41 @@ fn reports_the_hard_coded_dimensions() {
 }
 
 #[test]
-fn round_zero_zeroises_the_buffer() {
+fn final_round_zeroises_the_buffer() {
     let out = run("zero", &[]);
     let chain = rows(&evidence_text(&out));
-    let (round, before, after, _) = chain[0];
-    assert_eq!(round, 0);
-    assert_eq!(before, EXPECTED_SECRET_LEN, "input should start non-zero");
-    assert_eq!(after, 0, "round 0 must leave zero non-zero bytes");
+    let (last_round, before, after, _) = *chain.last().expect("non-empty chain");
+    assert_eq!(last_round, EXPECTED_ROUNDS - 1);
+    assert_eq!(
+        before, EXPECTED_SECRET_LEN,
+        "the final round must start on real bytes"
+    );
+    assert_eq!(after, 0, "the last round must leave zero non-zero bytes");
+
+    // Every earlier round must have left the buffer full and non-zero, otherwise
+    // the final zero could be the result of doing nothing at all.
+    for (round, _, after, _) in chain.iter().take(chain.len() - 1) {
+        assert_eq!(
+            *after, EXPECTED_SECRET_LEN,
+            "pattern round {round} left {after} non-zero bytes instead of {EXPECTED_SECRET_LEN}"
+        );
+    }
 }
 
 #[test]
 fn timestamp_is_close_to_now() {
     let out = run("time", &[]);
     let json = evidence_text(&out);
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("clock").as_secs();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_secs();
     let ts = scalar(&json, "timestamp_unix");
     let delta = now.abs_diff(ts);
-    assert!(delta < 600, "timestamp {ts} is {delta}s away from now ({now})");
+    assert!(
+        delta < 600,
+        "timestamp {ts} is {delta}s away from now ({now})"
+    );
 }
 
 #[test]
@@ -169,7 +210,11 @@ fn stdout_does_not_claim_a_cryptographic_guarantee() {
         "the disclaimer is the point of this tool; stdout was:\n{}",
         out.stdout
     );
-    for forbidden in ["is secure", "guarantees erasure", "cryptographically erased"] {
+    for forbidden in [
+        "is secure",
+        "guarantees erasure",
+        "cryptographically erased",
+    ] {
         assert!(!lower.contains(forbidden), "stdout overclaims: {forbidden}");
     }
 }
@@ -191,20 +236,20 @@ fn does_not_touch_the_source_tree() {
     let before = fs::metadata(&tracked).and_then(|m| m.modified()).ok();
     let _out = run("cwd", &[]);
     let after = fs::metadata(&tracked).and_then(|m| m.modified()).ok();
-    assert_eq!(before, after, "the binary wrote into the crate directory instead of its cwd");
+    assert_eq!(
+        before, after,
+        "the binary wrote into the crate directory instead of its cwd"
+    );
 }
 
-// --- known defects: these fail today, by design ----------------------------
-// They are ignored so the PR stays mergeable. Remove `#[ignore]` in the PR that
-// fixes the defect; if a fix lands without touching them, that is a red flag.
+// --- defect regression tests: these failed before the fix -------------------
 
 /// A multi-round overwrite must actually write in rounds after the first one.
 ///
-/// Fails today: `Vec<u8>::zeroize()` also truncates the vector to length 0, so
-/// rounds 1..n iterate over an empty slice and write nothing, while the program
-/// still prints "buffer is all-zero".
+/// Before the fix: `Vec<u8>::zeroize()` truncated the vector to length 0, so
+/// every round after the first iterated over an empty slice and wrote nothing,
+/// while the program still printed "buffer is all-zero".
 #[test]
-#[ignore = "known defect: Vec::zeroize() truncates, later rounds are no-ops"]
 fn rounds_after_the_first_touch_bytes() {
     let out = run("touch", &[]);
     let chain = rows(&evidence_text(&out));
@@ -216,7 +261,6 @@ fn rounds_after_the_first_touch_bytes() {
 
 /// A multi-round overwrite must operate on the full buffer each round.
 #[test]
-#[ignore = "known defect: the buffer is empty after round 0, so `before` is 0"]
 fn buffer_keeps_its_length_across_rounds() {
     let out = run("len", &[]);
     let chain = rows(&evidence_text(&out));
@@ -230,10 +274,65 @@ fn buffer_keeps_its_length_across_rounds() {
 
 /// Invalid input must not be silently accepted.
 #[test]
-#[ignore = "known gap: the binary ignores argv and always exits 0"]
 fn rejects_invalid_arguments() {
-    for args in [vec!["--rounds", "abc"], vec!["--rounds", "0"], vec!["--len", "999999"]] {
+    for args in [
+        vec!["--rounds", "abc"],
+        vec!["--rounds", "0"],
+        vec!["--rounds", "65"],
+        vec!["--len", "0"],
+        vec!["--len", "999999"],
+        vec!["--len"],
+        vec!["--bogus"],
+    ] {
         let out = run("args", &args);
-        assert_eq!(out.code, Some(2), "args {args:?} should exit 2, got {:?}", out.code);
+        assert_eq!(
+            out.code,
+            Some(2),
+            "args {args:?} should exit 2, got {:?}",
+            out.code
+        );
+        assert!(
+            !evidence_path(&out).exists(),
+            "args {args:?} must not write evidence"
+        );
     }
+}
+
+#[test]
+fn custom_length_and_rounds_are_honoured() {
+    let out = run("custom", &["--len", "17", "--rounds", "4"]);
+    assert_eq!(out.code, Some(0), "stdout:\n{}", out.stdout);
+    let json = evidence_text(&out);
+    assert_eq!(scalar(&json, "secret_len"), 17);
+    assert_eq!(scalar(&json, "rounds"), 4);
+    let chain = rows(&json);
+    assert_eq!(chain.len(), 4);
+    assert_eq!(chain[3].2, 0, "last round must zeroise");
+    for (round, before, after, _) in &chain {
+        assert!(
+            *before <= 17 && *after <= 17,
+            "round {round} counts exceed the buffer length"
+        );
+    }
+    for (round, _, after, _) in chain.iter().take(3) {
+        assert_eq!(*after, 17, "pattern round {round} should fill all 17 bytes");
+    }
+}
+
+#[test]
+fn single_round_is_a_pure_zeroise() {
+    let out = run("single", &["--rounds", "1"]);
+    assert_eq!(out.code, Some(0), "stdout:\n{}", out.stdout);
+    let chain = rows(&evidence_text(&out));
+    assert_eq!(chain.len(), 1);
+    assert_eq!(
+        chain[0].1, EXPECTED_SECRET_LEN,
+        "the secret starts non-zero"
+    );
+    assert_eq!(chain[0].2, 0);
+    assert!(
+        out.stdout.contains("0 pattern round(s)"),
+        "stdout should state that no pattern round ran:\n{}",
+        out.stdout
+    );
 }
