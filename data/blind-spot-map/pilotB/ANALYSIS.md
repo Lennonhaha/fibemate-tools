@@ -5,15 +5,16 @@
 
 ## Method
 
-30 samples: Claude × 10 algorithm families × 3 neutral prompt variants.
-Each sample was hand-labelled for `hallucination_type` (class9 = parameter/domain
-error, class10 = math/logic error) and `severity`. Cross-variant comparison asks:
+30 samples: hand-written Claude-style outputs across 10 algorithm families, each
+tested under 3 neutral prompt variants. Each sample was hand-labelled for
+`hallucination_type` (class9 = parameter/domain error, class10 = math/logic
+error) and `severity`. Cross-variant comparison asks:
 **does the same algorithm, under differently-worded neutral prompts, hit the
 same hallucination class?**
 
-## Finding 1 — 9/10 algorithms are variant-stable
+## Finding 1 — 10/10 algorithms are variant-stable
 
-For 9 of 10 algorithms, all three variants landed in the same hallucination
+For all 10 algorithms, all three variants landed in the same hallucination
 class(es). This suggests the blind spots are a property of the model's crypto
 capability, not prompt wording.
 

@@ -1,0 +1,65 @@
+name: contract-test
+
+# Cross-repo contract gate for the Blind-Spot Map.
+#
+# The published page (Lennonhaha/fibemate, www/tools/blind-spot-map/index.html)
+# carries a hardcoded EMBEDDED copy of the 30 samples and falls back to it when
+# the remote fetch fails. Nothing else ties that copy — or the numbers quoted in
+# data/blind-spot-map/pilotB/ANALYSIS.md — to the JSON corpus in this repo.
+# scripts/test-contract.js is that tie; this workflow is what makes it a gate.
+#
+# The page lives in another repository, so changes over there cannot trigger this
+# workflow. The nightly schedule covers that direction.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data/blind-spot-map/**'
+      - 'scripts/test-contract.js'
+      - '.github/workflows/contract-test.yml'
+  pull_request:
+    paths:
+      - 'data/blind-spot-map/**'
+      - 'scripts/test-contract.js'
+      - '.github/workflows/contract-test.yml'
+  schedule:
+    - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  blind-spot-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tools repo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tools
+
+      - name: Checkout page repo (sparse checkout of the map only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Lennonhaha/fibemate
+          path: fibemate
+          sparse-checkout: |
+            www/tools/blind-spot-map
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      - name: Prove the gate can fail (mutation self-test)
+        working-directory: tools
+        run: node scripts/test-contract.js --page=../fibemate/www/tools/blind-spot-map/index.html --self-test
+
+      - name: Page vs corpus vs docs
+        working-directory: tools
+        run: node scripts/test-contract.js --page=../fibemate/www/tools/blind-spot-map/index.html
+
+      - name: Page vs corpus vs docs, plus live source URLs
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        working-directory: tools
+        run: node scripts/test-contract.js --page=../fibemate/www/tools/blind-spot-map/index.html --remote
