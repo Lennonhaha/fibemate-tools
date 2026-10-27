@@ -8,7 +8,14 @@ detect algorithm additions, removals, and metadata changes.
 
 Zero external dependencies. Pure Node.js.
 
-## Install
+## Try it without installing
+
+```
+npx cbom-tools scan --dir ./my-project --out cbom.json
+npx cbom-tools diff cbom-before.json cbom-after.json
+```
+
+Global install (optional):
 
 ```
 npm install -g cbom-tools
@@ -19,8 +26,10 @@ npm install -g cbom-tools
 ### 1. Scan a project
 
 ```
-cbom-scan --dir ./my-project --out cbom.json
+npx cbom-tools scan --dir ./my-project --out cbom.json
 ```
+
+`cbom-scan` is still installed as a standalone alias.
 
 Scans:
 - `package.json` dependencies (declarative rule table)
@@ -33,14 +42,16 @@ paths + line numbers, capped at 50 per algorithm, deduplicated).
 ### 2. Diff two CBOMs
 
 ```
-cbom-diff cbom-before.json cbom-after.json
+npx cbom-tools diff cbom-before.json cbom-after.json
 ```
+
+`cbom-diff` is still installed as a standalone alias.
 
 Exit codes:
 - `0` — no changes
-- `1` — changes detected
-- `2` — file not found or parse error
-- `3` — (reserved) quantum-vulnerable/weak algorithm detection (planned for 0.2.0)
+- `1` — informational changes (algorithm properties moved)
+- `2` — warnings (algorithm removed, new classical reference), or file/parse error
+- `3` — (reserved) quantum-vulnerable/weak algorithm detection
 
 ## Testing
 

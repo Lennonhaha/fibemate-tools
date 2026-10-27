@@ -1,14 +1,36 @@
 {
   "name": "cbom-tools",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Crypto Bill of Materials — scan, diff, report (CycloneDX 1.6 CBOM)",
   "license": "Apache-2.0",
   "author": "刘天赫 <research@fibemate.net>",
   "bin": {
+    "cbom-tools": "cli.cjs",
     "cbom-scan": "cbom-scan.cjs",
     "cbom-diff": "cbom-diff.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git",
+    "directory": "cbom-tools"
+  },
+  "homepage": "https://fibemate.net/tools/",
+  "bugs": {
+    "url": "https://github.com/Lennonhaha/fibemate-tools/issues"
+  },
+  "keywords": [
+    "cbom",
+    "cyclonedx",
+    "sbom",
+    "cryptography",
+    "post-quantum",
+    "compliance"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "files": [
+    "cli.cjs",
     "cbom-scan.cjs",
     "cbom-diff.js",
     "algo-metadata.json",
