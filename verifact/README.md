@@ -6,6 +6,10 @@ Markdown 文档里的性能基准、测试计数、版本号——这些数字�
 
 Zero external dependencies. Pure Node.js.
 
+## 与 OWASP CycloneDX 规范的关系
+
+本工具对「字段缺失」与「显式零值」的区分，与 OWASP CycloneDX 密码学属性（cryptoProperties）语义澄清的方向一致。作者就该语义向上游规范仓库提交了澄清提案，已获规范维护者评审通过；**提案尚未合并，合并前不代表规范文本已变更**。
+
 ## 核心流程
 
 ```
