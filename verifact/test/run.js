@@ -1065,6 +1065,28 @@ test('CLI: 崩溃文件默认 exit 1；--allow-scan-errors 时 exit 0 且报告�
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---------- CLI: --version / -v ----------
+
+test('cli: --version 与 -v 输出版本号并以 0 退出', () => {
+  const cli = path.join(__dirname, '..', 'bin', 'verifact.js');
+  const expected = require('../package.json').version;
+  for (const flag of ['--version', '-v']) {
+    const r = spawnSync(process.execPath, [cli, flag], { encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, flag + ' 应 exit 0，实际=' + r.status + ' stderr=' + (r.stderr || '').slice(0, 120));
+    assert.strictEqual(r.stdout.trim(), expected, flag + ' 应输出 ' + expected + '，实际=' + JSON.stringify(r.stdout));
+    assert.ok(!/Usage|用法/.test(r.stdout), flag + ' 不应打印帮助，实际输出前 80 字符=' + r.stdout.slice(0, 80));
+  }
+});
+
+test('cli: version 子命令与 --version 一致（防两条路径漂移）', () => {
+  const cli = path.join(__dirname, '..', 'bin', 'verifact.js');
+  const sub = spawnSync(process.execPath, [cli, 'version'], { encoding: 'utf8' });
+  const flag = spawnSync(process.execPath, [cli, '--version'], { encoding: 'utf8' });
+  assert.strictEqual(sub.status, 0);
+  assert.strictEqual(flag.status, 0);
+  assert.strictEqual(sub.stdout.trim(), flag.stdout.trim(), '两条路径必须输出同一个版本号');
+});
+
 // ---------- 运行 ----------
 
 (async function main() {

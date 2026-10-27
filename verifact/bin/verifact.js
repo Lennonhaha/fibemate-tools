@@ -18,6 +18,7 @@ const HELP = `verifact — 事实哨兵：把文档里的硬数字声明绑定�
   verifact diff [--since <n>] [--top <n>]                    对比两次运行之间的状态迁移
   verifact serve [--config <file>] [--port <n>]              启动本地看板与 API
   verifact init [--dir <dir>]                                生成一份 verifact.json 样例配置
+  verifact --version | -v                                     打印版本号
 
 verify 选项:
   --cwd <dir>          配置文件查找 / 缓存 / --out 的基准目录，默认当前目录
@@ -46,6 +47,7 @@ function parseArgs(argv) {
   while (i < argv.length) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { out.flags.help = true; i++; continue; }
+    if (a === '-v') { out.flags.version = true; i++; continue; }
     if (a.startsWith('--')) {
       const key = a.slice(2);
       const next = argv[i + 1];
@@ -433,6 +435,10 @@ function cmdInit(args) {
 async function main() {
   const rawArgv = process.argv.slice(2);
   const args = parseArgs(rawArgv);
+  if (args.flags.version) {
+    process.stdout.write(require('../package.json').version + '\n');
+    return 0;
+  }
   if (args.flags.help || !args._.length) {
     process.stdout.write(HELP);
     return args._.length ? 0 : 2;
