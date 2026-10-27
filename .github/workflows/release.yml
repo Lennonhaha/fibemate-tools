@@ -1,0 +1,198 @@
+# Publish a package to npm from CI, sign the artifact, and attach the signature.
+#
+# Why this file exists, in one line each:
+#   - npm provenance (--provenance + id-token: write) makes the registry record
+#     which workflow, which commit and which repo produced the tarball, so a
+#     reader can check the package instead of trusting the uploader.
+#   - a cosign keyless signature attached as <tarball>.sig is what a human (and
+#     OpenSSF Scorecard's Signed-Releases check) can actually verify offline.
+#   - publishing from CI instead of a laptop removes the "works on my machine,
+#     trust me" step from the release.
+#
+# Triggers on a package tag (verifact-v0.2.4) so the version is decided by the
+# tag and checked against package.json, never typed twice.
+#
+# Manual runs default to dry_run: true - build, test, sign and verify, but do
+# not publish and do not create a release. Flipping dry_run to false is the
+# only way this workflow can publish.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'verifact-v*'
+      - 'cbom-tools-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release, example verifact-v0.2.4'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build, test, sign and verify but do not publish or create a release'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Resolve package dir and version from the tag
+        id: meta
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          case "$TAG" in
+            *-v[0-9]*) ;;
+            *) echo "tag '$TAG' is not of the form <package>-v<version>" >&2; exit 2 ;;
+          esac
+          PREFIX="${TAG%-v*}"
+          VERSION="${TAG##*-v}"
+          if [ ! -d "$PREFIX" ]; then echo "no directory named '$PREFIX'" >&2; exit 2; fi
+          PKG_VERSION="$(node -p "require('./$PREFIX/package.json').version")"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "tag says $VERSION but $PREFIX/package.json says $PKG_VERSION" >&2
+            echo "refusing to publish a tarball whose version nobody tagged" >&2
+            exit 2
+          fi
+          DRY="${{ github.event.inputs.dry_run }}"
+          if [ -z "$DRY" ] || [ "$DRY" = "null" ]; then DRY="false"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "dir=$PREFIX" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dry_run=$DRY" >> "$GITHUB_OUTPUT"
+          echo "resolved $PREFIX@$VERSION (dry_run=$DRY)"
+
+      - name: Set up Node with the public npm registry
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Install an npm that can do trusted publishing
+        run: npm install --global npm@11.6.0
+
+      - name: Run the package tests before anything is published
+        working-directory: ${{ steps.meta.outputs.dir }}
+        run: npm test
+
+      - name: Pack the tarball and record its digest
+        id: pack
+        working-directory: ${{ steps.meta.outputs.dir }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          TB="$(npm pack --silent | tail -n 1)"
+          cp "$TB" "$GITHUB_WORKSPACE/artifacts/$TB"
+          cd "$GITHUB_WORKSPACE/artifacts"
+          sha256sum "$TB" | tee "$TB.sha256"
+          echo "tarball=$TB" >> "$GITHUB_OUTPUT"
+          echo "sha256=$(cut -d' ' -f1 "$TB.sha256")" >> "$GITHUB_OUTPUT"
+          echo "packed $TB"
+
+      - name: Publish to npm
+        working-directory: ${{ steps.meta.outputs.dir }}
+        env:
+          NPM_TOKEN_VALUE: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.meta.outputs.dry_run }}" = "true" ]; then
+            echo "dry_run is true - packing only, nothing is sent to the registry"
+            npm publish --dry-run
+            exit 0
+          fi
+          if [ "$HAS_NPM_TOKEN" = "true" ]; then
+            echo "authenticating with secrets.NPM_TOKEN"
+            export NODE_AUTH_TOKEN="$NPM_TOKEN_VALUE"
+          else
+            echo "no NPM_TOKEN secret - relying on npm trusted publishing over OIDC"
+            unset NODE_AUTH_TOKEN
+          fi
+          npm publish --provenance --access public
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
+
+      - name: Sign the tarball keylessly
+        id: sign
+        working-directory: ${{ github.workspace }}/artifacts
+        run: |
+          set -euo pipefail
+          TB="${{ steps.pack.outputs.tarball }}"
+          cosign sign-blob --yes \
+            --output-signature "$TB.sig" \
+            --output-certificate "$TB.pem" \
+            "$TB"
+          echo "sig=$TB.sig" >> "$GITHUB_OUTPUT"
+          echo "signed $TB"
+
+      - name: Verify our own signature before anyone is asked to trust it
+        working-directory: ${{ github.workspace }}/artifacts
+        run: |
+          set -euo pipefail
+          TB="${{ steps.pack.outputs.tarball }}"
+          cosign verify-blob \
+            --signature "$TB.sig" \
+            --certificate "$TB.pem" \
+            --certificate-identity-regexp '^https://github.com/Lennonhaha/fibemate-tools/' \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+            "$TB"
+          echo "signature verified against this repository's OIDC identity"
+
+      - name: Write a checksum file covering every artifact
+        working-directory: ${{ github.workspace }}/artifacts
+        run: |
+          set -euo pipefail
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Record the published provenance in the job summary
+        run: |
+          {
+            echo "### ${{ steps.meta.outputs.tag }}"
+            echo ""
+            echo "- package dir - \`${{ steps.meta.outputs.dir }}\`"
+            echo "- version - \`${{ steps.meta.outputs.version }}\`"
+            echo "- dry run - \`${{ steps.meta.outputs.dry_run }}\`"
+            echo "- tarball - \`${{ steps.pack.outputs.tarball }}\`"
+            echo "- sha256 - \`${{ steps.pack.outputs.sha256 }}\`"
+            echo "- signature - \`${{ steps.sign.outputs.sig }}\` plus a certificate"
+            echo ""
+            echo "Verify the tarball with"
+            echo ""
+            echo '    cosign verify-blob --signature <tarball>.sig --certificate <tarball>.pem --certificate-identity-regexp ^https://github.com/Lennonhaha/fibemate-tools/ --certificate-oidc-issuer https://token.actions.githubusercontent.com <tarball>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create the GitHub release with the signature attached
+        if: ${{ steps.meta.outputs.dry_run != 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.meta.outputs.tag }}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release $TAG exists - uploading assets"
+            gh release upload "$TAG" artifacts/* --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" artifacts/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "${{ steps.meta.outputs.dir }} ${{ steps.meta.outputs.version }}" \
+              --notes "Published from CI by .github/workflows/release.yml. The tarball is keylessly signed with Sigstore; the .sig, the certificate and SHA256SUMS sit next to it. Verification commands are in this run's job summary."
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
