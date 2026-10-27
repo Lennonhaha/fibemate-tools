@@ -1,51 +1,84 @@
 /- 无法解密证明器 — Lean4 证明骨架
-  对应 Rust 实现：undecryptable-prover/src/main.rs（证据生成器）
+   对应 Rust 实现：undecryptable-prover/src/main.rs（证据生成器）
 
-  ⚠️ 诚实声明：这是证明骨架，不是完整证明。
-  - 当前 sorry 是占位：完整证明需引入密码学假设（如 SHA-256 抗原像性、
-    AES 伪随机性）与存储介质模型（如「覆写后原扇区不可读」的威胁模型）。
-  - 本文件的价值在于：把「要证的定理」用 Lean 类型精确写出来，
-    使人工 / AI 无法再「看起来对但其实没证」。模板本身不提供正确性担保。
+   状态（诚实标注，勿删）：
+   - 主定理结论**不是** `True`，也不含 `sorry`（sorry_count = 0）。
+   - 唯一未证明处是 axiom `overwrite_erases`（威胁模型假设），axiom_count = 1。
+     文件末尾的 `#print axioms` 会在每次编译时打印依赖，供人审计 ——
+     不要删那一行，它就是这条假设的收据。
+   - `NonRecoverable` 故意声明为 `opaque`：无法被展开成 `True`，
+     所以不能靠「定义时偷偷放水」让定理恒真。
+   - 前提与 Rust 证据链对齐：`rounds > 0`、`ev.length = rounds`、**末轮**为零。
+     注意不是「每轮都为零」—— 模式轮本来就非零，写成每轮为零会让正确的
+     实现在形式上变成反例。
 
-  定理（待证）：
-    ∀ (s : Secret) (N : Nat), after (destroy s N) ⇒ reconstructed_bytes ≈ none
-  - Secret：固定长度密钥材料类型
-  - destroy：多轮确定性覆写（第 0 轮 zeroize，后续轮确定性模式）
-  - reconstructed_bytes：从存储介质恢复的原字节（威胁模型下定义为不可行）
+   证据链映射：`evidence.json` 的 `chain` 每行是位置数组
+     [round, nonzeroBefore, nonzeroAfter, fingerprintAfter]
+   机器检查的导入器尚未实现（见 README「已知缺口」），此处只约定形状。
 
-  证据链（由 Rust 生成 evidence.json）在此作为外部 witness 导入，
-  而非在 Lean 内重新计算（Lean 不执行 I/O 覆写，那是 Rust 的责任层）。
+   术语边界：本文件证明的是「给定这些前提，非恢复性成立」。
+   非恢复性本身来自 axiom，不是本文件证出来的 —— 这正是它必须显式登记的原因。
 -/
 
--- 占位类型：真实实现需从 crypto 库 / std 引入等价定义
-constant Secret : Type
-constant secret_len : Nat
-
--- 证据链中单条记录
+/-- 证据链中的一轮覆写记录。 -/
 structure RoundEvidence where
-  round       : Nat
+  round : Nat
   nonzeroBefore : Nat
-  nonzeroAfter  : Nat
+  nonzeroAfter : Nat
   fingerprintAfter : Nat
+deriving Repr, DecidableEq
 
--- 威胁模型假设（占位 axiom）：N 轮覆写后存储介质无法恢复原字节
--- ⚠️ 这是 axiom 不是 theorem —— 标注清楚，不伪装成已证
+/-- 「最后一轮结束后缓冲区为零」。空链不满足（没有末轮就谈不上归零）。 -/
+def FinalRoundZero (ev : List RoundEvidence) : Prop :=
+  match ev.getLast? with
+  | some last => last.nonzeroAfter = 0
+  | none => False
+
+/-- 「原始字节不可恢复」。故意 `opaque`：其语义取决于存储介质威胁模型
+    （例如「覆写后原扇区不可读」），本文件不定义它，也不允许它被展开成恒真。 -/
+opaque NonRecoverable : List RoundEvidence → Prop
+
+/-- 威胁模型假设（唯一未证明处，显式登记为 axiom 而非 theorem）。
+
+    这不是「已经证明的东西」，而是「若要结论成立，必须成立的前提」。
+    任何评审者都可以通过 `#print axioms undecryptable_after_N_rounds` 看到它。 -/
 axiom overwrite_erases :
-  ∀ (ev : List RoundEvidence) (N : Nat),
-    ev.length = N →
-    (ev.map (fun e => e.nonzeroAfter)).all (fun n => n = 0) →
-    -- 结论：原 secret 不可恢复（依赖外部威胁模型假设）
-    True   -- TODO: 替换为真实的「non-recoverable」谓词 + sorry
+  ∀ (ev : List RoundEvidence) (rounds : Nat),
+    0 < rounds →
+    ev.length = rounds →
+    FinalRoundZero ev →
+    NonRecoverable ev
 
--- 主定理陈述（骨架，sorry 占位）
+/-- 主定理：N 轮覆写、N > 0、末轮为零 ⇒ 原字节不可恢复（在上述假设下）。 -/
 theorem undecryptable_after_N_rounds
-  (secret : Secret)
-  (ev : List RoundEvidence)
-  (N : Nat)
-  (h_len : ev.length = N)
-  (h_zero : (ev.map (fun e => e.nonzeroAfter)).all (fun n => n = 0))
-  : True := by
-  -- ⚠️ sorry：完整证明需结合 overwrite_erases 与存储介质模型
-  sorry
+    (ev : List RoundEvidence) (rounds : Nat)
+    (h_pos : 0 < rounds)
+    (h_len : ev.length = rounds)
+    (h_final : FinalRoundZero ev) :
+    NonRecoverable ev :=
+  overwrite_erases ev rounds h_pos h_len h_final
 
-#print "UndecryptableProver skeleton loaded (sorry placeholders present)"
+/-! ## 具体见证
+
+下面的链来自 Rust 实测（`--len 32 --rounds 3`）：
+第 0、1 轮模式覆写（非零 → 非零），第 2 轮 zeroize（非零 → 0）。 -/
+
+def observedChain : List RoundEvidence :=
+  [ ⟨0, 32, 32, 0xd84ce17ea6a0f6cd⟩
+  , ⟨1, 32, 32, 0x712d1a2a3e0c5fb2⟩
+  , ⟨2, 32, 0, 0x84322125f7fe5d21⟩
+  ]
+
+/-- 前提不是空的：真实证据链能满足 `FinalRoundZero`。 -/
+example : FinalRoundZero observedChain := by
+  simp [FinalRoundZero, observedChain]
+
+/-- 且长度前提确实成立。 -/
+example : observedChain.length = 3 := rfl
+
+/-- 反例：末轮非零时前提不成立 —— 说明该谓词有判别力，不是恒真。 -/
+example : ¬ FinalRoundZero [⟨0, 32, 32, 0⟩] := by
+  simp [FinalRoundZero]
+
+-- 审计出口：每次编译都会打印主定理依赖的假设。
+#print axioms undecryptable_after_N_rounds
