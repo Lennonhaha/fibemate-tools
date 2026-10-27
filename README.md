@@ -7,16 +7,18 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 
 > **设计原则**：见 [fibemate/PRINCIPLES.md](https://github.com/LennonHaha/fibemate/blob/main/PRINCIPLES.md)
 
+**状态**：`verifact` 已发布 npm `0.2.1`（`npx verifact`）· CycloneDX 3 个待审 PR（`specification` #1176 #1177 · `tool-center` #170）
+
 ## 工具清单
 
 | 工具 | 语言 | 作用 | 状态 |
 |---|---|---|---|
 | `hallucination-detector` | Node (零依赖) | 检测 AI 生成的密码代码中的幻觉/侧信道不安全模式 | 可跑，12 项样本 PASS（含域参数 / 测试覆盖回归） |
 | `crypto-time-machine` | Python (仅标准库) | 把密码学 API 的引入/变更变成可查询 git 时间轴 | 可跑，CI + 真实主仓历史测试 PASS |
-| `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，`cargo build` + `run` PASS |
+| `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，12 项测试 PASS（`cargo test --release`，含多轮覆写真覆写回归）；Lean 主定理 0 `sorry`、1 条显式 axiom，`#print axioms` 可审计 |
 | `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，63 tests + typecheck PASS |
 | `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
-| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，19 项回归 PASS；主仓 339 份文档实测 verified 145 / drift 24（2026-09-25） |
+| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，74 项回归 PASS；npm 已发布 `verifact@0.2.1`；主仓 343 份文档 / 2262 条声明实测 verified 137 · drift 0（2026-10-27） |
 | `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，18 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k（2026-09-25 实测同结论） |
 
 ## 设计纪律（全部工具共守）
@@ -24,7 +26,7 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 - **信号 vs 判决分离**：输出 `needs-human-review` / 证据链，**绝不自我认证或宣判漏洞**。
 - **零依赖优先**：检测器零依赖；时间机器仅标准库；证明器仅 `zeroize`。
 - **可复现验证**：所有结论基于真实 git 历史 / 真实编译产物，不凭记忆。
-- **诚实标注**：Lean 模板明确"骨架非完整证明"；证明器明确"evidence only"。
+- **诚实标注**：Lean 主定理**不含 `sorry`**，唯一未证明处是显式 `axiom overwrite_erases`（每次编译由 `#print axioms` 打印）；证明器只输出证据链，不宣称密码学保证。
 
 ## 仓库结构
 
@@ -58,9 +60,12 @@ CTM_TEST_REPO=/path/to/repo python test/local_test.py
 
 # 证明器
 cd undecryptable-prover
-cargo run --release               # 生成 evidence.json
+cargo run --release                 # 生成 evidence.json（默认 32 字节 × 3 轮）
+cargo run --release -- --len 32 --rounds 3   # 显式指定；末轮 zeroize
+cargo test --release                # 12 项测试（release 才有 DCE，debug 绿不算数）
 
 # 事实哨兵（verifact）：核验文档硬数字与产出物是否一致
+npx verifact verify                            # 经 npm 直接运行，无需 clone
 cd verifact
 node bin/verifact.js verify                    # 按 verifact.json 跑，drift 时退出码 1
 node bin/verifact.js verify --format md --out report.md
