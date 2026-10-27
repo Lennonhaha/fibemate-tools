@@ -1,0 +1,62 @@
+#
+# OpenSSF Scorecard, computed by OpenSSF on GitHub's runners.
+#
+# Everything in this file exists because of one finding: the local Windows
+# build of scorecard v5.6.0 reports "no workflows found" for every repository,
+# including ossf/scorecard itself, so its workflow-dependent checks
+# (Packaging, Token-Permissions, Dangerous-Workflow) are meaningless there.
+# The score that matters is the one OpenSSF computes and publishes, because
+# anyone can fetch it and nobody has to trust this machine.
+
+name: Scorecard supply-chain security
+
+on:
+  # Re-scan when branch protection changes: that is a scored input.
+  branch_protection_rule:
+  # Weekly. A supply-chain score that never refreshes silently becomes a lie.
+  schedule:
+    - cron: '37 4 * * 1'
+  push:
+    branches: [main]
+  # So the first run does not have to wait for Monday.
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Run the OpenSSF Scorecard
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # Publish to api.securityscorecards.dev. Requires a public repo and
+          # id-token: write; the result is signed and publicly verifiable, which
+          # is the whole reason this workflow exists.
+          publish_results: true
+
+      - name: Keep the SARIF file as an artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 14
+
+      - name: Upload to code scanning
+        uses: github/codeql-action/upload-sarif@51f77329afa6477de8c49fc9c7046c15b9a4e79d # v3.29.5
+        with:
+          sarif_file: results.sarif
