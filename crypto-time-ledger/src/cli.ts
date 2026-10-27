@@ -8,11 +8,12 @@
  */
 
 import { parseArgs } from "node:util";
-import { readFileSync, existsSync, readFile } from "node:fs";
+import { createHash } from "node:crypto";
+import { readFileSync, existsSync, readFile, writeFileSync, mkdirSync, copyFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { computeHash, type LedgerBlock } from "./core.ts";
+import { computeHash, verifyChain, type LedgerBlock, type VerifyTSR } from "./core.ts";
 import { makeVerifyTSR } from "./tsr.ts";
 import { SqliteLedgerStore } from "./storage.ts";
 import { fromBER } from "asn1js";
@@ -33,6 +34,11 @@ const E_TSR_ARG_MISSING = "tsr_arg_missing";
 const E_TSR_FILE_MISSING = "tsr_file_missing";
 const E_TSR_SIGNATURE_INVALID = "tsr_signature_invalid";
 const E_TSR_TIME_TOLERANCE_EXCEEDED = "tsr_time_tolerance_exceeded";
+const E_EMPTY_CHAIN = "empty_chain";
+const E_BUNDLE_OUT_NOT_EMPTY = "bundle_out_not_empty";
+const E_BUNDLE_MANIFEST_MISSING = "bundle_manifest_missing";
+const E_BUNDLE_FILE_MISSING = "bundle_file_missing";
+const E_BUNDLE_TAMPERED = "bundle_tampered";
 const E_UNKNOWN_COMMAND = "unknown_command";
 const E_INTERNAL_ERROR = "internal_error";
 
@@ -271,19 +277,9 @@ async function cmdAdd(args: {
     return;
   }
 
-  const store = openStore(args.storePath);
-
-  // 2. chain continuity (delegated to storage — appendBlock does it atomically)
-  try {
-    await store.appendBlock(block);
-  } catch (e: unknown) {
-    const msg = (e as Error).message ?? String(e);
-    store.close();
-    // ChainError from storage: index / hash_prev / duplicate
-    emitError(true, "add", E_CHAIN_LINK_BROKEN, msg, block.index ?? null, null);
-    return;
-  }
-
+  // 2. TSR checks run BEFORE anything is written. An append that happens
+  // before validation leaves a rejected block in the ledger, and a later
+  // reader cannot tell it apart from a block that was accepted.
   // 3. TSR checks (only if block references a TSR)
   if (block.tsr_digest && block.tsr_digest !== "") {
     // 3a. --tsr argument check
@@ -329,7 +325,6 @@ async function cmdAdd(args: {
     const verifyFn = makeVerifyTSR({ tsrDir: args.tsdDir, pinnedTsaCerts: pinnedCerts });
     const ok = await verifyFn(block.tsr_digest);
     if (!ok) {
-      store.close();
       emitError(
         true,
         "add",
@@ -348,9 +343,20 @@ async function cmdAdd(args: {
     try {
       checkGenTimeConsistency(block.ts, args.tsrFile!, args.toleranceMs, block.index ?? 0, "add");
     } catch (e: unknown) {
-      store.close();
       throw e;
     }
+  }
+
+  // 4. chain continuity + write (atomic; storage re-checks index / hash_prev)
+  const store = openStore(args.storePath);
+  try {
+    await store.appendBlock(block);
+  } catch (e: unknown) {
+    const msg = (e as Error).message ?? String(e);
+    store.close();
+    // ChainError from storage: index / hash_prev / duplicate
+    emitError(true, "add", E_CHAIN_LINK_BROKEN, msg, block.index ?? null, null);
+    return;
   }
 
   store.close();
@@ -365,112 +371,59 @@ async function cmdVerify(args: {
   storePath: string;
 }): Promise<void> {
   const store = openStore(args.storePath);
+  const all = await store.getChain();
+  store.close();
 
-  // Load pinned certs
-  let pinnedCerts: string[] = [];
-  try {
-    if (existsSync(args.pinnedCerts)) {
-      const pem = readFileSync(args.pinnedCerts, "utf-8");
-      pinnedCerts = pem
-        .split(/\n-----END CERTIFICATE-----\n/)
-        .filter((s) => s.trim())
-        .map((s) => s.trim() + "\n-----END CERTIFICATE-----\n");
-    }
-  } catch {
-    // missing pinned certs → empty set → fail closed
-  }
-  const verifyFn = makeVerifyTSR({ tsrDir: args.tsdDir, pinnedTsaCerts: pinnedCerts });
-
-  let chain = await store.getChain();
-  if (chain.length === 0) {
-    store.close();
-    process.stdout.write("OK 0 blocks verified\n");
-    process.exit(EXIT_OK);
+  // An empty ledger is not a successful verification. "0 blocks verified"
+  // reads as green in every dashboard that parses the exit code, which is
+  // exactly the false green this tool exists to prevent.
+  if (all.length === 0) {
+    emitError(false, "verify", E_EMPTY_CHAIN, "ledger is empty: nothing to verify", null, null);
   }
 
-  // If a hash is given, truncate chain to that block
+  let chain = all;
   if (args.hash) {
-    const idx = chain.findIndex((b) => b.hash_now === args.hash);
-    if (idx === -1) {
-      store.close();
+    const cut = chain.findIndex((b) => b.hash_now === args.hash);
+    if (cut === -1) {
       emitError(true, "verify", E_CHAIN_LINK_BROKEN, "hash not found in chain", null, {
         hash: args.hash,
       });
-      return;
     }
-    chain = chain.slice(0, idx + 1);
+    chain = chain.slice(0, cut + 1);
   }
 
-  // Verify each block in order
-  for (const b of chain) {
-    // hash check
-    if (computeHash(b) !== b.hash_now) {
-      store.close();
-      emitError(
-        true,
-        "verify",
-        E_BLOCK_HASH_MISMATCH,
-        "hash_now mismatch",
-        b.index,
-        { expected: computeHash(b), actual: b.hash_now },
-      );
-      return;
-    }
+  const verifyTsrForBlock = makeTsrVerifier({
+    tsdDir: args.tsdDir,
+    pinnedCertsPath: args.pinnedCerts,
+    toleranceMs: args.toleranceMs,
+    command: "verify",
+  });
 
-    // chain link check
-    const chainIdx = chain.indexOf(b);
-    if (chainIdx > 0) {
-      const prev = chain[chainIdx - 1];
-      if (b.index !== prev.index + 1 || b.hash_prev !== prev.hash_now) {
-        store.close();
-        emitError(
-          true,
-          "verify",
-          E_CHAIN_LINK_BROKEN,
-          "chain broken",
-          b.index,
-          { expected_index: prev.index + 1, actual_index: b.index },
-        );
-        return;
-      }
-    }
+  const result = await verifyChain(chain, verifyTsrForBlock);
 
-    // TSR checks
-    if (b.tsr_digest && b.tsr_digest !== "") {
-      const tsrPath = join(args.tsdDir, `${b.tsr_digest.replace(/^sha256:/, "")}.tsr`);
-      if (!existsSync(tsrPath)) {
-        store.close();
-        emitError(false, "verify", E_TSR_FILE_MISSING, "TSR file missing for block", b.index, {
-          tsr_digest: b.tsr_digest,
-        });
-        return;
-      }
-      const ok = await verifyFn(b.tsr_digest);
-      if (!ok) {
-        store.close();
-        emitError(
-          true,
-          "verify",
-          E_TSR_SIGNATURE_INVALID,
-          "TSR signature verification failed",
-          b.index,
-          { tsr_digest: b.tsr_digest },
-        );
-        return;
-      }
-      // Note: store.close() is called at every emitError path above; extractGenTime throws
-      // only non-never (malformed DER). Defensively close before re-throwing.
-      try {
-        checkGenTimeConsistency(b.ts, tsrPath, args.toleranceMs, b.index, "verify");
-      } catch (e: unknown) {
-        store.close();
-        throw e;
-      }
+  if (!result.ok) {
+    const idx = result.failedAt ?? null;
+    if (result.reason === "hash_now mismatch") {
+      const b = chain.find((x) => x.index === idx);
+      emitError(true, "verify", E_BLOCK_HASH_MISMATCH, "hash_now mismatch", idx, {
+        expected: b ? computeHash(b) : null,
+        actual: b ? b.hash_now : null,
+      });
     }
+    if (result.reason === "index gap") {
+      const pos = chain.findIndex((x) => x.index === idx);
+      emitError(true, "verify", E_CHAIN_LINK_BROKEN, "chain broken: index gap", idx, {
+        expected_index: pos >= 0 ? pos : null,
+        actual_index: idx,
+      });
+    }
+    if (result.reason === "hash_prev mismatch") {
+      emitError(true, "verify", E_CHAIN_LINK_BROKEN, "chain broken: hash_prev mismatch", idx, null);
+    }
+    emitError(true, "verify", E_CHAIN_LINK_BROKEN, result.reason ?? "chain invalid", idx, null);
   }
 
-  store.close();
-  process.stdout.write(`OK ${chain.length} blocks verified\n`);
+  process.stdout.write("OK " + chain.length + " blocks verified\n");
   process.exit(EXIT_OK);
 }
 
@@ -538,6 +491,8 @@ if (import.meta.main) {
       "help": { type: "boolean" },
       "version": { type: "boolean" },
       "block": { type: "string" },
+      "out": { type: "string" },
+      "dir": { type: "string" },
     },
   });
 
@@ -584,7 +539,7 @@ if (import.meta.main) {
   }
 
   // Check store exists (except for add/create, verify, and export which validate format first)
-  if (cmd !== "add" && cmd !== "verify" && cmd !== "export" && !existsSync(storePath)) {
+  if (cmd !== "add" && cmd !== "verify" && cmd !== "export" && cmd !== "bundle" && !existsSync(storePath)) {
     emitError(false, cmd, E_STORE_NOT_FOUND, `store not found: ${storePath}`, null, null);
   }
 
@@ -635,6 +590,23 @@ if (import.meta.main) {
       emitError(false, "export", E_STORE_NOT_FOUND, `store not found: ${storePath}`, null, null);
     }
     cmdExport({ format: format as "json" | "csv", storePath });
+  } else if (cmd === "bundle") {
+    const sub = cmdPos[0];
+    const outDir = gv.out as string | undefined;
+    const dir = gv.dir as string | undefined;
+    if (sub === "export") {
+      if (!outDir) {
+        emitError(false, "bundle", E_INTERNAL_ERROR, "bundle export requires --out <dir>", null, null);
+      }
+      void cmdBundleExport({ storePath, outDir, tsdDir, pinnedCerts });
+    } else if (sub === "verify") {
+      if (!dir) {
+        emitError(false, "bundle", E_INTERNAL_ERROR, "bundle verify requires --dir <dir>", null, null);
+      }
+      void cmdBundleVerify({ dir, toleranceMs });
+    } else {
+      emitError(false, "bundle", E_UNKNOWN_COMMAND, `unknown bundle subcommand: ${sub ?? "(none)"}`, null, null);
+    }
   } else if (cmd === "query") {
     // --algorithm and --ts are declared in the outer schema so parseArgs strips them
     // from positionals. We read the values directly from gv (no inner parseArgs).
@@ -646,6 +618,260 @@ if (import.meta.main) {
   } else {
     emitError(false, cmd, E_UNKNOWN_COMMAND, `unknown command: ${cmd}`, null, null);
   }
+}
+
+// ---- shared TSR verifier ------------------------------------------------
+
+function loadPinnedCerts(pinnedCertsPath: string): string[] {
+  try {
+    if (existsSync(pinnedCertsPath)) {
+      const pem = readFileSync(pinnedCertsPath, "utf-8");
+      return pem
+        .split(/\n-----END CERTIFICATE-----\n/)
+        .filter((s) => s.trim())
+        .map((s) => s.trim() + "\n-----END CERTIFICATE-----\n");
+    }
+  } catch {
+    // unreadable pinned certs -> empty set -> makeVerifyTSR fails closed
+  }
+  return [];
+}
+
+/**
+ * One TSR verifier for every command that walks a chain. Existence and genTime
+ * need block context and file access, which core's boolean contract excludes,
+ * so they live here and report through the structured error channel.
+ */
+function makeTsrVerifier(opts: {
+  tsdDir: string;
+  pinnedCertsPath: string;
+  toleranceMs: number;
+  command: "verify" | "bundle";
+}): VerifyTSR {
+  const verifySignature = makeVerifyTSR({
+    tsrDir: opts.tsdDir,
+    pinnedTsaCerts: loadPinnedCerts(opts.pinnedCertsPath),
+  });
+  return async (digest: string, block?: LedgerBlock): Promise<boolean> => {
+    const idx = block ? block.index : null;
+    const tsrPath = join(opts.tsdDir, digest.replace(/^sha256:/, "") + ".tsr");
+    if (!existsSync(tsrPath)) {
+      emitError(false, opts.command, E_TSR_FILE_MISSING, "TSR file missing for block", idx, {
+        tsr_digest: digest,
+      });
+    }
+    if (!(await verifySignature(digest))) {
+      emitError(true, opts.command, E_TSR_SIGNATURE_INVALID, "TSR signature verification failed", idx, {
+        tsr_digest: digest,
+      });
+    }
+    checkGenTimeConsistency(block!.ts, tsrPath, opts.toleranceMs, idx ?? 0, "verify");
+    return true;
+  };
+}
+
+// ---- bundle -------------------------------------------------------------
+
+function sha256File(p: string): string {
+  return createHash("sha256").update(readFileSync(p)).digest("hex");
+}
+
+function htmlEscape(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Offline renderer. The chain is inlined as a JSON data island, and the page
+ * loads nothing: no fonts, no CDN, no analytics. A bundle opened from a USB
+ * stick in an air-gapped room renders exactly what it renders here.
+ */
+function renderBundleHtml(chain: LedgerBlock[]): string {
+  const rows = chain
+    .map((b) => {
+      const algs = b.state.algorithms
+        .map((a) => htmlEscape(a.name) + " " + htmlEscape(a.version) + " (" + htmlEscape(a.lib) + ")")
+        .join(", ");
+      return (
+        "<tr>" +
+        "<td>" + htmlEscape(b.index) + "</td>" +
+        "<td>" + htmlEscape(b.ts) + "</td>" +
+        "<td>" + algs + "</td>" +
+        "<td>" + htmlEscape(b.state.git_commit) + "</td>" +
+        "<td class=mono>" + htmlEscape(b.hash_now) + "</td>" +
+        "<td class=mono>" + htmlEscape(b.tsr_digest || "—") + "</td>" +
+        "</tr>"
+      );
+    })
+    .join("\n");
+
+  const island = JSON.stringify(chain).replace(/<\//g, "<\\/");
+
+  return `<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>crypto-time-ledger bundle</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; padding:32px; background:#0d1411; color:#cfe9e2;
+         font:14px/1.7 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  h1 { font-size:20px; margin:0 0 4px; font-weight:600; }
+  .sub { color:#7fb8ad; font-size:13px; margin:0 0 24px; }
+  .note { border-left:3px solid #8b5cf6; background:#0f1a16; padding:12px 14px;
+          border-radius:8px; margin:0 0 24px; font-size:13px; color:#a8cfc6; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid #1c3a33; vertical-align:top; }
+  th { color:#7fb8ad; font-weight:600; font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:11.5px; color:#9fd8cb; word-break:break-all; }
+</style>
+<h1>crypto-time-ledger · 离线审计包</h1>
+<p class="sub">${chain.length} blocks · 生成于 ${htmlEscape(new Date().toISOString())}</p>
+<div class="note">
+  本页不联网：全部数据内联在这个 HTML 里，没有任何外部请求。<br>
+  它只渲染 <code>chain.json</code> 的内容，不做安全判定。TSR 签名与 genTime 的复核由
+  <code>ledger bundle verify --dir &lt;此目录&gt;</code> 完成（需要包内的 pinned-certs.pem）。
+</div>
+<table>
+<thead><tr><th>#</th><th>ts</th><th>algorithms</th><th>git commit</th><th>hash_now</th><th>tsr_digest</th></tr></thead>
+<tbody>
+${rows}
+</tbody>
+</table>
+<script type="application/json" id="chain">${island}</script>
+</html>
+`;
+}
+
+async function cmdBundleExport(args: {
+  storePath: string;
+  outDir: string;
+  tsdDir: string;
+  pinnedCerts: string;
+}): Promise<void> {
+  const store = openStore(args.storePath);
+  const chain = await store.getChain();
+  store.close();
+
+  if (chain.length === 0) {
+    emitError(false, "bundle", E_EMPTY_CHAIN, "ledger is empty: nothing to bundle", null, null);
+  }
+
+  if (existsSync(args.outDir)) {
+    if (readdirSync(args.outDir).length > 0) {
+      emitError(false, "bundle", E_BUNDLE_OUT_NOT_EMPTY, "output directory exists and is not empty", null, {
+        path: args.outDir,
+      });
+    }
+  } else {
+    mkdirSync(args.outDir, { recursive: true });
+  }
+  mkdirSync(join(args.outDir, "tsr"), { recursive: true });
+
+  const chainPath = join(args.outDir, "chain.json");
+  writeFileSync(chainPath, JSON.stringify(chain, null, 2) + "\n", "utf8");
+
+  const files: Record<string, string> = { "chain.json": sha256File(chainPath) };
+
+  for (const b of chain) {
+    if (!b.tsr_digest) continue;
+    const name = b.tsr_digest.replace(/^sha256:/, "") + ".tsr";
+    const src = join(args.tsdDir, name);
+    if (!existsSync(src)) {
+      emitError(false, "bundle", E_TSR_FILE_MISSING, "cannot bundle: TSR file missing", b.index, {
+        tsr_digest: b.tsr_digest,
+      });
+    }
+    const dst = join(args.outDir, "tsr", name);
+    copyFileSync(src, dst);
+    files["tsr/" + name] = sha256File(dst);
+  }
+
+  if (existsSync(args.pinnedCerts)) {
+    const dst = join(args.outDir, "pinned-certs.pem");
+    copyFileSync(args.pinnedCerts, dst);
+    files["pinned-certs.pem"] = sha256File(dst);
+  }
+
+  const htmlPath = join(args.outDir, "index.html");
+  writeFileSync(htmlPath, renderBundleHtml(chain), "utf8");
+  files["index.html"] = sha256File(htmlPath);
+
+  const manifest = {
+    schema: "crypto-time-ledger-bundle/1",
+    generated_at: new Date().toISOString(),
+    block_count: chain.length,
+    latest_hash: chain[chain.length - 1].hash_now,
+    files,
+  };
+  writeFileSync(join(args.outDir, "manifest.json"), JSON.stringify(manifest, null, 2) + "\n", "utf8");
+
+  process.stdout.write(`OK bundle ${chain.length} blocks -> ${args.outDir}\n`);
+  process.exit(EXIT_OK);
+}
+
+async function cmdBundleVerify(args: { dir: string; toleranceMs: number }): Promise<void> {
+  const manifestPath = join(args.dir, "manifest.json");
+  if (!existsSync(manifestPath)) {
+    emitError(false, "bundle", E_BUNDLE_MANIFEST_MISSING, "manifest.json not found", null, { path: args.dir });
+  }
+
+  let manifest: { files?: Record<string, string>; block_count?: number };
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, "utf-8"));
+  } catch {
+    emitError(false, "bundle", E_BUNDLE_MANIFEST_MISSING, "manifest.json is not valid JSON", null, { path: manifestPath });
+  }
+
+  const files = manifest.files ?? {};
+  for (const rel of Object.keys(files)) {
+    const p = join(args.dir, rel);
+    if (!existsSync(p)) {
+      emitError(false, "bundle", E_BUNDLE_FILE_MISSING, "bundle file listed in manifest is missing", null, { file: rel });
+    }
+    const actual = sha256File(p);
+    if (actual !== files[rel]) {
+      emitError(true, "bundle", E_BUNDLE_TAMPERED, "bundle file digest mismatch", null, {
+        file: rel,
+        expected: files[rel],
+        actual,
+      });
+    }
+  }
+
+  const chainPath = join(args.dir, "chain.json");
+  if (!existsSync(chainPath)) {
+    emitError(false, "bundle", E_BUNDLE_FILE_MISSING, "chain.json missing", null, { path: args.dir });
+  }
+  let chain: LedgerBlock[];
+  try {
+    chain = JSON.parse(readFileSync(chainPath, "utf-8")) as LedgerBlock[];
+  } catch {
+    emitError(false, "bundle", E_BUNDLE_TAMPERED, "chain.json is not valid JSON", null, { path: chainPath });
+  }
+  if (manifest.block_count !== undefined && manifest.block_count !== chain.length) {
+    emitError(true, "bundle", E_BUNDLE_TAMPERED, "manifest block_count does not match chain", null, {
+      manifest: manifest.block_count,
+      chain: chain.length,
+    });
+  }
+
+  const verifier = makeTsrVerifier({
+    tsdDir: join(args.dir, "tsr"),
+    pinnedCertsPath: join(args.dir, "pinned-certs.pem"),
+    toleranceMs: args.toleranceMs,
+    command: "bundle",
+  });
+
+  const result = await verifyChain(chain, verifier);
+  if (!result.ok) {
+    emitError(true, "bundle", E_CHAIN_LINK_BROKEN, result.reason ?? "chain invalid", result.failedAt ?? null, null);
+  }
+
+  process.stdout.write(`OK bundle ${chain.length} blocks verified\n`);
+  process.exit(EXIT_OK);
 }
 
 function printHelp(): void {
@@ -664,6 +890,14 @@ Commands:
 
   ledger query [--algorithm <name>] [--ts <iso-time>]
     Query blocks by algorithm name or timestamp.
+
+  ledger bundle export --out <dir>
+    Write a self-contained audit bundle: chain.json, tsr/, index.html,
+    manifest.json (sha256 of every file). Refuses a non-empty --out.
+
+  ledger bundle verify --dir <dir>
+    Verify a bundle offline: manifest digests, chain links, and TSR
+    signatures against the pinned certs shipped inside the bundle.
 
   ledger export [--format json|csv]
     Export the full chain.

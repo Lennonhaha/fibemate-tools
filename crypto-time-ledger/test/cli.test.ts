@@ -393,11 +393,14 @@ describe("ledger add", () => {
 });
 
 describe("ledger verify", () => {
-  it("exits 0 on an empty store", async () => {
-    // verify treats a missing store as an empty chain (no error), matching add behavior.
+  it("exits 2 on an empty store (nothing to verify is not a pass)", async () => {
+    // Behaviour change: "OK 0 blocks verified" exited 0, which every dashboard
+    // reads as a clean bill of health. An empty ledger proves nothing, so it is
+    // now a runtime error with its own code.
     const r = await runCli(["--store", join(tmpDir, "v-empty.db"), "verify"], tmpDir);
-    assert.strictEqual(r.code, 0, `expected 0, got ${r.code}: ${r.stdout}`);
-    assert.match(r.stdout, /OK 0 blocks verified/);
+    assert.strictEqual(r.code, 2, `expected 2, got ${r.code}: ${r.stdout}`);
+    const err = JSON.parse(r.stderr);
+    assert.strictEqual(err.error, "empty_chain");
   });
 
   it("exits 0 when chain is valid", async () => {
@@ -453,13 +456,26 @@ describe("ledger verify", () => {
   });
 
   it("exits 2 when --tsr file missing for a block (E_TSR_FILE_MISSING)", async () => {
-    // Add a block with a tsr_digest but no actual .tsr file on disk
-    const block = await makeBlock({ index: 0, hash_prev: "genesis", tsr_digest: "sha256:abc123" });
-    writeFileSync(join(tmpDir, "v-tsr-missing.json"), JSON.stringify(block));
-    await runCli(["--store", join(tmpDir, "v-tsr-missing.db"), "add", "--block", join(tmpDir, "v-tsr-missing.json")], tmpDir);
-    // Now verify — the .tsr file is missing
-    const r = await runCli(["--store", join(tmpDir, "v-tsr-missing.db"), "verify"], tmpDir);
-    assert.strictEqual(r.code, 2, `expected exit 2, got ${r.code}`);
+    // The old version of this test relied on `add` writing the block first and
+    // failing afterwards -- the half-write that is now fixed. Seed the store the
+    // way it actually happens: the block was accepted, then its .tsr disappeared.
+    const { SqliteLedgerStore } = await import(pathToFileURL(join(PKG_ROOT, "src", "storage.ts")).href) as {
+      SqliteLedgerStore: new (path?: string) => {
+        open: (p: string) => void;
+        appendBlock: (b: Record<string, unknown>) => Promise<void>;
+        close: () => void;
+      };
+    };
+    const dbPath = join(tmpDir, "v-tsr-missing.db");
+    const store = new SqliteLedgerStore();
+    store.open(dbPath);
+    await store.appendBlock(
+      await makeBlock({ index: 0, hash_prev: "genesis", tsr_digest: "sha256:abc123" }),
+    );
+    store.close();
+
+    const r = await runCli(["--store", dbPath, "verify"], tmpDir);
+    assert.strictEqual(r.code, 2, `expected exit 2, got ${r.code}: ${r.stderr}`);
     const err = JSON.parse(r.stderr);
     assert.strictEqual(err.error, "tsr_file_missing");
   });

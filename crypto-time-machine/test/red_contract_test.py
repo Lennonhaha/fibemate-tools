@@ -176,6 +176,18 @@ class ParseContract(unittest.TestCase):
         self.assertEqual(len(rows), 1, 'a filename with pipes produced %d rows' % len(rows))
         self.assertEqual(rows[0]['files'], ['weird|name.txt'])
 
+    def test_non_ascii_path_is_reported_as_written(self):
+        # git quotes non-ASCII paths as octal escapes unless core.quotepath is
+        # off, so the timeline would show \346\226\207\346\241\243.md instead of
+        # the name the author actually used.
+        with tempfile.TemporaryDirectory() as d:
+            init_repo(d)
+            commit_file(d, '\u4e2d\u6587.md', 'ml_kem768\n', 'feat: \u4e2d\u6587\u6587\u4ef6', '2026-02-01T00:00:00Z')
+            rows = core.collect_timeline(d, 'ml_kem768')
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]['files'], ['\u4e2d\u6587.md'],
+                             'non-ASCII path came back as %r' % (rows[0]['files'],))
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)
