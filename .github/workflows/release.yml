@@ -113,8 +113,12 @@ jobs:
         run: |
           set -euo pipefail
           if [ "${{ steps.meta.outputs.dry_run }}" = "true" ]; then
-            echo "dry_run is true - packing only, nothing is sent to the registry"
-            npm publish --dry-run
+            # npm publish --dry-run still asks the registry whether the version
+            # already exists, so it fails for any version that has shipped -
+            # which is exactly what a dry run is usually pointed at. The pack
+            # step above already proved the tarball builds; stop here instead
+            # of turning a rehearsal into a version-existence assertion.
+            echo "dry_run is true - tarball built, nothing is sent to the registry"
             exit 0
           fi
           if [ "$HAS_NPM_TOKEN" = "true" ]; then
