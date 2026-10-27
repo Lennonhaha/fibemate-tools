@@ -6,6 +6,10 @@ Markdown 文档里的性能基准、测试计数、版本号——这些数字�
 
 Zero external dependencies. Pure Node.js.
 
+## 与 OWASP CycloneDX 规范的关系
+
+本工具对「字段缺失」与「显式零值」的区分，与 OWASP CycloneDX 密码学属性（cryptoProperties）语义澄清的方向一致。作者就该语义向上游规范仓库提交了澄清提案，已获规范维护者评审通过；**提案尚未合并，合并前不代表规范文本已变更**。
+
 ## 核心流程
 
 ```
@@ -25,36 +29,39 @@ Zero external dependencies. Pure Node.js.
 | `ref-matched` | 声明引用 `lg-XXX` 等实体，在扫描范围内找到 | 绿 |
 | `ref-missing` | 引用实体不在扫描范围内 | 交人工 |
 
-## 用法
+## 安装
 
+```bash
+npm i -g verifact      # 全局安装，得到 verifact 命令
+npx verifact --help    # 免安装试用
 ```
-npm install    # 零依赖，仅安装
-```
+
+零外部依赖。从源码检出运行时，下文的 `verifact` 可替换为 `node bin/verifact.js`。
 
 ### 核验文档
 
 ```bash
-node bin/verifact.js verify                   # 默认配置，drift 即退出码 1
-node bin/verifact.js verify --fail-on none    # 仅报告，不拦截
-node bin/verifact.js verify --format md --out report.md
+verifact verify                   # 默认配置，drift 即退出码 1
+verifact verify --fail-on none    # 仅报告，不拦截
+verifact verify --format md --out report.md
 ```
 
 ### 审查单条声明
 
 ```bash
-node bin/verifact.js explain <claimId>
+verifact explain <claimId>
 ```
 
 ### 历史对比
 
 ```bash
-node bin/verifact.js diff --since 3    # 最近 3 次运行的状态迁移
+verifact diff --since 3    # 最近 3 次运行的状态迁移
 ```
 
 ### 本地看板
 
 ```bash
-node bin/verifact.js serve --port 8080
+verifact serve --port 8080
 ```
 
 ## 退出码
@@ -84,12 +91,12 @@ node bin/verifact.js serve --port 8080
 
 | 项 | 状态 |
 |---|-------|
-| 回归测试 | ✅ 15 项 (`node test/run.js`) |
-| CI 集成 | ✅ sentinel 门禁（`fail-on-drift`） |
+| 回归测试 | ✅ 74 项 (`node test/run.js`) |
+| CI 集成 | ✅ sentinel 门禁（`fail-on-drift`）+ 语料门禁（变异必红） |
 | 平台 | Node.js ≥18，零外部依赖 |
-| 发布 | 私有包（`@fibemate/verifact`），未发布 npm |
+| 发布 | npm 公共包 `verifact`（无 scope，公开；`npm i -g verifact`） |
 | 许可证 | Apache-2.0 |
 
 ## LICENSE
 
-Apache-2.0 — see [LICENSE](../LICENSE).
+Apache-2.0 — see [LICENSE](./LICENSE).
