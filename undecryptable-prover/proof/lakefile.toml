@@ -1,0 +1,7 @@
+name = "undecryptable_prover_proof"
+version = "0.1.0"
+defaultTargets = ["UndecryptableProver"]
+
+[[lean_lib]]
+name = "UndecryptableProver"
+roots = ["UndecryptableProver"]

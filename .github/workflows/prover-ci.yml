@@ -25,3 +25,25 @@ jobs:
           cargo build --release
           ./target/release/undecryptable-prover
           test -f evidence.json && echo "evidence.json produced"
+      # The Lean proof is part of "build-and-run": a theorem that is not compiled
+      # is not a theorem. Pinned to lean-action v1.6.2 by commit SHA, and the
+      # toolchain is pinned by lean-toolchain, so neither can drift silently.
+      - name: Lean proof with axiom audit
+        uses: leanprover/lean-action@24581d74d674803a25a81b10b059c5c0cdd344c6 # v1.6.2
+        with:
+          lake-package-directory: undecryptable-prover/proof
+          auto-config: "false"
+          build: "true"
+          test: "false"
+          lint: "false"
+          use-mathlib-cache: "false"
+          # Fails on anything outside this list, which covers `sorry` (sorryAx),
+          # `native_decide` (Lean.ofReduceBool), and any newly added axiom.
+          # `propext` is Lean core logic: every structure gets a generated
+          # `mk.injEq` lemma whose `↔` statement needs propositional
+          # extensionality. Allowing it is not an assumption about the world.
+          # The only domain assumption is the storage-medium threat model below;
+          # widening this list is a deliberate, reviewable change.
+          axiom-audit: "true"
+          axiom-audit-allow: "propext,UndecryptableProver.overwrite_erases"
+          axiom-audit-root: "UndecryptableProver"
