@@ -3,8 +3,10 @@
 **Cryptographic Bill of Materials — scan, diff, report.**
 
 Scan a directory tree for cryptographic assets, emit a
-[CycloneDX 1.6](https://cyclonedx.org/) CBOM, and diff two CBOMs to
-detect algorithm additions, removals, and metadata changes.
+[CycloneDX 1.7](https://cyclonedx.org/specification/overview/) CBOM, and diff two
+CBOMs to detect algorithm additions, removals, and metadata changes.
+1.6 output is still available with `--spec 1.6` for consumers that have not
+moved yet.
 
 Zero external dependencies. Pure Node.js.
 
@@ -21,7 +23,7 @@ A CBOM is an inventory to review. It is not a compliance conclusion, and it cann
 ## Try it without installing
 
 ```
-npx cbom-tools scan --dir ./my-project --out cbom.json
+npx cbom-tools scan --dir ./my-project --out cbom.json --spec 1.7
 npx cbom-tools diff cbom-before.json cbom-after.json
 ```
 
@@ -36,18 +38,32 @@ npm install -g cbom-tools
 ### 1. Scan a project
 
 ```
-npx cbom-tools scan --dir ./my-project --out cbom.json
+npx cbom-tools scan --dir ./my-project --out cbom.json --spec 1.7
 ```
 
 `cbom-scan` is still installed as a standalone alias.
+
+### Spec version
+
+`--spec` accepts `1.7` (default) and `1.6`. Both forms work:
+`--spec 1.7` and `--spec=1.7`. Anything else is a usage error (exit 2)
+rather than a silent fallback — a BOM that claims a version it does not
+conform to is worse than no BOM.
+
+The schema is the contract, so CI validates the emitted document against the
+official `bom-1.7.schema.json` (and, for `--spec 1.6`, against
+`bom-1.6.schema.json`). The two differ in the declared version and in which
+documented fields are permitted; the findings themselves are identical, and a
+test asserts exactly that.
 
 Scans:
 - `package.json` dependencies (declarative rule table)
 - Source files (`.js/.cjs/.mjs/.ts/.tsx/.jsx`) via regex patterns
 
-Output: a CycloneDX 1.6 JSON with `cryptoProperties` (asset type,
+Output: a CycloneDX 1.7 JSON with `cryptoProperties` (asset type,
 primitive, quantum security level) and `evidence.occurrences` (file
 paths + line numbers, capped at 50 per algorithm, deduplicated).
+Pass `--spec 1.6` to emit the previous schema version instead.
 
 ### 2. Diff two CBOMs
 
@@ -69,11 +85,18 @@ Exit codes:
 npm test
 ```
 
-17 CLI contract tests (Node built-in `node:test`, zero dependencies):
-both binaries are spawned as child processes and checked against edge
-inputs — empty directory, dependencies-only, source-only, an 800-file
-tree (occurrence cap, `node_modules` / `.git` / dotfile skipping),
-unreachable directories, missing argument values, and malformed JSON.
+68 tests (Node built-in `node:test`, zero dependencies). Both binaries are
+spawned as child processes and checked against edge inputs — empty directory,
+dependencies-only, source-only, an 800-file tree (occurrence cap,
+`node_modules` / `.git` / dotfile skipping), unreachable directories, missing
+argument values, and malformed JSON.
+
+`test/spec-version.test.cjs` covers the `--spec` contract: the default is
+1.7, both `--spec 1.7` and `--spec=1.7` are parsed, an unknown version exits
+2 with the allowed list, the emitted document validates against the vendored
+official schema for the version it claims, and switching versions does not
+change the findings. Schemas are vendored under `test/fixtures`, so the suite
+runs offline.
 
 ## Example (real output)
 
@@ -81,10 +104,10 @@ Scanning a repository before and after a PQC migration:
 
 ```
 $ cbom-scan --dir ./repo-before --out before.json
-cbom-scan: wrote 11 algorithms to before.json
+cbom-scan: wrote 11 algorithms to before.json (CycloneDX 1.7)
 
-$ cbom-scan --dir ./repo-after --out after.json
-cbom-scan: wrote 13 algorithms to after.json
+$ cbom-scan --dir ./repo-after --out after.json --spec 1.6
+cbom-scan: wrote 13 algorithms to after.json (CycloneDX 1.6)
 
 $ cbom-diff before.json after.json
 ## CBOM Diff
@@ -124,9 +147,9 @@ only — no cryptographic computation is performed.
 
 ## Standards
 
-Implements the [CycloneDX 1.6](https://cyclonedx.org/specification/overview/)
-CBOM specification, maintained by [OWASP](https://owasp.org/) under
-Apache-2.0.
+Emits the [CycloneDX 1.7](https://cyclonedx.org/specification/overview/) CBOM
+format by default, with 1.6 available via `--spec 1.6`. The specification is
+maintained by [OWASP](https://owasp.org/) under Apache-2.0.
 
 ## License
 

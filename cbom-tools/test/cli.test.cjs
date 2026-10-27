@@ -72,7 +72,9 @@ test('场景 1 空目录：不崩，输出合法的空 CBOM', () => {
   const dir = mk('empty-dir', null);
   const cbom = scanDir(dir);
   assert.strictEqual(cbom.bomFormat, 'CycloneDX');
-  assert.strictEqual(cbom.specVersion, '1.6');
+  // Default moved to 1.7 when 1.7 shipped; 1.6 is still reachable with
+  // --spec 1.6 and is covered in spec-version.test.cjs.
+  assert.strictEqual(cbom.specVersion, '1.7');
   assert.strictEqual(cbom.version, 1);
   assert.deepStrictEqual(cbom.components, []);
 });

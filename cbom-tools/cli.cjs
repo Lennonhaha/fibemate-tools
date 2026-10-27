@@ -9,7 +9,7 @@
  * with "could not determine executable to run". A package whose name is not a
  * command is a package nobody tries twice.
  *
- *   npx cbom-tools scan --dir ./project --out cbom.json
+ *   npx cbom-tools scan --dir ./project --out cbom.json --spec 1.7
  *   npx cbom-tools diff cbom-before.json cbom-after.json
  *
  * The old bin names still work; this is an addition, not a rename.
@@ -27,7 +27,8 @@ function usage() {
   console.log(`cbom-tools — Cryptographic Bill of Materials
 
 Usage:
-  cbom-tools scan [--dir <path>] [--out <file>]   scan a tree, emit CycloneDX CBOM
+  cbom-tools scan [--dir <path>] [--out <file>] [--spec 1.6|1.7]
+                                                  scan a tree, emit a CBOM (default 1.7)
   cbom-tools diff <old.json> <new.json> [--json]  diff two CBOMs
   cbom-tools --version
   cbom-tools --help
