@@ -26,12 +26,18 @@ on:
       - 'data/blind-spot-map/**'
       - 'scripts/test-contract.js'
       - 'scripts/test-verifact-demo.js'
+      - 'scripts/test-release-workflow.cjs'
+      - 'scripts/test-release-workflow-mutations.cjs'
+      - '.github/workflows/release.yml'
       - '.github/workflows/contract-test.yml'
   pull_request:
     paths:
       - 'data/blind-spot-map/**'
       - 'scripts/test-contract.js'
       - 'scripts/test-verifact-demo.js'
+      - 'scripts/test-release-workflow.cjs'
+      - 'scripts/test-release-workflow-mutations.cjs'
+      - '.github/workflows/release.yml'
       - '.github/workflows/contract-test.yml'
   schedule:
     - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
@@ -65,6 +71,14 @@ jobs:
       - name: Prove the gate can fail (mutation self-test)
         working-directory: tools
         run: node scripts/test-contract.js --page=../fibemate/www/tools/blind-spot-map/index.html --self-test
+
+      - name: Release workflow contract
+        working-directory: tools
+        run: node scripts/test-release-workflow.cjs
+
+      - name: Release workflow gate can fail
+        working-directory: tools
+        run: node scripts/test-release-workflow-mutations.cjs
 
       - name: Page vs corpus vs docs
         working-directory: tools
