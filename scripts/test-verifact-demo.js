@@ -282,6 +282,69 @@ check('page.assets_present', function (ctx) {
   return { ok: true, detail: '' };
 });
 
+check('render.reconciles', function (ctx) {
+  // The page prints an arithmetic chain built from counts. The expectation here
+  // is recomputed independently from counts, so a renderer that inflates or
+  // zeroes any term is caught even if it still prints a self-consistent story.
+  const cases = [['real', ctx.real], ['synth', ctx.synth]];
+  for (const pair of cases) {
+    const label = pair[0];
+    const rep = pair[1];
+    const html = ctx.renderer.renderReport(rep).reconHtml;
+    if (!html) return { ok: false, detail: label + ': no reconciliation block' };
+
+    const attr = function (name) {
+      const m = html.match(new RegExp('data-recon-' + name + '="([^"]*)"'));
+      return m ? Number(m[1]) : NaN;
+    };
+    const state = (html.match(/data-recon="([^"]*)"/) || [])[1];
+    const got = {
+      tiles: attr('tiles'),
+      refFound: attr('ref-found'),
+      refMissing: attr('ref-missing'),
+      claims: attr('claims'),
+      nonCode: attr('noncode'),
+      total: attr('total'),
+    };
+
+    const c = rep.counts || {};
+    const wantTiles = ['verified', 'drift', 'ambiguous', 'unbound']
+      .reduce(function (s, k) { return s + (Number(c[k]) || 0); }, 0);
+
+    if (got.tiles !== wantTiles) {
+      return { ok: false, detail: label + ': rendered tiles ' + got.tiles + ' != counts sum ' + wantTiles };
+    }
+    if (got.refFound !== (Number(c.refFound) || 0) || got.refMissing !== (Number(c.refMissing) || 0)) {
+      return { ok: false, detail: label + ': ref counts do not match counts.refFound/refMissing' };
+    }
+    if (got.tiles + got.refFound + got.refMissing !== got.claims) {
+      return { ok: false, detail: label + ': tiles+refs ' + (got.tiles + got.refFound + got.refMissing) + ' != claims ' + got.claims };
+    }
+    if (got.claims !== (Number(c.claims) || 0)) {
+      return { ok: false, detail: label + ': claims ' + got.claims + ' != counts.claims ' + c.claims };
+    }
+    if (got.claims + got.nonCode !== got.total || got.total !== (Number(c.claimsTotal) || 0)) {
+      return { ok: false, detail: label + ': ' + got.claims + '+' + got.nonCode + ' != claimsTotal ' + got.total };
+    }
+    if (state !== 'ok') {
+      return { ok: false, detail: label + ': report reconciles but page says data-recon="' + state + '"' };
+    }
+    if (html.indexOf('data-recon-fail') >= 0) {
+      return { ok: false, detail: label + ': failure notice rendered for a reconciling report' };
+    }
+  }
+
+  // And the negative half: when the report itself does not add up, the page
+  // must say so loudly instead of rendering a clean bill of health.
+  const broken = JSON.parse(JSON.stringify(ctx.real));
+  broken.counts.claims = broken.counts.claims + 1;
+  const badHtml = ctx.renderer.renderReport(broken).reconHtml;
+  const badState = (badHtml.match(/data-recon="([^"]*)"/) || [])[1];
+  if (badState !== 'fail') return { ok: false, detail: 'inconsistent report rendered as "' + badState + '"' };
+  if (badHtml.indexOf('data-recon-fail') < 0) return { ok: false, detail: 'inconsistent report did not print a failure notice' };
+  return { ok: true, detail: '' };
+});
+
 /* ---------------- runner ---------------- */
 
 function runSuite(ctx) {
@@ -370,6 +433,30 @@ const mutations = [
     target: 'render.drift_banner_iff_drift',
     apply: function (ctx) {
       ctx.real.counts.drift = 1;
+    },
+  },
+  {
+    name: 'M9 tile sum inflated by one',
+    target: 'render.reconciles',
+    apply: function (ctx) {
+      const src = ctx.rendererSource.replace(
+        'const tiles = TILES.reduce(function (sum, k) { return sum + (Number(c[k]) || 0); }, 0);',
+        'const tiles = TILES.reduce(function (sum, k) { return sum + (Number(c[k]) || 0); }, 0) + 1;'
+      );
+      ctx.renderer = loadRenderer(src);
+      ctx.rendererSource = src;
+    },
+  },
+  {
+    name: 'M10 non-code remainder zeroed',
+    target: 'render.reconciles',
+    apply: function (ctx) {
+      const src = ctx.rendererSource.replace(
+        'const nonCode = claimsTotal - codeClaims;',
+        'const nonCode = 0;'
+      );
+      ctx.renderer = loadRenderer(src);
+      ctx.rendererSource = src;
     },
   },
 ];
