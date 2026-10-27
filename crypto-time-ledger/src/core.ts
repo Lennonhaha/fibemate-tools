@@ -78,7 +78,7 @@ export function computeHash(block: LedgerBlock): string {
 // verifyTSR 由调用方注入：读 tsr_ref 文件 → 验签（TSA 证书链）→ 对上 block.ts
 // 返回 false ⇒ 该链块判无效（不做降级，§4.2 拍板 #3）
 // 契约统一：与 tsr.ts makeVerifyTSR 一致，1-arg async (digest) => Promise<boolean>
-export type VerifyTSR = (digest: string) => Promise<boolean>;
+export type VerifyTSR = (digest: string, block?: LedgerBlock) => Promise<boolean>;
 
 export interface VerifyResult {
   ok: boolean;
@@ -100,7 +100,9 @@ export async function verifyChain(blocks: LedgerBlock[], verifyTSR: VerifyTSR): 
     if (b.hash_now !== computed) {
       return { ok: false, failedAt: b.index, reason: "hash_now mismatch" };
     }
-    if (!(await verifyTSR(b.tsr_digest))) {
+    // A block that references no TSR has nothing to verify. Calling the
+    // verifier anyway makes every TSR-less ledger fail with "file missing".
+    if (b.tsr_digest && !(await verifyTSR(b.tsr_digest, b))) {
       return { ok: false, failedAt: b.index, reason: "TSR invalid" };
     }
     prevHash = b.hash_now;
