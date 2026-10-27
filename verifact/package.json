@@ -1,14 +1,41 @@
 {
-  "name": "@fibemate/verifact",
+  "name": "verifact",
   "version": "0.2.0",
   "description": "事实哨兵 — 把文档里的硬数字声明绑定到真实产出物上逐条核验，漂移即红。",
   "license": "Apache-2.0",
+  "author": "刘天赫 <research@fibemate.net>",
+  "homepage": "https://github.com/Lennonhaha/fibemate-tools/tree/main/verifact#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git",
+    "directory": "verifact"
+  },
+  "bugs": {
+    "url": "https://github.com/Lennonhaha/fibemate-tools/issues"
+  },
+  "keywords": [
+    "verification",
+    "documentation",
+    "drift-detection",
+    "audit",
+    "evidence",
+    "claims",
+    "supply-chain",
+    "cli"
+  ],
   "type": "commonjs",
-  "private": true,
   "main": "src/engine.js",
   "bin": {
     "verifact": "bin/verifact.js"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "verifact.json.example",
+    "README.md",
+    "LICENSE",
+    "VERIFACT-DESIGN.md"
+  ],
   "scripts": {
     "verify": "node bin/verifact.js verify",
     "serve": "node bin/verifact.js serve",
@@ -17,5 +44,8 @@
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "publishConfig": {
+    "access": "public"
+  }
 }
