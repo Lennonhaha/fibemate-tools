@@ -3,6 +3,9 @@ name: time-machine-ci
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   ci-test:
     runs-on: ubuntu-latest

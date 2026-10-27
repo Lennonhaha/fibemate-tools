@@ -3,6 +3,9 @@ name: prover-ci
 on:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   build-and-run:
     runs-on: ubuntu-latest

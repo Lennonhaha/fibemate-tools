@@ -7,6 +7,9 @@ on:
       - '.github/workflows/verifact-ci.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   ci-test:
     runs-on: ubuntu-latest
