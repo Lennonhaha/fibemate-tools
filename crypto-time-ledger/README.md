@@ -11,7 +11,7 @@ v0.1.0 — core + storage + TSR verification modules + **CLI（`add` / `verify` 
 
 ```bash
 npm install
-npm test        # 73 tests (13 core + 8 storage + 8 TSR + 34 CLI + 10 red-contract)
+npm test        # 78 tests (13 core + 8 storage + 8 TSR + 34 CLI + 10 red-contract + 5 bundle-negative)
 npm run typecheck
 ```
 
@@ -108,6 +108,7 @@ test/
   storage.test.ts
   tsr.test.ts
   cli.test.ts
+  bundle-negative.test.ts — bundle verify failure paths (empty / tampered / unverifiable TSR / malformed)
   fixtures/tsr/ — fixture data (see .gitignore note above)
 
 scripts/

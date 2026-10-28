@@ -16,7 +16,7 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 | `hallucination-detector` | Node (零依赖) | 检测 AI 生成的密码代码中的幻觉/侧信道不安全模式 | 可跑，12 项样本 PASS（含域参数 / 测试覆盖回归） |
 | `crypto-time-machine` | Python (仅标准库) | 把密码学 API 的引入/变更变成可查询 git 时间轴 | 可跑，CI + 真实主仓历史测试 PASS |
 | `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，12 项测试 PASS（`cargo test --release`，含多轮覆写真覆写回归）；Lean 主定理 0 `sorry`、1 条显式 axiom，`#print axioms` 可审计 |
-| `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，73 tests + typecheck PASS |
+| `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，78 tests + typecheck PASS |
 | `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
 | `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，77 项回归 PASS；npm 已发布 `verifact@0.2.4`；主仓 345 份文档 / 2263 条声明实测 verified 135 · drift 0（2026-10-28） |
 | `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，20 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k（2026-09-25 实测同结论） |
