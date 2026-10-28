@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crypto-time-machine"
+dynamic = ["version"]
+description = "Trace when a crypto API entered your git history, and what it touched."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Liu Tianhe", email = "research@fibemate.net" }]
+keywords = ["cryptography", "git-history", "supply-chain", "sbom", "pqc", "sqlite"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: Security :: Cryptography",
+  "Environment :: Console",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Lennonhaha/fibemate-tools"
+Repository = "https://github.com/Lennonhaha/fibemate-tools"
+Issues = "https://github.com/Lennonhaha/fibemate-tools/issues"
+
+[project.scripts]
+crypto-time-machine = "ctime.cli:main"
+
+[tool.setuptools]
+packages = ["ctime"]
+
+[tool.setuptools.dynamic]
+version = { attr = "ctime.__version__" }

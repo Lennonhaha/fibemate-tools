@@ -29,7 +29,7 @@ const READ_ONLY = new Set(['read', 'none']);
 // somewhere in the same job as the scope it justifies.
 const WRITE_EVIDENCE = {
   contents: [/gh release (create|upload|edit)/, /npm publish(?!\s*--dry-run)/, /softprops\/action-gh-release/, /git push/],
-  'id-token': [/npm publish[^\n]*--provenance/, /cosign (sign-blob|sign)/, /ossf\/scorecard-action/, /sigstore/],
+  'id-token': [/npm publish[^\n]*--provenance/, /cosign (sign-blob|sign)/, /ossf\/scorecard-action/, /sigstore/, /pypa\/gh-action-pypi-publish/],
   'security-events': [/upload-sarif/, /codeql-action/],
   packages: [/docker push/, /ghcr\.io/, /npm publish[^\n]*--access public/],
   actions: [/workflow run/, /gh run/, /actions\/cache/],

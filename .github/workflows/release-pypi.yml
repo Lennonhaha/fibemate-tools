@@ -1,0 +1,98 @@
+name: release-pypi
+
+on:
+  push:
+    tags:
+      - 'crypto-time-machine-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to build, example crypto-time-machine-v0.1.1'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and verify but do not upload to PyPI'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-pypi-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+
+      - name: Resolve version from the tag
+        id: meta
+        working-directory: crypto-time-machine
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          case "$TAG" in
+            crypto-time-machine-v[0-9]*) ;;
+            *) echo "tag '$TAG' is not crypto-time-machine-v<version>" >&2; exit 2 ;;
+          esac
+          VERSION="${TAG##*-v}"
+          PKG_VERSION="$(python -c "from ctime import __version__; print(__version__)")"
+          if [ "$PKG_VERSION" != "$VERSION" ]; then
+            echo "tag says $VERSION but ctime/__init__.py says $PKG_VERSION" >&2
+            echo "refusing to publish an artifact whose version nobody tagged" >&2
+            exit 2
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "resolved $VERSION"
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade build twine
+
+      - name: Build sdist and wheel
+        working-directory: crypto-time-machine
+        run: python -m build --outdir dist
+
+      - name: Check the metadata with twine
+        working-directory: crypto-time-machine
+        run: python -m twine check dist/*
+
+      - name: Run the packaging contract test
+        working-directory: crypto-time-machine
+        run: python test/packaging_test.py
+
+      - name: Upload the distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist
+          path: crypto-time-machine/dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the distributions
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI with trusted publishing
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: dist/
+          print-hash: true

@@ -37,6 +37,9 @@ on:
       - 'scripts/test-publish-metadata.cjs'
       - 'scripts/test-resign-workflow.cjs'
       - '.github/workflows/resign-release.yml'
+      - '.github/workflows/release-pypi.yml'
+      - 'scripts/test-pypi-workflow.cjs'
+      - 'crypto-time-machine/**'
       - '.github/workflows/contract-test.yml'
   pull_request:
     paths:
@@ -54,6 +57,9 @@ on:
       - 'scripts/test-publish-metadata.cjs'
       - 'scripts/test-resign-workflow.cjs'
       - '.github/workflows/resign-release.yml'
+      - '.github/workflows/release-pypi.yml'
+      - 'scripts/test-pypi-workflow.cjs'
+      - 'crypto-time-machine/**'
       - '.github/workflows/contract-test.yml'
   schedule:
     - cron: '17 3 * * *'   # daily 03:17 UTC — catches drift from the page repo
@@ -115,6 +121,10 @@ jobs:
       - name: Workflow permissions (read-only top level, justified writes)
         working-directory: tools
         run: node scripts/test-workflow-permissions.cjs --self-test && node scripts/test-workflow-permissions.cjs
+
+      - name: PyPI release workflow (OIDC, pinned, version-guarded)
+        working-directory: tools
+        run: node scripts/test-pypi-workflow.cjs --self-test && node scripts/test-pypi-workflow.cjs
 
       - name: Page vs corpus vs docs
         working-directory: tools

@@ -1,0 +1,10 @@
+# 本机分析产物
+timeline.db
+*.db
+
+# 构建产物
+build/
+dist/
+*.egg-info/
+__pycache__/
+.venv/

@@ -1,0 +1,6 @@
+include README.md
+include LICENSE
+# 本机分析产物，绝不随包分发
+exclude timeline.db
+global-exclude *.db
+prune test

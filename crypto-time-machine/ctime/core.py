@@ -215,42 +215,8 @@ def query_impact(db_path, after_sha=None):
 
 
 if __name__ == '__main__':
-    import argparse
-    p = argparse.ArgumentParser(description='crypto-time-machine')
-    p.add_argument('--repo', default=REPO)
-    p.add_argument('--pattern', required=True, help='追踪的符号/字符串，如 ml_kem768')
-    p.add_argument('--mode', default='-S', choices=['-S', '-G'])
-    p.add_argument('--db', default=None, help='SQLite 输出路径')
-    p.add_argument('--since', default=None)
-    p.add_argument('--until', default=None)
-    p.add_argument('--query-after', default=None, help='仅分析某 sha 之后的影响')
-    p.add_argument('--allow-empty', action='store_true',
-                   help='允许用空结果覆盖已有时间轴（默认拒绝）')
-    a = p.parse_args()
-    db = a.db or (os.path.join(os.path.dirname(__file__), '..', 'timeline.db'))
-
-    try:
-        n = build_db(a.repo, a.pattern, db, mode=a.mode, allow_empty=a.allow_empty)
-    except GitError as e:
-        if 'not a git repository' in e.stderr.lower():
-            sys.stderr.write('[time-machine] error: not a git repository: %s\n' % a.repo)
-        else:
-            sys.stderr.write('[time-machine] error: git failed: %s\n' % e.stderr.strip()[:300])
-        sys.exit(2)
-
-    if n == -1:
-        sys.stderr.write(
-            '[time-machine] error: pattern %r matched nothing; existing timeline left '
-            'untouched (pass --allow-empty to overwrite)\n' % a.pattern)
-        sys.exit(2)
-
-    print(f"[time-machine] pattern={a.pattern} mode={a.mode} events={n} db={db}")
-
-    if a.query_after:
-        try:
-            imp = query_impact(db, a.query_after)
-        except UnknownShaError as e:
-            sys.stderr.write('[time-machine] error: unknown sha in --query-after: %s\n' % e.sha)
-            sys.exit(2)
-        print(json.dumps(imp, indent=2, ensure_ascii=False))
-
+    # 保留脚本入口：test/red_contract_test.py 用 "python ctime/core.py" 跑 CLI 契约。
+    # 真正的实现在 ctime/cli.py，console script 与 "python -m ctime" 共用同一份。
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from ctime.cli import main
+    sys.exit(main())
