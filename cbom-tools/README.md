@@ -77,7 +77,22 @@ Exit codes:
 - `0` — no changes
 - `1` — informational changes (algorithm properties moved)
 - `2` — warnings (algorithm removed, new classical reference), or file/parse error
-- `3` — (reserved) quantum-vulnerable/weak algorithm detection
+- `3` — a quantum-vulnerable algorithm was newly introduced (requires both CBOMs)
+
+Exit 3 follows the definition agreed in [#43](https://github.com/Lennonhaha/fibemate-tools/issues/43):
+an algorithm whose `fibemate:quantumSecurity:level` is `vulnerable` appears in the
+after CBOM but not in the before CBOM. Two consequences are deliberate:
+
+- An algorithm that was already vulnerable and stays vulnerable is not a
+  regression, so it never turns the build red.
+- A single-CBOM scan has no baseline to compare against, so it stays at exit 1.
+  Otherwise the first scan of a legacy codebase would light up every historical
+  finding at once.
+
+The level is read from `component.properties` (`fibemate:quantumSecurity:level`),
+which is where `cbom-scan` writes it; `cryptoProperties.quantumSecurity.level` is
+accepted as a fallback for hand-written CBOMs. A missing or malformed level stays
+unknown — it is never inferred from the algorithm name.
 
 ## Testing
 
@@ -85,7 +100,7 @@ Exit codes:
 npm test
 ```
 
-68 tests (Node built-in `node:test`, zero dependencies). Both binaries are
+76 tests (Node built-in `node:test`, zero dependencies). Both binaries are
 spawned as child processes and checked against edge inputs — empty directory,
 dependencies-only, source-only, an 800-file tree (occurrence cap,
 `node_modules` / `.git` / dotfile skipping), unreachable directories, missing
