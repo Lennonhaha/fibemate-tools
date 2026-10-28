@@ -103,7 +103,7 @@ verifact serve --port 8080
 
 | 项 | 状态 |
 |---|-------|
-| 回归测试 | ✅ 74 项 (`node test/run.js`) |
+| 回归测试 | ✅ 77 项 (`node test/run.js`) |
 | CI 集成 | ✅ sentinel 门禁（`fail-on-drift`）+ 语料门禁（变异必红） |
 | 平台 | Node.js ≥18，零外部依赖 |
 | 发布 | npm 公共包 `verifact`（无 scope，公开；`npm i -g verifact`） |
