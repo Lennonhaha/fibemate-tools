@@ -222,7 +222,7 @@
     }
   ],
   "sealed": [
-    "docs/tsa/**"
+    "**/docs/tsa/**"
   ],
   "gate": {
     "failOn": "drift"
