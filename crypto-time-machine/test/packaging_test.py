@@ -22,6 +22,9 @@ import zipfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FACT = []
 
+sys.path.insert(0, ROOT)
+from ctime import __version__ as EXPECTED_VERSION  # noqa: E402  (单源真相：pyproject 也读它)
+
 
 def run(cmd, cwd=None, env=None):
     r = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True)
@@ -83,7 +86,7 @@ def main():
 
         check('console script installed', os.path.exists(script), script)
         ver = run([script, '--version']).stdout.strip()
-        check('--version reports 0.1.1', ver.endswith('0.1.1'), ver)
+        check('--version reports %s' % EXPECTED_VERSION, ver.endswith(EXPECTED_VERSION), ver)
         help_out = run([script, '--help']).stdout
         check('--help mentions --pattern', '--pattern' in help_out)
 
