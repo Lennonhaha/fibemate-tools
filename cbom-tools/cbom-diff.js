@@ -17,7 +17,7 @@
  *   0 — 无变更
  *   1 — 有信息性变更（算法属性升级等）
  *   2 — 有警告性变更（算法删除、新经典算法引用等）
- *   3 — (reserved) 量子脆弱/弱算法引入检测（0.2.0 规划）
+ *   3 — 加密材料依赖引入了量子脆弱算法（仅在同时提供 before 与 after 时判定）
  */
 
 const { execSync } = require('child_process');
@@ -164,7 +164,7 @@ if (oldCBOM && newCBOM) {
         ref,
         name: c.name,
         type: assetType,
-        risk: classifyRisk(crypto),
+        risk: classifyRisk(crypto, quantumLevel(c)),
       });
     }
   });
@@ -196,8 +196,10 @@ if (oldCBOM && newCBOM) {
     ref: c['bom-ref'],
     name: c.name,
     type: (c.cryptoProperties || {}).assetType || c.type,
-    risk: 'info',
-  }));
+      // No baseline: every component is "present", but none is "newly
+      // introduced", so the exit-3 regression signal stays off here.
+      risk: 'info',
+    }));
 }
 
 // --- 依赖关系比较 ---
@@ -226,6 +228,8 @@ if (oldCBOM && newCBOM) {
 }
 
 // --- 严重性判定 ---
+// Exit 3 fires only when an added component is quantum-vulnerable and a
+// baseline exists to compare against (see the single-CBOM branch).
 const hasCriticalAdd = diff.components.added.some(c => c.risk === 'critical');
 const hasWarningAdd = diff.components.added.some(c => c.risk === 'warning');
 const hasRemoval = diff.components.removed.length > 0;
@@ -249,7 +253,30 @@ if (hasCriticalAdd) {
 // ════════════════════════════
 // 算法风险分类
 // ════════════════════════════
-function classifyRisk(cryptoProps) {
+// Quantum level lives in `component.properties` as a name/value pair:
+// cbom-scan emits `fibemate:quantumSecurity:level`. Hand-written CBOMs may
+// instead put it under `cryptoProperties.quantumSecurity.level`, so accept
+// both, properties first. Never guess a level from the algorithm name: an
+// unknown level must stay unknown, otherwise exit 3 becomes a name-match.
+function quantumLevel(component) {
+  const props = component && Array.isArray(component.properties) ? component.properties : [];
+  // Literal, not a module-level const: the diff runs at the top of this script,
+  // long before this line is evaluated, so a module-level binding would still be
+  // in its temporal dead zone when quantumLevel() is first called.
+  const fromProps = props.find((entry) => entry && entry.name === 'fibemate:quantumSecurity:level');
+  if (fromProps && typeof fromProps.value === 'string') return fromProps.value;
+  const cryptoProps = (component && component.cryptoProperties) || {};
+  const fromCrypto = cryptoProps.quantumSecurity && cryptoProps.quantumSecurity.level;
+  return typeof fromCrypto === 'string' ? fromCrypto : null;
+}
+
+// Risk of a component that is *added* by this diff. Definition 2 from #43:
+// exit 3 means "a quantum-vulnerable algorithm was newly introduced", and the
+// caller only classifies added components, so "present here and absent before"
+// is already established by the time we get here. A vulnerable algorithm that
+// merely stays present is not a regression and must not turn the build red.
+function classifyRisk(cryptoProps, quantum) {
+  if (quantum === 'vulnerable') return 'critical';
   const type = ((cryptoProps && cryptoProps.assetType) || '').toLowerCase();
   // PQC algorithms: safe additions
   if (/kem|sign|signature|post.quantum|pqc|mlkem|mldsa|slh/i.test(type)) return 'info';
@@ -259,8 +286,6 @@ function classifyRisk(cryptoProps) {
   if (/ecc|ecdh|p-256|sm2|curve/i.test(type)) return 'warning';
   // Classic symmetric: info (still safe with large keys)
   if (/sym|sm4|aes|gcm/i.test(type)) return 'info';
-  // TODO(v0.2.0): add 'critical' exit code for quantum-vulnerable algorithms
-  // using cryptoProps.quantumSecurity?.level
   // Unknown: treat as warning
   return 'warning';
 }
