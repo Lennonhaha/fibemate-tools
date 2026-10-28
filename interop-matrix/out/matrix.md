@@ -1,13 +1,13 @@
 # ML-KEM-768 interop matrix (PASS)
 
-Generated 2026-10-28T11:40:48.623Z | mode **D** | node v22.22.3
+Generated 2026-10-28T11:52:03.969Z | mode **D** | node v22.22.3
 
 | end | implementation | version | source sha256 (first 16) |
 |---|---|---|---|
 | P | fibemate-pqc-kem | 0.1.0 | `8d98ca5f66cb09a9` |
 | N | @noble/post-quantum | 0.7.1 | `e5f1a3fa994f663c` |
 
-fibemate `e4d3d582bd6043613d00b1103aed5d78a57f00f0` | fibemate-tools `6a5fe2c6506920b372111a8375f9255f3b535339`
+fibemate `e4d3d582bd6043613d00b1103aed5d78a57f00f0` | fibemate-tools `898ce28a2c92053ef9f15293b0be70a0a7bafd17`
 
 ## Derivation (Mode D)
 

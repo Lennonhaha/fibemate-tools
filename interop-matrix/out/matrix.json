@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-28T11:40:48.623Z",
+  "generatedAt": "2026-10-28T11:52:03.969Z",
   "params": "ML-KEM-768",
   "mode": "D",
   "node": "v22.22.3",
@@ -21,7 +21,7 @@
   },
   "commits": {
     "fibemate": "e4d3d582bd6043613d00b1103aed5d78a57f00f0",
-    "fibemateTools": "6a5fe2c6506920b372111a8375f9255f3b535339"
+    "fibemateTools": "898ce28a2c92053ef9f15293b0be70a0a7bafd17"
   },
   "mutation": null,
   "seeds": [
