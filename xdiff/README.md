@@ -1,3 +1,19 @@
+# fibemate-xdiff
+
+ML-KEM-768 的确定性跨实现对拍工具：把随机源钉死，逐字节比较 ek / ct / ss，并对 KAT 文件本身做 provenance 与卫生检查。
+
+```bash
+# 直接运行（CLI 命令名仍是 xdiff）
+npx fibemate-xdiff run
+
+# 或全局安装
+npm i -g fibemate-xdiff
+xdiff run
+```
+
+> 包名是 `fibemate-xdiff`，可执行文件名是 `xdiff`；二者不同属预期。
+
+---
 xdiff 读完——**这是本会话你（`.workbuddy`）造的第二个工具，且它抓到了真 bug**。逐项拍。
 
 ---

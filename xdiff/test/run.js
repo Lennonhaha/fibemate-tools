@@ -49,6 +49,17 @@ async function atest(name, fn) {
     const p1 = d2._next(32);
     const p2 = d2._next(38);
     assert.strictEqual(Buffer.concat([p1, p2]).toString('hex'), first.toString('hex'));
+    // 真正的「无重复」判据：连续三块两两不同。
+    // 只比对「一次 70 字节」与「32+38 字节」是自洽性检查，计数器不推进时两者仍然相等（变异 M3/M4 存活）。
+    const d3 = new Drbg(Buffer.from('s'), 'L');
+    const b1 = d3._next(32);
+    const b2 = d3._next(32);
+    const b3 = d3._next(32);
+    assert.notStrictEqual(b1.toString('hex'), b2.toString('hex'), '第 2 块与第 1 块重复：DRBG 计数器没有推进');
+    assert.notStrictEqual(b2.toString('hex'), b3.toString('hex'), '第 3 块与第 2 块重复：DRBG 计数器没有推进');
+    const d4 = new Drbg(Buffer.from('s'), 'L');
+    const w = d4._next(64);
+    assert.notStrictEqual(w.slice(0, 32).toString('hex'), w.slice(32).toString('hex'), '块内两半相同：块哈希忽略了计数器');
   });
 
   test('installRng: 记录调用序列并在结束后还原', () => {
@@ -236,6 +247,14 @@ async function atest(name, fn) {
     const path = require('path');
     const rsp = 'D:/FIBEMATE/fibemate/packages/pqc-kem/test/kat/mlkem-768-KAT.rsp';
     if (!require('fs').existsSync(rsp)) { console.log('       (跳过：KAT 向量文件不在本机)'); return; }
+    // 只有向量文件还不够：引擎在可加载实现少于 2 个时直接返回（差分不成立），
+    // KAT 用例根本不会被记录。裸检出（CI 只 checkout 本仓）必须显式跳过。
+    const implA = path.join(__dirname, '..', '..', '..', 'fibemate-core', 'index.js');
+    const implB = path.join(__dirname, '..', '..', '..', 'fibemate', 'packages', 'pqc-kem', 'src', 'ml-kem-768.js');
+    if (!require('fs').existsSync(implA) || !require('fs').existsSync(implB)) {
+      console.log('       (跳过：本机缺少可加载实现，引擎级对拍不成立)');
+      return;
+    }
     const cfg = loadConfig({
       cwd: path.join(__dirname, '..'),
       overrides: {
@@ -262,16 +281,94 @@ async function atest(name, fn) {
     const provCase = rep.cases.find((c) => c.caseId === 'katProvenance');
     const hyCase = rep.cases.find((c) => c.caseId === 'katFileHygiene');
     assert.ok(katCase && provCase && hyCase, '缺少 KAT 三件套用例记录');
-    assert.strictEqual(provCase.provenance, 'missingDomainSep');
-    assert.strictEqual(katCase.perImpl.main.cOk, 4, 'main 的 c 应对拍通过');
-    assert.strictEqual(katCase.perImpl.main.ekOk, 0, 'main 的 ek 与非标准文件不一致');
+    // 2026-10-28 实测：主仓 #269 修好 KAT 生成后，文件已是标准向量（k=3，8/8 命中 G(d‖k)）。
+    // 历史断言 'missingDomainSep' 记录的是修好之前的状态，已过时——保留它会把标准文件误判为缺陷。
+    assert.strictEqual(provCase.provenance, 'standard');
+    assert.strictEqual(katCase.perImpl.main.ekOk, 4, 'main 应对标准向量全通过');
+    assert.strictEqual(katCase.perImpl.main.cOk, 4);
+    assert.strictEqual(katCase.perImpl.main.kOk, 4);
+    assert.strictEqual(katCase.perImpl.main.decOk, 4);
+    assert.strictEqual(katCase.perImpl.noble.ekOk, 4, 'noble 应对标准向量全通过');
+    // cp 是 fibemate-core 的旧分叉：keygen 不吃注入随机源（rngProfile=[]），
+    // 因此对标准向量 0/4。这是工具应当报出的真阳性，不是测试失败。
     assert.strictEqual(katCase.perImpl.cp.ekOk, 0);
     assert.strictEqual(hyCase.tail.nonZero, 100, '尾部应检出内存残留');
-    // 门禁语义：provenance error 计入 error，perImpl 的 info 不计
-    const provFinding = rep.findings.find((f) => f.caseId === 'katProvenance');
-    assert.ok(provFinding && provFinding.severity === 'error');
-    const mainFinding = rep.findings.find((f) => f.caseId === 'kat' && f.impls[0] === 'main');
-    assert.ok(mainFinding && mainFinding.severity === 'info', '非标准文件下 main 的不一致应记 info');
+    // 门禁语义：standard 文件下失配记 error；标准文件本身不再产生 provenance error
+    assert.ok(!rep.findings.some((f) => f.caseId === 'katProvenance' && f.severity === 'error'), '标准文件不应再报 provenance error');
+    const cpFinding = rep.findings.find((f) => f.caseId === 'kat' && f.impls[0] === 'cp');
+    assert.ok(cpFinding && cpFinding.severity === 'error', 'cp 对不上标准向量应记 error');
+    assert.ok(!rep.findings.some((f) => f.caseId === 'kat' && (f.impls[0] === 'main' || f.impls[0] === 'noble')), 'main/noble 不应有失配 finding');
+  });
+
+  // 检测器本身也要被检测：伪造一份漏拼域分隔符的向量，provenance 必须报出来。
+  // 纯函数层（kat.analyzeProvenance）不加载任何实现，因此在只检出本仓的 CI 里也能跑。
+  test('kat.analyzeProvenance: 三种派生路径都能对号入座', () => {
+    const kat = require('../src/core/kat');
+    const crypto = require('crypto');
+    const sha3 = (b) => crypto.createHash("sha3-512").update(b).digest();
+    const k = 3;
+    const kByte = Buffer.from([k]);
+    const mk = (tail) => {
+      const seed = Buffer.alloc(32, 1);
+      const ek = Buffer.alloc(1184, 7);
+      tail(seed, kByte).slice(0, 32).copy(ek, 1184 - 32);
+      return { seed, ek };
+    };
+    assert.deepStrictEqual(kat.analyzeProvenance([mk((s, kb) => sha3(Buffer.concat([s, kb])))], k),
+      { provenance: 'standard', tally: { standard: 1 } });
+    assert.deepStrictEqual(kat.analyzeProvenance([mk((s) => sha3(s))], k),
+      { provenance: 'missingDomainSep', tally: { missingDomainSep: 1 } });
+    assert.deepStrictEqual(kat.analyzeProvenance([mk((s, kb) => sha3(Buffer.concat([kb, s])))], k),
+      { provenance: 'reversedOrder', tally: { reversedOrder: 1 } });
+    assert.deepStrictEqual(kat.analyzeProvenance([mk((s) => sha3(s))], null),
+      { provenance: 'unknown', tally: {} }, ' k 未知时不做判断');
+  });
+
+  // engine 级：非标准文件必须落成 provenance error。
+  // 需要至少两个可加载实现；裸检出（CI 只 checkout 本仓）会跳过并打印原因，
+  // 与「真实向量」那条同一处理——跳过原因可见，不静默。
+  await atest('engine: 非标准 KAT 文件必须报 provenance error', async () => {
+    const fs = require('fs');
+    const os = require('os');
+    const pathMod = require('path');
+    const crypto = require('crypto');
+    const implA = pathMod.join(__dirname, '..', '..', '..', 'fibemate-core', 'index.js');
+    const implB = pathMod.join(__dirname, '..', '..', '..', 'fibemate', 'packages', 'pqc-kem', 'src', 'ml-kem-768.js');
+    if (!fs.existsSync(implA) || !fs.existsSync(implB)) {
+      console.log('       (跳过：本机缺少可加载实现，纯函数层已覆盖)');
+      return;
+    }
+    const sha3 = (b) => crypto.createHash('sha3-512').update(b).digest();
+    const dir = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'xdiff-prov-'));
+    const rspPath = pathMod.join(dir, 'fake.rsp');
+    const rows = [];
+    for (let i = 0; i < 2; i++) {
+      const seed = Buffer.alloc(32, i + 1);
+      const ek = Buffer.alloc(1184, 7);
+      sha3(seed).slice(0, 32).copy(ek, 1184 - 32);   // 故意写 G(d)，漏拼 k
+      rows.push('count = ' + i);
+      rows.push('seed = ' + seed.toString('hex'));
+      rows.push('ek = ' + ek.toString('hex'));
+      rows.push('dk = ' + Buffer.alloc(2400, 9).toString('hex'));
+      rows.push('m = ' + Buffer.alloc(32, 5).toString('hex'));
+      rows.push('c = ' + Buffer.alloc(1088, 6).toString('hex'));
+      rows.push('k = ' + Buffer.alloc(32, 4).toString('hex'));
+      rows.push('');
+    }
+    fs.writeFileSync(rspPath, rows.join('\n'), 'utf8');
+    try {
+      const cfg2 = loadConfig({
+        cwd: pathMod.join(__dirname, '..'),
+        overrides: { masterSeed: 'prov-test', cases: { kat: { enabled: true, rsp: rspPath, vectors: 2 }, katFileHygiene: { enabled: true } } }
+      });
+      const rep2 = await require('../src/engine').run(cfg2, { log: null });
+      const prov2 = rep2.cases.find((c) => c.caseId === 'katProvenance');
+      assert.ok(prov2, 'provenance 用例必须被记录');
+      assert.strictEqual(prov2.provenance, 'missingDomainSep');
+      assert.ok(rep2.findings.some((f) => f.caseId === 'katProvenance' && f.severity === 'error'), '伪造向量应触发 provenance error');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   console.log('');
