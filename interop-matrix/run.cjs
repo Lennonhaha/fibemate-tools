@@ -482,10 +482,11 @@ function main() {
   if (result.verdict === 'INVALID') {
     md.push('', 'A baseline cell failed. The harness cannot judge interoperability, so this run is reported as INVALID rather than as a partial pass.');
   }
+  const escapeCell = (s) => String(s).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
   const failedList = result.checks.filter((c) => c.status === 'FAIL');
   if (failedList.length) {
     md.push('', '### Failures', '', '| scope | check | detail |', '|---|---|---|');
-    for (const f of failedList) md.push(`| ${f.scope} | ${f.name} | ${f.detail.replace(/\|/g, '\\|')} |`);
+    for (const f of failedList) md.push(`| ${escapeCell(f.scope)} | ${escapeCell(f.name)} | ${escapeCell(f.detail)} |`);
   }
   fs.writeFileSync(path.join(outDir, 'matrix.md'), md.join('\n') + '\n', 'utf8');
 
