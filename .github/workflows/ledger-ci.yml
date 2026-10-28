@@ -23,6 +23,6 @@ jobs:
       - name: Typecheck
         working-directory: crypto-time-ledger
         run: npm run typecheck
-      - name: Run tests (core / storage / tsr / cli)
+      - name: Run tests (core / storage / tsr / cli / bundle-negative)
         working-directory: crypto-time-ledger
         run: npm test
