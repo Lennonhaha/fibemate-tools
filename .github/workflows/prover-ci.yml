@@ -28,6 +28,38 @@ jobs:
           cargo build --release
           ./target/release/undecryptable-prover
           test -f evidence.json && echo "evidence.json produced"
+      # releases.lean-lang.org intermittently refuses the TLS handshake for the
+      # pinned toolchain tarball. lean-action installs elan and then resolves
+      # lean-toolchain, and that resolution is where the download happens, so a
+      # transient refusal reds a pull request that does not touch Lean at all
+      # (2026-10-28: four refusals and one 22 minute hang, on docs-only PRs).
+      # Install the toolchain here first, with a bounded retry, so the action
+      # finds it present and never downloads it. scripts/test-lean-retry.cjs
+      # keeps this step from being deleted, reordered, or defused.
+      - name: Pre-install the pinned Lean toolchain (retry the flaky release CDN)
+        working-directory: undecryptable-prover/proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          toolchain="$(tr -d '[:space:]' < lean-toolchain)"
+          curl -sSfL --retry 5 --retry-delay 5 --retry-all-errors \
+            https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            -o "$RUNNER_TEMP/elan-init.sh"
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain none
+
+          installed=0
+          for attempt in 1 2 3 4 5; do
+            if "$HOME/.elan/bin/elan" toolchain install "$toolchain"; then
+              installed=1
+              break
+            fi
+            echo "::warning::Lean toolchain download failed (attempt $attempt/5); retrying in 15s"
+            sleep 15
+          done
+          test "${installed:-0}" = 1
+          "$HOME/.elan/bin/lean" --version
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
       # The Lean proof is part of "build-and-run": a theorem that is not compiled
       # is not a theorem. Pinned to lean-action v1.6.2 by commit SHA, and the
       # toolchain is pinned by lean-toolchain, so neither can drift silently.
