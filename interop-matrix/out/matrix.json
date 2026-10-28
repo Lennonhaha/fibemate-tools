@@ -1,0 +1,922 @@
+{
+  "generatedAt": "2026-10-28T11:40:48.623Z",
+  "params": "ML-KEM-768",
+  "mode": "D",
+  "node": "v22.22.3",
+  "ends": {
+    "P": {
+      "name": "fibemate-pqc-kem",
+      "version": "0.1.0",
+      "source": "packages/pqc-kem/src/ml-kem-768.js",
+      "sha256": "8d98ca5f66cb09a9eac60ebe7c40d2291bfd98981bd500fccf1daf9feb72d7a4",
+      "mode": "D"
+    },
+    "N": {
+      "name": "@noble/post-quantum",
+      "version": "0.7.1",
+      "source": "node_modules/@noble/post-quantum/ml-kem.js",
+      "sha256": "e5f1a3fa994f663c48f64b0583cf29ddbb2cfb7f3dd63fe18a7beb7aa9c12541",
+      "mode": "D"
+    }
+  },
+  "commits": {
+    "fibemate": "e4d3d582bd6043613d00b1103aed5d78a57f00f0",
+    "fibemateTools": "6a5fe2c6506920b372111a8375f9255f3b535339"
+  },
+  "mutation": null,
+  "seeds": [
+    {
+      "label": "S1",
+      "seed": "1aedfca8cad29c3a5da0b70576db3fe04422830abba03aee6790fbf3d1f80858fb0bcd96afa45d36d6e86d2ff4d246a73e186a80caf3274c79d0ebbc333d47d8",
+      "m": "825cdbad6d4aff38a0143a17326c1d71c58b3139f5e05c66027b1c83fbe5e962"
+    },
+    {
+      "label": "S2",
+      "seed": "9b45f5cdddf5e96709bf2206177329f8d19b81e9e3a28e50ddfee4b7fc1258e3d9df027791aa0b727d6b6e4c04b5675723e8941426cdf6c05ece88a5b29d283e",
+      "m": "8f7cb278c30db80c18a869864a81d2ad13804d9365506f20ad082a4c0d10ce20"
+    },
+    {
+      "label": "S3",
+      "seed": "65afd75f02707887e33a73eed9f21c8ddd88560ce56bf0f77c46e295b49d3a444f6de5a8ac9f45cb10f6ba0a56c5d88b228581ca48caa698570bb6cc45f44328",
+      "m": "2c67c7eebe87fae18cd2ce4e6b5b43bebef76665ee31af8aea7e181a19cc3162"
+    }
+  ],
+  "note": "Mode D: both ends take caller-supplied d, z and m, so pk/sk/ct byte equality is claimable, not just interop.",
+  "verdict": "PASS",
+  "checks": [
+    {
+      "scope": "S1/derive",
+      "name": "pk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "P=a5cc6cea085ac57c4e3e8a8e42582ce4 N=a5cc6cea085ac57c4e3e8a8e42582ce4"
+    },
+    {
+      "scope": "S1/derive",
+      "name": "sk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "2400B vs 2400B"
+    },
+    {
+      "scope": "S2/derive",
+      "name": "pk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "P=b1009f5fc070d28a6b9b246e9d73101a N=b1009f5fc070d28a6b9b246e9d73101a"
+    },
+    {
+      "scope": "S2/derive",
+      "name": "sk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "2400B vs 2400B"
+    },
+    {
+      "scope": "S3/derive",
+      "name": "pk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "P=3d822807a1cc8744a34648680cb099d6 N=3d822807a1cc8744a34648680cb099d6"
+    },
+    {
+      "scope": "S3/derive",
+      "name": "sk byte-identical P vs N",
+      "status": "PASS",
+      "detail": "2400B vs 2400B"
+    },
+    {
+      "scope": "S1/baseline",
+      "name": "P round trip returns its own shared secret",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/baseline",
+      "name": "P round trip returns its own shared secret",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/baseline",
+      "name": "P round trip returns its own shared secret",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S1",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S1",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S1",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S1",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S1",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S1",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S1",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S1",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S1",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S1",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S1",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S1",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S2",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S2",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S2",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S2",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S2",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S2",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S2",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S2",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S2",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S2",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S2",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S2",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S3",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S3",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PP/S3",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S3",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S3",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "PN/S3",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S3",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S3",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NP/S3",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S3",
+      "name": "round trip returns sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S3",
+      "name": "ss equals end P reference",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "NN/S3",
+      "name": "ct bytes match baseline",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S1/control",
+      "name": "flipped ct: implicit rejection, no throw",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S1/control",
+      "name": "flipped ct: ss differs from original",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S1/control",
+      "name": "flipped ct: ss deterministic",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S1/control",
+      "name": "flipped ct: ss identical across ends",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S1/control",
+      "name": "wrong key does not return the sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/control",
+      "name": "flipped ct: implicit rejection, no throw",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/control",
+      "name": "flipped ct: ss differs from original",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/control",
+      "name": "flipped ct: ss deterministic",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/control",
+      "name": "flipped ct: ss identical across ends",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S2/control",
+      "name": "wrong key does not return the sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/control",
+      "name": "flipped ct: implicit rejection, no throw",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/control",
+      "name": "flipped ct: ss differs from original",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/control",
+      "name": "flipped ct: ss deterministic",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/control",
+      "name": "flipped ct: ss identical across ends",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "S3/control",
+      "name": "wrong key does not return the sender ss",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "scope": "global",
+      "name": "three seeds produce three distinct pk",
+      "status": "PASS",
+      "detail": "83f4690edace d15f4690e2ef decbf7740bd9"
+    },
+    {
+      "scope": "global",
+      "name": "three seeds produce three distinct ss",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "cells": [
+    {
+      "cell": "PP",
+      "id": "PP/S1",
+      "keygen": "P",
+      "encap": "P",
+      "decap": "P",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S1",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=e79a9899084a123f77465bf1 cell=e79a9899084a123f77465bf1"
+        }
+      ],
+      "ctSha256": "08a9c56c05a7a906d34da0fb4c61704d4be654cf354f82fbb40b193f9ddae99b",
+      "ssSha256": "7eb562e68cc6a960fa84cd86f1e8925b6c35abf17db75a1d327fb6e42ff93c88",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "PN",
+      "id": "PN/S1",
+      "keygen": "P",
+      "encap": "N",
+      "decap": "P",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S1",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=e79a9899084a123f77465bf1 cell=e79a9899084a123f77465bf1"
+        }
+      ],
+      "ctSha256": "08a9c56c05a7a906d34da0fb4c61704d4be654cf354f82fbb40b193f9ddae99b",
+      "ssSha256": "7eb562e68cc6a960fa84cd86f1e8925b6c35abf17db75a1d327fb6e42ff93c88",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NP",
+      "id": "NP/S1",
+      "keygen": "N",
+      "encap": "P",
+      "decap": "N",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S1",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=e79a9899084a123f77465bf1 cell=e79a9899084a123f77465bf1"
+        }
+      ],
+      "ctSha256": "08a9c56c05a7a906d34da0fb4c61704d4be654cf354f82fbb40b193f9ddae99b",
+      "ssSha256": "7eb562e68cc6a960fa84cd86f1e8925b6c35abf17db75a1d327fb6e42ff93c88",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NN",
+      "id": "NN/S1",
+      "keygen": "N",
+      "encap": "N",
+      "decap": "N",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S1",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=e79a9899084a123f77465bf1 cell=e79a9899084a123f77465bf1"
+        }
+      ],
+      "ctSha256": "08a9c56c05a7a906d34da0fb4c61704d4be654cf354f82fbb40b193f9ddae99b",
+      "ssSha256": "7eb562e68cc6a960fa84cd86f1e8925b6c35abf17db75a1d327fb6e42ff93c88",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "PP",
+      "id": "PP/S2",
+      "keygen": "P",
+      "encap": "P",
+      "decap": "P",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S2",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=da560d6cd55f8f3b9538c628 cell=da560d6cd55f8f3b9538c628"
+        }
+      ],
+      "ctSha256": "240c403f9a155c171a99ac498d0beed847f7ab1c689e86538dfe8f317710072e",
+      "ssSha256": "50ec25442343870939c4c0d51be7ce5f204e1be04724031a76f033bf6b947471",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "PN",
+      "id": "PN/S2",
+      "keygen": "P",
+      "encap": "N",
+      "decap": "P",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S2",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=da560d6cd55f8f3b9538c628 cell=da560d6cd55f8f3b9538c628"
+        }
+      ],
+      "ctSha256": "240c403f9a155c171a99ac498d0beed847f7ab1c689e86538dfe8f317710072e",
+      "ssSha256": "50ec25442343870939c4c0d51be7ce5f204e1be04724031a76f033bf6b947471",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NP",
+      "id": "NP/S2",
+      "keygen": "N",
+      "encap": "P",
+      "decap": "N",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S2",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=da560d6cd55f8f3b9538c628 cell=da560d6cd55f8f3b9538c628"
+        }
+      ],
+      "ctSha256": "240c403f9a155c171a99ac498d0beed847f7ab1c689e86538dfe8f317710072e",
+      "ssSha256": "50ec25442343870939c4c0d51be7ce5f204e1be04724031a76f033bf6b947471",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NN",
+      "id": "NN/S2",
+      "keygen": "N",
+      "encap": "N",
+      "decap": "N",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S2",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=da560d6cd55f8f3b9538c628 cell=da560d6cd55f8f3b9538c628"
+        }
+      ],
+      "ctSha256": "240c403f9a155c171a99ac498d0beed847f7ab1c689e86538dfe8f317710072e",
+      "ssSha256": "50ec25442343870939c4c0d51be7ce5f204e1be04724031a76f033bf6b947471",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "PP",
+      "id": "PP/S3",
+      "keygen": "P",
+      "encap": "P",
+      "decap": "P",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S3",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=ae260a6d929116efc34fbfd4 cell=ae260a6d929116efc34fbfd4"
+        }
+      ],
+      "ctSha256": "a03b456aebbc5c9023b2294bf8d377cbbbbd098a2de872408613466b41679020",
+      "ssSha256": "9fe632d38f2ebdbbde6121c3a99667104812033e36d75ee27b83f1a0124e1840",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "PN",
+      "id": "PN/S3",
+      "keygen": "P",
+      "encap": "N",
+      "decap": "P",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S3",
+      "checks": [
+        {
+          "name": "decap by P returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=ae260a6d929116efc34fbfd4 cell=ae260a6d929116efc34fbfd4"
+        }
+      ],
+      "ctSha256": "a03b456aebbc5c9023b2294bf8d377cbbbbd098a2de872408613466b41679020",
+      "ssSha256": "9fe632d38f2ebdbbde6121c3a99667104812033e36d75ee27b83f1a0124e1840",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NP",
+      "id": "NP/S3",
+      "keygen": "N",
+      "encap": "P",
+      "decap": "N",
+      "baseline": false,
+      "mode": "D",
+      "seed": "S3",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by P returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=ae260a6d929116efc34fbfd4 cell=ae260a6d929116efc34fbfd4"
+        }
+      ],
+      "ctSha256": "a03b456aebbc5c9023b2294bf8d377cbbbbd098a2de872408613466b41679020",
+      "ssSha256": "9fe632d38f2ebdbbde6121c3a99667104812033e36d75ee27b83f1a0124e1840",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    },
+    {
+      "cell": "NN",
+      "id": "NN/S3",
+      "keygen": "N",
+      "encap": "N",
+      "decap": "N",
+      "baseline": true,
+      "mode": "D",
+      "seed": "S3",
+      "checks": [
+        {
+          "name": "decap by N returns sender ss",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "decap by N returns sender ss (aux)",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ss equals end P reference",
+          "status": "PASS",
+          "detail": ""
+        },
+        {
+          "name": "ct byte-identical to baseline",
+          "status": "PASS",
+          "detail": "P ref=ae260a6d929116efc34fbfd4 cell=ae260a6d929116efc34fbfd4"
+        }
+      ],
+      "ctSha256": "a03b456aebbc5c9023b2294bf8d377cbbbbd098a2de872408613466b41679020",
+      "ssSha256": "9fe632d38f2ebdbbde6121c3a99667104812033e36d75ee27b83f1a0124e1840",
+      "error": null,
+      "roundTrip": true,
+      "agreesWithRef": true
+    }
+  ],
+  "controls": [
+    {
+      "seed": "S1",
+      "flippedCtSha256": "30b36c863ac16e7d3836030fb1d6dc47cea7bd3a4b836b934a993341a68f225c",
+      "implicitRejection": {
+        "noThrow": true,
+        "differsFromOriginal": true,
+        "deterministic": true,
+        "matchesAcrossEnds": true,
+        "ssSha256": "8deccf1329fe2bb065497e39ab8cb707ae1f5e9670539128151ea8b49bf318b5",
+        "error": null
+      },
+      "wrongKey": {
+        "rejected": true,
+        "ssSha256": "ce17a5a34054d34b80bd947a47676006a9a05295f3209533bf1b5172d5e675c2"
+      }
+    },
+    {
+      "seed": "S2",
+      "flippedCtSha256": "bf9fbd1d66f07b1d064b6849172a3717dc3e1fe6afbd3df65298dccb6dd2b47b",
+      "implicitRejection": {
+        "noThrow": true,
+        "differsFromOriginal": true,
+        "deterministic": true,
+        "matchesAcrossEnds": true,
+        "ssSha256": "2117c90ff805f5e9e5985e68c4dcbe61b310583deb101a1b43a433f9b4f96337",
+        "error": null
+      },
+      "wrongKey": {
+        "rejected": true,
+        "ssSha256": "c968542b8f9e15d7d9ece328b6d52b9ced90453de533c944a812b99e715ed271"
+      }
+    },
+    {
+      "seed": "S3",
+      "flippedCtSha256": "e533191e8ea0469963ee31a9b4c745671348811720fbba4dcd5134e37b0b4212",
+      "implicitRejection": {
+        "noThrow": true,
+        "differsFromOriginal": true,
+        "deterministic": true,
+        "matchesAcrossEnds": true,
+        "ssSha256": "6470c414f95f7addb8d3a09239b59e556bd95f258ab6623076894ad8813796bc",
+        "error": null
+      },
+      "wrongKey": {
+        "rejected": true,
+        "ssSha256": "437526415852423c07c3a1e0250f4114334c7679b468200685044171e3ca0674"
+      }
+    }
+  ],
+  "summary": {
+    "checks": 62,
+    "failed": 0,
+    "cells": 12,
+    "baselines": 6
+  }
+}
