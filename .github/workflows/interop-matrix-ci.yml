@@ -1,0 +1,63 @@
+name: interop-matrix
+
+on:
+  pull_request:
+    paths:
+      - 'interop-matrix/**'
+      - '.github/workflows/interop-matrix-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'interop-matrix/**'
+      - '.github/workflows/interop-matrix-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  matrix:
+    name: ML-KEM-768 interop matrix (P vs @noble 0.7.1)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # End P lives in the fibemate repository. Pinned to a commit, not to main: a matrix
+      # result that silently measures a different revision than the one in matrix.json is
+      # the same failure the tool exists to prevent.
+      - uses: actions/checkout@v4
+        with:
+          repository: Lennonhaha/fibemate
+          ref: e4d3d582bd6043613d00b1103aed5d78a57f00f0
+          path: _fibemate
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # End N is installed at the pinned version, not taken from the fibemate tree, so the
+      # oracle in CI is the published package and its sha256 is recorded by the run.
+      - name: Install pinned oracle
+        run: npm install --no-save --no-audit --no-fund @noble/post-quantum@0.7.1
+
+      - name: Run matrix
+        run: |
+          node interop-matrix/run.cjs \
+            --pqc-kem _fibemate/packages/pqc-kem \
+            --noble node_modules/@noble/post-quantum \
+            --fibemate-repo _fibemate \
+            --out "$RUNNER_TEMP/matrix"
+
+      - name: Self-test (the harness must be able to fail)
+        run: |
+          node interop-matrix/selftest.cjs \
+            --pqc-kem _fibemate/packages/pqc-kem \
+            --noble node_modules/@noble/post-quantum
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: interop-matrix-${{ github.sha }}
+          path: ${{ runner.temp }}/matrix
+          if-no-files-found: warn
