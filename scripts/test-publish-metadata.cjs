@@ -27,7 +27,7 @@ const selfTest = process.argv.includes('--self-test');
 const root = path.resolve(__dirname, '..');
 
 // Packages release.yml can publish: the tag prefix is the directory name.
-const PUBLISHABLE = ['verifact', 'cbom-tools', 'hallucination-detector'];
+const PUBLISHABLE = ['verifact', 'cbom-tools', 'hallucination-detector', 'xdiff'];
 const EXPECTED_URL = 'git+https://github.com/Lennonhaha/fibemate-tools.git';
 
 function load(dir) {

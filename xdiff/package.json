@@ -1,7 +1,7 @@
 {
-  "name": "xdiff",
+  "name": "fibemate-xdiff",
   "version": "0.1.0",
-  "description": "跨实现差分哨兵 — 对同一密码学算法的多套实现做同种子逐字节差分、互操作矩阵与失败性解密一致性检查",
+  "description": "Deterministic cross-implementation diff harness for ML-KEM-768: KAT provenance, RNG-consumption alignment, key-schedule root cause.",
   "type": "commonjs",
   "main": "src/engine.js",
   "bin": {
@@ -16,19 +16,25 @@
   "scripts": {
     "test": "node test/run.js",
     "run": "node bin/xdiff.js run",
-    "list": "node bin/xdiff.js list"
+    "list": "node bin/xdiff.js list",
+    "test:mutation": "node test/mutation.js"
   },
   "keywords": [
-    "pqc",
     "ml-kem",
-    "fips-203",
-    "differential-testing",
-    "cross-implementation",
-    "cryptography"
+    "kyber",
+    "post-quantum",
+    "pqc",
+    "kat",
+    "differential-testing"
   ],
   "license": "Apache-2.0",
   "engines": {
     "node": ">=18"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lennonhaha/fibemate-tools.git",
+    "directory": "xdiff"
+  }
 }

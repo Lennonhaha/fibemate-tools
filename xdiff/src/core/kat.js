@@ -96,4 +96,38 @@ function hasAsciiRun(buf, minLen) {
   return false;
 }
 
-module.exports = { parseRsp, checkStructure, analyzeHygiene, FIELD_LEN };
+/**
+ * 判定 KAT 文件自身的派生路径：ρ 到底等于 G(d‖k)、G(d) 还是 G(k‖d)。
+ *
+ * 纯函数，不加载任何实现——因此在只检出 fibemate-tools（没有 fibemate /
+ * fibemate-core 可加载）的 CI 里也能测。k 为空时返回 unknown 与空 tally。
+ *
+ * @param {Array<{seed?: Buffer, ek?: Buffer}>} vectors
+ * @param {number|null} k  FIPS 203 的模块维度（ML-KEM-768 = 3）
+ * @returns {{provenance: string, tally: Record<string, number>}}
+ */
+function analyzeProvenance(vectors, k) {
+  const tally = {};
+  if (typeof k !== 'number') return { provenance: 'unknown', tally };
+  const kByte = Buffer.from([k]);
+  const crypto = require('crypto');
+  const sha3_512 = (buf) => crypto.createHash('sha3-512').update(buf).digest();
+  for (const v of (vectors || []).slice(0, 8)) {
+    if (!v || !v.ek || !v.seed) continue;
+    const rho = v.ek.slice(v.ek.length - 32);
+    const cands = {
+      standard: sha3_512(Buffer.concat([v.seed, kByte])).slice(0, 32),
+      missingDomainSep: sha3_512(v.seed).slice(0, 32),
+      reversedOrder: sha3_512(Buffer.concat([kByte, v.seed])).slice(0, 32),
+    };
+    let hit = 'unknown';
+    for (const [name, val] of Object.entries(cands)) {
+      if (val.equals(rho)) { hit = name; break; }
+    }
+    tally[hit] = (tally[hit] || 0) + 1;
+  }
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  return { provenance: ranked.length ? ranked[0][0] : 'unknown', tally };
+}
+
+module.exports = { parseRsp, checkStructure, analyzeHygiene, analyzeProvenance, FIELD_LEN };

@@ -611,27 +611,11 @@ async function run(cfg, options) {
         const head = fs.readFileSync(rspAbs, 'utf8').split(/\r?\n/).slice(0, 8).join(' ');
 
         // --- provenance：文件自身的派生路径 ---
+        // 计算逻辑在 core/kat.analyzeProvenance（纯函数），所以只检出本仓的 CI 也能测它。
         const kNum = (cfg.params && typeof cfg.params.k === 'number') ? cfg.params.k : null;
-        let provenance = 'unknown';
-        const provTally = {};
-        if (kNum != null) {
-          const kByte = Buffer.from([kNum]);
-          for (const v of vectors.slice(0, Math.min(8, vectors.length))) {
-            if (!v.ek || !v.seed) continue;
-            const rho = v.ek.slice(v.ek.length - 32);
-            const cands = {
-              standard: U.sha3_512(v.seed, kByte).slice(0, 32),
-              missingDomainSep: U.sha3_512(v.seed).slice(0, 32),
-              reversedOrder: U.sha3_512(kByte, v.seed).slice(0, 32)
-            };
-            let hit = 'unknown';
-            for (const [name, val] of Object.entries(cands)) {
-              if (val.equals(rho)) { hit = name; break; }
-            }
-            provTally[hit] = (provTally[hit] || 0) + 1;
-          }
-          provenance = Object.entries(provTally).sort((a, b) => b[1] - a[1])[0][0];
-        }
+        const prov = katCore.analyzeProvenance(vectors, kNum);
+        const provenance = prov.provenance;
+        const provTally = prov.tally;
         caseRec('katProvenance', 'KAT 文件自身派生路径（ek 尾部 ρ 对号）', { rsp: path.basename(rspAbs), k: kNum, tally: provTally, provenance });
         if (provenance !== 'standard' && provenance !== 'unknown') {
           push({

@@ -24,6 +24,7 @@ on:
       - 'verifact-v*'
       - 'cbom-tools-v*'
       - 'hallucination-detector-v*'
+      - 'xdiff-v*'
   workflow_dispatch:
     inputs:
       tag:
