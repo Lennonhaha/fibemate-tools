@@ -39,6 +39,8 @@ on:
       - '.github/workflows/resign-release.yml'
       - '.github/workflows/release-pypi.yml'
       - 'scripts/test-pypi-workflow.cjs'
+      - '.github/workflows/prover-ci.yml'
+      - 'scripts/test-lean-retry.cjs'
       - 'crypto-time-machine/**'
       - '.github/workflows/contract-test.yml'
   pull_request:
@@ -59,6 +61,8 @@ on:
       - '.github/workflows/resign-release.yml'
       - '.github/workflows/release-pypi.yml'
       - 'scripts/test-pypi-workflow.cjs'
+      - '.github/workflows/prover-ci.yml'
+      - 'scripts/test-lean-retry.cjs'
       - 'crypto-time-machine/**'
       - '.github/workflows/contract-test.yml'
   schedule:
@@ -125,6 +129,9 @@ jobs:
       - name: PyPI release workflow (OIDC, pinned, version-guarded)
         working-directory: tools
         run: node scripts/test-pypi-workflow.cjs --self-test && node scripts/test-pypi-workflow.cjs
+      - name: Lean toolchain retry (external CDN must stay retried)
+        working-directory: tools
+        run: node scripts/test-lean-retry.cjs --self-test && node scripts/test-lean-retry.cjs
 
       - name: Page vs corpus vs docs
         working-directory: tools
