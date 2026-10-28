@@ -1078,6 +1078,22 @@ test('cli: --version 与 -v 输出版本号并以 0 退出', () => {
   }
 });
 
+test('sealed: shipped verifact.json patterns must match the real claim.file labels', () => {
+  const shipped = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'verifact.json'), 'utf8'));
+  assert.ok(Array.isArray(shipped.sealed) && shipped.sealed.length > 0, 'shipped config must declare at least one sealed pattern');
+  // claim.file is "<root label>/<relative path>", e.g. fibemate/docs/tsa/... or
+  // fibemate/www/docs/tsa/... . A pattern like "docs/tsa/**" therefore matches
+  // nothing in a real scan, which silently turns the rule into a no-op.
+  const realLabels = [
+    'fibemate/docs/tsa/2026-06-25/hardware/ntt-pipeline-v1.3-report.md',
+    'fibemate/www/docs/tsa/2026-07-17-lg-gen/lg-075-README.md'
+  ];
+  for (const p of shipped.sealed) {
+    const hit = realLabels.some((f) => engine.sealedPattern({ file: f }, { sealed: [p] }) === p);
+    assert.ok(hit, 'sealed pattern ' + JSON.stringify(p) + ' matches no real file label (labels look like ' + realLabels[0] + ')');
+  }
+});
+
 test('cli: version 子命令与 --version 一致（防两条路径漂移）', () => {
   const cli = path.join(__dirname, '..', 'bin', 'verifact.js');
   const sub = spawnSync(process.execPath, [cli, 'version'], { encoding: 'utf8' });
