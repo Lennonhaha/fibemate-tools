@@ -11,7 +11,7 @@ v0.1.0 — core + storage + TSR verification modules + **CLI（`add` / `verify` 
 
 ```bash
 npm install
-npm test        # 63 tests (13 core + 8 storage + 8 TSR + 34 CLI)
+npm test        # 73 tests (13 core + 8 storage + 8 TSR + 34 CLI + 10 red-contract)
 npm run typecheck
 ```
 
