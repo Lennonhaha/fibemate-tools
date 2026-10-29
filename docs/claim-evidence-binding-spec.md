@@ -3,6 +3,10 @@
 Status: **skeleton, not normative.** Written 2026-10-29 to park the idea; sections are
 placeholders with the decisions that still have to be made. Do not implement against this yet.
 
+Update 2026-10-29 (same day): §2's chain has been executed end to end against a real artifact
+and a real token — see `docs/claim-evidence-e2e-2026-10-29.md` and `scripts/claim-evidence/`.
+§1 and §3 are still open; the experiment narrowed them but did not settle them.
+
 Scope: how a written claim (a number, a count, a "PASS") binds to the artifact that produced
 it, and how that binding is sealed so a later reader can tell "this was true at commit X"
 from "someone edited the sentence".
@@ -42,11 +46,17 @@ Working assumptions from the existing evidence work, to be tightened:
 Open:
 
 - Manifest format and ordering (stable sort by path? include tool version, node/python version,
-  seed, and fixture digest?).
+  seed, and fixture digest?). **Narrowed 2026-10-29:** the manifest has to state its own base
+  directory. The experiment's first run produced 14 `missing` files because the manifest paths
+  are repository-relative and the sandbox root was one level deeper — correct fail-closed
+  behaviour, but it means "relative to what" is part of the format, not an assumption.
 - Re-sealing rules: when an artifact changes, the old token is void — does the manifest get a
   new file, or a new generation number?
 - Verification command that a third party can run without our repo (what is the minimum set of
-  inputs: manifest, TSR, public commit, and the token's CA chain?).
+  inputs: manifest, TSR, public commit, and the token's CA chain?). **Answered for the digest
+  link 2026-10-29:** manifest, artifact root, TSR, CA, and the TSQ for the nonce — five inputs,
+  no network. The nonce comparison is not optional: a token issued for a different request that
+  happens to carry the same imprint would otherwise pass.
 
 ## 3. Six-state verdict extension
 
@@ -59,7 +69,10 @@ Questions for the extension:
 - Is "artifact is bound and matches, but the artifact is superseded by a later run" a state of
   its own, or a property of the claim (stale) rather than a verdict?
 - Where does "evidence exists but the claim's scope cannot be established" land — `ambiguous`,
-  or a new `unscoped`?
+  or a new `unscoped`? **Related, settled 2026-10-29:** `unverifiable` must be distinct from
+  `unbound`. `unbound` means the artifact says nothing about this claim; `unverifiable` means
+  the evidence package is incomplete (no CA, missing token, unparsable imprint). Collapsing
+  them lets a missing CA read as "nothing to compare", which is a false green.
 - Does any new state enter the gate? Default stays `--fail-on drift`; new states should be
   reported, not gated, until they have a track record.
 - Coverage reporting must keep printing both denominators (the existing rule), otherwise a new
@@ -70,6 +83,9 @@ Questions for the extension:
 ## Next steps (when there is time)
 
 1. Decide §1's explicit syntax, or decide to stay heuristic-only and drop the binding ambition.
-2. Write one end-to-end example on a real artifact pair (manifest → TSR → verify) and see which
-   of §3's questions the example actually forces.
+2. ~~Write one end-to-end example on a real artifact pair (manifest → TSR → verify) and see
+   which of §3's questions the example actually forces.~~ Done 2026-10-29:
+   `docs/claim-evidence-e2e-2026-10-29.md`. It forced the manifest base, the nonce check and the
+   `unverifiable` state — and showed that a claim about bytes cannot be expressed in the current
+   heuristic syntax, which is evidence for §1's explicit syntax.
 3. Only then turn this file into a normative spec.
