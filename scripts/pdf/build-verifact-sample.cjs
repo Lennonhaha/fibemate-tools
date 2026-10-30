@@ -78,6 +78,7 @@ const driftRows = ev.map((r, i) =>
   `<tr><td>${i + 1}</td><td><code>${r.file}:${r.line}</code></td><td>${r.key}</td><td class="num">${r.doc}</td><td>${r.artifact}</td><td class="num">${r.score}</td></tr>`
 ).join('\n');
 const driftRowsCount = ev.length;
+const exemptionTotal = 19;
 
 const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>${css}</style></head><body>
 <div class="cover">
@@ -149,6 +150,7 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
   </tbody>
 </table>
 <p>这 ${f(driftRowsCount)} 条此前被豁免静默排除。<b>移除豁免并不会制造问题，它只是让问题可见</b>。恢复豁免后门禁重新变绿，但每一条豁免都必须写明：为什么不该核、指向哪里、何时应当删除。</p>
+<p class="muted">口径：\u5171 ${f(exemptionTotal)} 条豁免中，${f(driftRowsCount)} 条在移除后表现为 drift；其余 ${f(exemptionTotal - driftRowsCount)} 条仍属"口径不同"或"非产物属性"，保留豁免。上表不是"19 条全有问题"。</p>
 <div class="ok"><b>结论</b>：这个工具的价值不在于"报告很绿"，而在于它能证明自己会红，并且红得有据可查。</div>
 
 <h2>六、这份报告不主张什么</h2>
