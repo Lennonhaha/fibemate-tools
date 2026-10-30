@@ -88,7 +88,7 @@ const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><sty
   <tr><td>形式化：证明义务</td><td class="num">6</td><td>已登记、未关闭，宽松构建下通过</td></tr>
 </table>
 <p class="muted">口径说明：<code>claimsTotal</code> 含被分类、被忽略与被拒绑的条目，所以它与“应当有产物”的分母不等；两个百分比的分母不同，不可互相引用。与 2026-10-26 那份 <code>docs/</code> 子集快照（314 条断言）不是同一分母，不构成趋势比较。</p>
-<div class="bad"><b>必须说明的三件事</b>：① 未做侧信道加固，文档已按此修正声明；② 未通过任何第三方安全审计或密评认证；③ 形式化验证的"严格模式"目前会按设计失败——6 条证明义务尚未完成，我们不把它包装成"已验证"。</div>
+<div class="bad"><b>必须说明的三件事</b>：① 未做全量硬件级物理侧信道评估（当前仅为软件级 TVLA 自评），文档已按此修正声明；② 未通过任何第三方安全审计或密评认证；③ 形式化验证的"严格模式"目前会按设计失败——6 条证明义务尚未完成，我们不把它包装成"已验证"。</div>
 
 <div class="pb"></div>
 <h2>四、为什么这些数字值得相信</h2>
@@ -114,8 +114,9 @@ const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><sty
 
 <h2>六、附件</h2>
 <ul>
-  <li>《文档数字溯源样例报告》（对 liboqs 与 FIBEMATE 两个真实仓库的只读扫描）</li>
-  <li>工具与规则源码、门禁配置（开源，可自行复跑）</li>
+  <li>《文档数字溯源样例报告》（对 liboqs 与 FIBEMATE 两个真实仓库的只读扫描）：<code>https://fibemate.net/docs/verifact-sample-report-20261030.pdf</code></li>
+  <li>本文（项目简介 PDF）：<code>https://fibemate.net/docs/fibemate-intro-20261030.pdf</code></li>
+  <li>工具与规则源码、门禁配置（开源，可自行复跑）：<code>https://github.com/Lennonhaha/fibemate-tools</code></li>
 </ul>
 <p class="muted" style="margin-top:10mm">本文所有数字均来自 2026-10-30 的本地实测输出，可要求提供原始 JSON。</p>
 </body></html>`;
