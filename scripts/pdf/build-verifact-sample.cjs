@@ -33,11 +33,11 @@ const cnQuotes = (s) =>
   s.replace(/"([^"<>]{1,60})"/g, (m, inner) => (/[\u4e00-\u9fff]/.test(inner) ? '\u201c' + inner + '\u201d' : m));
 
 const css = `
-@page { size: A4; margin: 18mm 16mm 16mm 16mm; }
+@page { size: A4; margin: 18mm 16mm 26mm 16mm; }
 * { box-sizing: border-box; }
 body { font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif; color:#1b1f24; font-size:10.5pt; line-height:1.62; margin:0; }
 h1 { font-size:22pt; margin:0 0 4mm; letter-spacing:-.2pt; }
-h2 { font-size:13.5pt; margin:9mm 0 3mm; padding-bottom:2mm; border-bottom:1.2pt solid #d8dde3; }
+h2 { font-size:13.5pt; margin:7.5mm 0 3mm; padding-bottom:2mm; border-bottom:1.2pt solid #d8dde3; }
 h3 { font-size:11pt; margin:6mm 0 2mm; color:#2c3540; }
 p, li { margin:0 0 2.2mm; }
 small, .muted { color:#6b7684; font-size:8.6pt; }
@@ -48,8 +48,11 @@ small, .muted { color:#6b7684; font-size:8.6pt; }
 .meta { margin-top:16mm; font-size:9pt; color:#4a5563; }
 .meta td { padding:1.4mm 6mm 1.4mm 0; vertical-align:top; }
 table { width:100%; border-collapse:collapse; margin:3mm 0 4mm; font-size:9.2pt; }
-th, td { border-bottom:.6pt solid #dde2e8; padding:2mm 2.4mm; text-align:left; vertical-align:top; }
+th, td { border-bottom:.6pt solid #dde2e8; padding:1.6mm 2.4mm; text-align:left; vertical-align:top; }
 th { background:#f4f6f8; font-weight:600; }
+tr { break-inside: avoid; page-break-inside: avoid; }
+h2, h3 { break-after: avoid; page-break-after: avoid; }
+thead { display: table-header-group; }
 td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
 .big { display:flex; gap:6mm; margin:5mm 0; }
 .card { flex:1; border:1pt solid #dde2e8; border-radius:2mm; padding:4mm; }
@@ -61,10 +64,10 @@ pre { background:#f6f7f9; border-left:2.4pt solid #99a3ae; padding:3mm 4mm; font
 .ok { background:#f3faf5; border-left:2.4pt solid #2f8a52; padding:3mm 4mm; margin:3mm 0; }
 .tag { display:inline-block; font-size:8pt; padding:.4mm 1.6mm; border:.6pt solid #b9c2cc; border-radius:1.4mm; color:#4a5563; margin-right:1.4mm; }
 .pb { page-break-before: always; }
-footer { position:fixed; bottom:6mm; left:0; right:0; font-size:7.6pt; color:#8b95a1; text-align:center; }
+footer { position:fixed; bottom:0; left:0; right:0; font-size:7.6pt; color:#8b95a1; text-align:center; }
 `;
 
-const now = '2026-10-26';
+const now = '2026-10-30';
 const f = (n) => String(n);
 
 // ---------------- 报告一：样例扫描报告 ----------------
@@ -74,6 +77,7 @@ const fbPct = ((fb.verified / Math.max(1, fb.codeArtifactClaims)) * 100).toFixed
 const driftRows = ev.map((r, i) =>
   `<tr><td>${i + 1}</td><td><code>${r.file}:${r.line}</code></td><td>${r.key}</td><td class="num">${r.doc}</td><td>${r.artifact}</td><td class="num">${r.score}</td></tr>`
 ).join('\n');
+const driftRowsCount = ev.length;
 
 const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><style>${css}</style></head><body>
 <div class="cover">
@@ -82,15 +86,15 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
   <div class="rule"></div>
   <p class="sub">对两个真实代码库的只读扫描：liboqs（第三方 PQC 参考实现）与 FIBEMATE（自有全栈仓库）。</p>
   <table class="meta">
-    <tr><td>工具</td><td>@fibemate/verifact 0.1.0（Node.js，本地运行，无网络出站）</td></tr>
+    <tr><td>工具</td><td>@fibemate/verifact 0.2.4（Node.js，本地运行，无网络出站）</td></tr>
     <tr><td>扫描日期</td><td>${now}</td></tr>
+    <tr><td>版本说明</td><td>本报告替代 2026-10-26 的 0.1.0 版；旧文件已从站点下线，避免两份数字并存。</td></tr>
     <tr><td>扫描方式</td><td>只读。不修改被扫描仓库，不写入任何属性，不上传任何内容。</td></tr>
     <tr><td>判定内容</td><td>文档写的值与产物里的值是否一致，以及两者各自的位置。</td></tr>
     <tr><td>不判定内容</td><td>哪一方"正确"；是否存在漏洞；安全性、合规性或性能优劣。</td></tr>
   </table>
 </div>
 
-<div class="pb"></div>
 <h2>一、为什么需要这件事</h2>
 <p>工程文档里的数字——密钥长度、测试通过数、基准耗时、覆盖率——通常以三种状态存在：<b>能指回产物</b>、<b>指不回产物</b>、<b>根本不该被当作产物属性</b>。审阅者看到的是一段文字，无法区分这三者。</p>
 <p>结果是两类错误同时发生：真数字因为找不到证据而被当作空话；假数字因为没人核对而长期存活。<b>问题不在于谁在撒谎，而在于没有账本。</b></p>
@@ -104,7 +108,6 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
 </ol>
 <p class="muted">关键设计：<b>"没有证据"和"不需要证据"必须分开</b>。作者可以声明某段是叙事、某次测量、或外部快照，但每一种豁免都必须署名并写明理由，没有名字的例外会让报告变成装饰。</p>
 
-<div class="pb"></div>
 <h2>三、结果 A：liboqs（第三方，只读）</h2>
 <p>liboqs 是 Open Quantum Safe 项目的 C 语言 PQC 库，是本领域的公共参考实现之一。扫描范围：仓库内全部 Markdown 文档 ${lib.docs} 个、产物 ${f(lib.artifacts)} 条。</p>
 <div class="big">
@@ -118,7 +121,7 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
 <p>另外 ${lib.unbound} 条找不到可绑定产物，典型是治理文档里的表决比例（<code>2/3</code>）与构建说明里的开关默认值——它们不是代码产物的属性。这正是"不应被计入覆盖率"的一类，而不是"缺失证据"。</p>
 
 <h2>四、结果 B：FIBEMATE（自有仓库）</h2>
-<p>范围：${f(fb.docs)} 个文档、${f(fb.artifacts)} 条产物（含时间戳存证、形式化验证产物、基准输出）。<span class="muted">快照时间：2026-10-26 14:16，扫描范围：仓库 <code>docs/</code> 目录。</span></p>
+<p>范围：按 <code>verifact.json</code> 全仓配置扫描 ${f(fb.docs)} 个文档、${f(fb.artifacts)} 条产物（含时间戳存证、形式化验证产物、基准输出）。<span class="muted">快照时间：2026-10-30 12:31；文档根覆盖 <code>fibemate</code>、<code>fibemate-tools</code>、<code>fibemate-core</code>，排除 <code>docs/pr-archive</code>、<code>CHANGELOG.md</code>、<code>scripts/</code> 与 <code>tools/</code>。</span></p>
 <table>
   <tr><th>指标</th><th class="num">数值</th><th>说明</th></tr>
   <tr><td>抽取到的断言总数</td><td class="num">${f(fb.claimsTotal)}</td><td>含被分类、被忽略、被拒绑的条目</td></tr>
@@ -127,23 +130,25 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
   <tr><td>未绑定</td><td class="num">${f(fb.unbound)}</td><td>找不到产物——诚实记录，不隐藏</td></tr>
   <tr><td>候选冲突</td><td class="num">${f(fb.ambiguous)}</td><td>多个候选，需人工判定</td></tr>
   <tr><td>与产物不一致</td><td class="num">${f(fb.drift)}</td><td>本次为 0，门禁通过</td></tr>
+  <tr><td>引用已定位（lg-XXX 等实体）</td><td class="num">${f(fb.refFound)}</td><td>声明引用的存证实体在扫描范围内找到</td></tr>
   <tr><td>已分类（非产物属性）</td><td class="num">${f(fb.dispositioned)}</td><td>叙事/进度/一次性测量，逐条署名</td></tr>
   <tr><td>哈希存证（不介入判定）</td><td class="num">${f(fb.sealed)}</td><td>TSA 盖戳文件，改一个字节即破坏存证</td></tr>
   <tr><td>标准编号（非度量）</td><td class="num">${f(fb.standardRefs)}</td><td>FIPS 203/205 之类，避免被当成比值</td></tr>
   <tr><td>显式豁免</td><td class="num">${f(fb.ignored)}</td><td>每条必须写明为什么不该核</td></tr>
 </table>
 <p><b>核验率按两个分母同时给出</b>：${fbPct}%（${f(fb.verified)}/${f(fb.codeArtifactClaims)}，只算应当有产物的）与 ${((fb.verified / fb.allJudgedClaims) * 100).toFixed(1)}%（${f(fb.verified)}/${f(fb.allJudgedClaims)}，含分类与拒绑）。只报一个数就是选择性地好看。</p>
-<p class="muted">全仓口径（同日全量扫描：341 个文档、2,136 条应有产物的断言）：137 条已验证、1,768 条暂无产物、213 条多值候选、0 条漂移。本节是 <code>docs/</code> 样本快照，两者分母不同，百分比不可直接比较。</p>
+<p class="muted">口径说明：<code>claimsTotal</code> 含被分类、被忽略与被拒绑的条目，所以它与 <code>codeArtifactClaims</code> 不等；两个百分比的分母不同，不可互相引用。本节即全仓口径，与 2026-10-26 那份 <code>docs/</code> 子集快照（314 条断言）不是同一分母，不构成趋势比较。</p>
 
-<div class="pb"></div>
 <h2>五、门禁有没有牙：一次真实的红</h2>
-<p>下面不是构造的演示，而是移除 8 条"口径不同"的豁免后，工具在同一仓库上给出的真实输出：</p>
-<div class="warn"><b>门禁 FAILED</b>：9 条声明与产物不一致。全部集中在"拿 JS 基准的数字去比硬件 C 实现的基线"这一类，其中第 9 条是绑定本身找错了对象。</div>
+<p>下面不是构造的演示，而是移除配置里全部 19 条豁免后，工具在同一仓库上给出的真实输出（退出码 1）：</p>
+<div class="warn"><b>门禁 FAILED</b>：${f(driftRowsCount)} 条声明与产物不一致。四条是把 Node.js 基准的数字绑到了硬件基线（262µs），另外两条是绑定对象本身找错了（em-dash 计数、BKZ 成本）。</div>
 <table>
-  <tr><th>#</th><th>位置</th><th>键</th><th class="num">文档值</th><th>绑定到的产物</th><th class="num">相似度</th></tr>
+  <thead><tr><th>#</th><th>位置</th><th>键</th><th class="num">文档值</th><th>绑定到的产物</th><th class="num">相似度</th></tr></thead>
+  <tbody>
   ${driftRows}
+  </tbody>
 </table>
-<p>这 9 条此前被豁免静默排除。<b>移除豁免并不会制造问题，它只是让问题可见</b>。恢复豁免后门禁重新变绿，但每一条豁免都必须写明：为什么不该核、指向哪里、何时应当删除。</p>
+<p>这 ${f(driftRowsCount)} 条此前被豁免静默排除。<b>移除豁免并不会制造问题，它只是让问题可见</b>。恢复豁免后门禁重新变绿，但每一条豁免都必须写明：为什么不该核、指向哪里、何时应当删除。</p>
 <div class="ok"><b>结论</b>：这个工具的价值不在于"报告很绿"，而在于它能证明自己会红，并且红得有据可查。</div>
 
 <h2>六、这份报告不主张什么</h2>
@@ -154,7 +159,7 @@ const report1 = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><
   <li>扫描只读、本地运行；本报告不包含任何被扫描仓库的源代码。</li>
 </ul>
 <p class="muted">工具与规则均为开源实现，判定逻辑、豁免理由、门禁策略都在仓库内可复核。</p>
-<footer>verifact 0.1.0 · 样例报告 · ${now} · 只读扫描</footer>
+<footer>verifact 0.2.4 · 样例报告 · ${now} · 只读扫描</footer>
 </body></html>`;
 
 const outFile = path.join(outDir, 'verifact-sample-report.html');
