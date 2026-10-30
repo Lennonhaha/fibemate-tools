@@ -76,7 +76,7 @@ const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><sty
 <p>关键协议不变量以 Isabelle 建模并给出机器可检的证明义务账本；发布物用 RFC 3161 时间戳（TSA）固定，任何人可用公开哈希复核。存证文件本身禁止被注释修改——工具对这类目录设有独立的"哈希存证"类别。</p>
 
 <h2>三、当前状态：数字，含不好看的那些</h2>
-<p class="muted">FIBEMATE 样本扫描快照 · 2026-10-26 14:16 · 范围：仓库 <code>docs/</code> 目录（32 个文档）。</p>
+<p class="muted">FIBEMATE 全仓扫描快照 · 2026-10-30 12:31 · 范围：按 <code>verifact.json</code> 全仓配置扫描（${f(fb.docs)} 个文档）。</p>
 <table>
   <tr><th>项目</th><th>实测值</th><th>说明</th></tr>
   <tr><td>文档中的数字断言</td><td class="num">${f(fb.claimsTotal)}</td><td>含叙事、存证、豁免条目</td></tr>
@@ -87,7 +87,7 @@ const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><sty
   <tr><td>显式豁免</td><td class="num">${f(fb.ignored)}</td><td>每条写明理由与失效条件</td></tr>
   <tr><td>形式化：证明义务</td><td class="num">6</td><td>已登记、未关闭，宽松构建下通过</td></tr>
 </table>
-<p class="muted">全仓口径（同日全量扫描：341 个文档、2,136 条应有产物的断言）：137 条已验证、1,768 条暂无产物、213 条多值候选、0 条漂移。上表是 <code>docs/</code> 样本快照，两者分母不同，百分比不可直接比较。</p>
+<p class="muted">口径说明：<code>claimsTotal</code> 含被分类、被忽略与被拒绑的条目，所以它与“应当有产物”的分母不等；两个百分比的分母不同，不可互相引用。与 2026-10-26 那份 <code>docs/</code> 子集快照（314 条断言）不是同一分母，不构成趋势比较。</p>
 <div class="bad"><b>必须说明的三件事</b>：① 未做侧信道加固，文档已按此修正声明；② 未通过任何第三方安全审计或密评认证；③ 形式化验证的"严格模式"目前会按设计失败——6 条证明义务尚未完成，我们不把它包装成"已验证"。</div>
 
 <div class="pb"></div>
@@ -117,7 +117,7 @@ const html = `<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><sty
   <li>《文档数字溯源样例报告》（对 liboqs 与 FIBEMATE 两个真实仓库的只读扫描）</li>
   <li>工具与规则源码、门禁配置（开源，可自行复跑）</li>
 </ul>
-<p class="muted" style="margin-top:10mm">本文所有数字均来自 2026-10-26 的本地实测输出，可要求提供原始 JSON。</p>
+<p class="muted" style="margin-top:10mm">本文所有数字均来自 2026-10-30 的本地实测输出，可要求提供原始 JSON。</p>
 </body></html>`;
 
 const outFile = path.join(outDir, 'fibemate-intro.html');
