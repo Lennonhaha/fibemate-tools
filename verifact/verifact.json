@@ -18,6 +18,7 @@
       "**/fibemate/scripts/**",
       "**/fibemate/tools/**",
       "**/docs/pr-archive/**",
+      "**/whitepaper-risk.md",
       "**/verifact/**"
     ],
     "maxFileBytes": 2097152,
