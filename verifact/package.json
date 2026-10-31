@@ -1,6 +1,6 @@
 {
   "name": "verifact",
-  "version": "0.2.4",
+  "version": "0.2.5-rc.1",
   "description": "事实哨兵 — 把文档里的硬数字声明绑定到真实产出物上逐条核验，漂移即红。",
   "license": "Apache-2.0",
   "author": "刘天赫 <research@fibemate.net>",
