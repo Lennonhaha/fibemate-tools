@@ -13,7 +13,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "pkijs": "^3.4.2"
+    "pkijs": "^4.0.1"
   },
   "license": "Apache-2.0",
   "repository": {
