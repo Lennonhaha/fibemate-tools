@@ -126,6 +126,7 @@ jobs:
         working-directory: ${{ steps.meta.outputs.dir }}
         env:
           NPM_TOKEN_VALUE: ${{ secrets.NPM_TOKEN }}
+          IN_VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
           if [ "${{ steps.meta.outputs.dry_run }}" = "true" ]; then
@@ -144,7 +145,14 @@ jobs:
             echo "no NPM_TOKEN secret - relying on npm trusted publishing over OIDC"
             unset NODE_AUTH_TOKEN
           fi
-          npm publish --provenance --access public
+          # A prerelease must not move the "latest" tag: `npm publish` defaults to
+          # it, so a release candidate would silently become what everyone installs.
+          if [[ "${IN_VERSION}" == *-* ]]; then
+            echo "prerelease ${IN_VERSION} - publishing under the next dist-tag"
+            npm publish --provenance --access public --tag next
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Install cosign
         uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # v3.8.2
