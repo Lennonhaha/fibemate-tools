@@ -21,12 +21,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # End P lives in the fibemate repository. Pinned to a commit, not to main: a matrix
       # result that silently measures a different revision than the one in matrix.json is
       # the same failure the tool exists to prevent.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: Lennonhaha/fibemate
           ref: e4d3d582bd6043613d00b1103aed5d78a57f00f0
