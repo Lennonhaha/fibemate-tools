@@ -37,6 +37,7 @@
     "cbom-diff.js",
     "algo-metadata.json",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {
