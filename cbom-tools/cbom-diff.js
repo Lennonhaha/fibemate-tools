@@ -380,7 +380,11 @@ if (format === 'json') {
     diff.components.changed.forEach(c => {
       lines.push(`**${c.name}**`);
       c.changes.forEach(ch => {
-        lines.push(`- \`${ch.field}\`: \`${ch.old}\` → \`${ch.new}\``);
+        // `undefined` is not a value here: it is the absence of the property.
+        // Rendering it as "undefined" would blur exactly the distinction this
+        // field needs (omitted ≠ 0), so print the absence as such.
+        const show = (v) => (v === undefined ? '<absent>' : v);
+        lines.push(`- \`${ch.field}\`: \`${show(ch.old)}\` → \`${show(ch.new)}\``);
       });
       lines.push('');
     });

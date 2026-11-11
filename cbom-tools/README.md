@@ -166,6 +166,32 @@ Emits the [CycloneDX 1.7](https://cyclonedx.org/specification/overview/) CBOM
 format by default, with 1.6 available via `--spec 1.6`. The specification is
 maintained by [OWASP](https://owasp.org/) under Apache-2.0.
 
+**Our output aligns with the latest CycloneDX 1.7 clarification (#1175): an omitted
+`nistQuantumSecurityLevel` means unknown/unassessed, never 0.** The scan is file-level,
+so it never asserts a NIST category — not even 0, which would claim that none of the
+categories is met. Every emitted BOM carries the same sentence as a machine-readable
+property, `fibemate:nistQuantumSecurityLevel:semantics`, so a consumer does not have to
+guess what the absence means. The clarification is issue
+[#1175](https://github.com/CycloneDX/specification/issues/1175) with the wording in PR
+[#1177](https://github.com/CycloneDX/specification/pull/1177); both were open at the time
+of writing, so treat this as aligning with a proposed clarification rather than a released
+one. `cbom-diff` keeps the distinction too: an omitted value and an explicit `0` are
+reported as a change, not as equal.
+
+### How that lines up in time
+
+| Date | Event |
+|---|---|
+| 2026-09-26 | `cbom-scan` v0.1.0 (`55dffbc`) ships without ever emitting `nistQuantumSecurityLevel`. The field appears only in `cbom-diff`, which compares with `!==` — so an omitted value and `0` were already distinct in this tool. |
+| 2026-10-25 | CycloneDX issue [#1175](https://github.com/CycloneDX/specification/issues/1175) raises the gap: `0` cannot express "not evaluated". |
+| 2026-10-26 | PR [#1177](https://github.com/CycloneDX/specification/pull/1177) proposes the wording for 1.7; this repository adds explicit-zero / omitted / family-only fixtures (#89) and round-trip evidence (#114). |
+| 2026-10-30 | CycloneDX merges [#1186](https://github.com/CycloneDX/specification/pull/1186), restricting the 2.0 range to 0-5 because `6` had no defined meaning (issue #1185, not ours). |
+| 2026-11-11 | Every emitted BOM carries `fibemate:nistQuantumSecurityLevel:semantics`, and `test/omission-semantics.test.cjs` pins both halves: the scanner never emits the field, and the differ never folds absence into `0`. |
+
+The first row is the part worth stating plainly: the omission predates the discussion by a
+month. What the discussion added was not the behaviour but the *wording* that tells a
+consumer what the absence means.
+
 ## License
 
 Apache-2.0
