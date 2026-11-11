@@ -32,6 +32,8 @@ jobs:
         run: npm install
       - name: Test
         run: npm test
+      - name: Coverage gate
+        run: npm run test:coverage
 
   # 独立交叉验证：用 CycloneDX 官方实现复验 cbom-tools 的产物。
   # 官方库在此 job 内 ad-hoc 安装，不是 cbom-tools 的依赖

@@ -1,6 +1,6 @@
 {
   "name": "cbom-tools",
-  "version": "0.2.7-rc.1",
+  "version": "0.2.7",
   "description": "Crypto Bill of Materials — scan, diff, report (CycloneDX 1.6 CBOM)",
   "license": "Apache-2.0",
   "author": "刘天赫 <research@fibemate.net>",
@@ -40,10 +40,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:coverage": "c8 --all --include=\"*.cjs\" --include=\"*.js\" --exclude=\"test/**\" --exclude=\"examples/**\" --check-coverage --lines 90 --functions 90 --branches 80 --reporter=text node --test"
   },
   "devDependencies": {
     "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "c8": "^10.1.3"
   }
 }

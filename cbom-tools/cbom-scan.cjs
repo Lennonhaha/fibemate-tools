@@ -98,12 +98,234 @@ const DEFAULT_RULES = {
     { re: /import\s+hashlib/g, algs: ['SHA-256'] },
     { re: /hashlib\.sha256\(/g, algs: ['SHA-256'] },
     { re: /hashlib\.new\(\s*["']sha256["']/gi, algs: ['SHA-256'] },
+    // ── Receiver-agnostic call sites ──────────────────────────────
+    // `crypto.createHash('sha-256')` above only sees the literal receiver.
+    // A destructured import (`const { createHash: h } = require('crypto')`)
+    // or a wrapper object (`c.createHash(...)`) hides the receiver, so the
+    // same argument is matched without naming the object.
+    { re: /\.createHash\(\s*['"]sha-?256['"]/g, algs: ['SHA-256'] },
+    { re: /\.createHash\(\s*['"]sha-?512['"]/g, algs: ['SHA-512'] },
+    { re: /\.createCipheriv\(\s*['"][^'"]{0,64}aes[^'"]{0,64}gcm[^'"]{0,64}['"]/gi, algs: ['AES-GCM'] },
+    // ── Bare algorithm identifiers ────────────────────────────────
+    // Names that appear as data (config, CLI flag, registry key) rather
+    // than as part of a known function name.
+    { re: /\baes[-_]?(?:128|192|256)[-_]?gcm\b/gi, algs: ['AES-GCM'] },
+    { re: /\bchacha20[-_]?poly1305\b/gi, algs: ['ChaCha20-Poly1305'] },
+    { re: /\bed25519\b/gi, algs: ['Ed25519'] },
+    { re: /\bx25519\b/gi, algs: ['X25519'] },
+    { re: /\becdh\b/gi, algs: ['ECDH'] },
+    { re: /\brsa\b/gi, algs: ['RSA'] },
+    { re: /\bsha-?256\b/gi, algs: ['SHA-256'] },
+    { re: /\bsha-?512\b/gi, algs: ['SHA-512'] },
   ],
 };
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.cache']);
 const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|h|hpp|py)$/;
 const MAX_OCC_PER_ALGO = 50;
+// A single generated bundle or vendored blob can be hundreds of megabytes.
+// Reading it whole buys nothing — the scan is textual and the file is not
+// hand-written crypto — so the scanner skips it and says so on stderr.
+const MAX_FILE_BYTES = 8 * 1024 * 1024;
+
+function warn(message) {
+  console.error('cbom-scan: warning: ' + message);
+}
+
+// ── Literal resolution ──────────────────────────────────────────────
+//
+// A name that is assembled at compile time is still a name. This pass
+// recovers the common assembly forms so the regexes above can see them:
+//
+//   'sha' + '256'                    adjacent literal concatenation
+//   ['sh', 'a256'].join('')          array join
+//   `ml-kem-${'768'}`                template with literal interpolation
+//   Buffer.from('bWwt...', 'base64') base64 payload
+//   '\x73\x68\x61\x32\x35\x36'       escaped bytes
+//
+// It is deliberately syntactic. A name computed from a variable, an
+// environment variable, or a network response is NOT recovered — see
+// README "What a static scan cannot see". Claiming otherwise would be the
+// exact false assurance this tool exists to prevent.
+
+function decodeEscapes(text) {
+  return text.replace(/\\(x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.)/g, (m, seq) => {
+    if (seq[0] === 'x' && seq.length === 3) return String.fromCharCode(parseInt(seq.slice(1), 16));
+    if (seq[0] === 'u' && seq.length === 5) return String.fromCharCode(parseInt(seq.slice(1), 16));
+    switch (seq) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case 'r': return '\r';
+      case '\\': return '\\';
+      case "'": return "'";
+      case '"': return '"';
+      case '`': return '`';
+      default: return seq;
+    }
+  });
+}
+
+function lineAt(content, index) {
+  return content.slice(0, index).split('\n').length;
+}
+
+/**
+ * Recover algorithm names that are assembled out of literals.
+ *
+ * This walks the source once with an explicit escape state instead of running
+ * regexes over raw file content: a quote-class with an optional escape branch
+ * is polynomial on adversarial input (CodeQL says so, correctly), and a literal
+ * scanner cannot backtrack at all.
+ *
+ * @returns {Array<{text: string, line: number}>}
+ */
+function readQuoted(content, start) {
+  const quote = content[start];
+  let i = start + 1;
+  let raw = '';
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '\\') {
+      if (i + 1 >= content.length) return null;
+      raw += ch + content[i + 1];
+      i += 2;
+      continue;
+    }
+    if (ch === quote) return { value: raw, quote, start, end: i };
+    if (quote !== '`' && ch === '\n') return null;
+    raw += ch;
+    i++;
+  }
+  return null;
+}
+
+function collectLiterals(content) {
+  const lits = [];
+  let i = 0;
+  while (i < content.length) {
+    const ch = content[i];
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const lit = readQuoted(content, i);
+      if (lit) {
+        lits.push(lit);
+        i = lit.end + 1;
+        continue;
+      }
+    }
+    i++;
+  }
+  return lits;
+}
+
+function lastNonSpace(content, before) {
+  for (let i = before - 1; i >= 0; i--) {
+    const ch = content[i];
+    if (ch !== ' ' && ch !== '\t' && ch !== '\r' && ch !== '\n') return ch;
+    if (before - i > 200) return null;
+  }
+  return null;
+}
+
+const BASE64_CHARS = new Set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=');
+
+function looksLikeBase64(text) {
+  if (text.length < 8 || text.length % 4 !== 0) return false;
+  let padding = 0;
+  for (const ch of text) {
+    if (!BASE64_CHARS.has(ch)) return false;
+    if (ch === '=') padding++;
+    else if (padding > 0) return false;
+  }
+  return padding <= 2;
+}
+
+function deriveLiterals(content) {
+  const out = [];
+  const push = (text, index) => {
+    const decoded = decodeEscapes(text);
+    // Short names matter (`md5`, `aes`, `sha256`), so the floor is 3 — but a
+    // literal with no letters at all cannot name an algorithm.
+    if (decoded.trim().length >= 3 && /[a-z]/i.test(decoded)) out.push({ text: decoded, line: lineAt(content, index) });
+  };
+
+  const lits = collectLiterals(content);
+
+  // 1. Adjacent literal concatenation, including across line breaks.
+  //    'sha' + '256'  /  'ml-kem-' +\n  '768'
+  for (let i = 0; i < lits.length; i++) {
+    let text = lits[i].value;
+    let j = i;
+    while (j + 1 < lits.length && content.slice(lits[j].end + 1, lits[j + 1].start).trim() === '+') {
+      text += lits[j + 1].value;
+      j++;
+    }
+    if (j > i) push(text, lits[i].start);
+  }
+
+  // 2. Array of literals joined with an empty separator: ['ml','-kem'].join('')
+  for (let i = 0; i + 1 < lits.length; i++) {
+    let j = i;
+    while (j + 1 < lits.length && content.slice(lits[j].end + 1, lits[j + 1].start).trim() === ',') j++;
+    if (j === i) continue;
+    if (lastNonSpace(content, lits[i].start) !== '[') continue;
+    const tail = content.slice(lits[j].end + 1, lits[j].end + 64);
+    if (!/^\s*\]\s*\.join\(\s*(['"`])\1\s*\)/.test(tail)) continue;
+    push(lits.slice(i, j + 1).map((l) => l.value).join(''), lits[i].start);
+  }
+
+  // 3. Template literals whose only interpolation is a string literal:
+  //    `ml-kem-${'768'}`
+  for (const lit of lits) {
+    if (lit.quote !== '`' || !lit.value.includes('${')) continue;
+    let flat = '';
+    let rest = lit.value;
+    let unresolved = false;
+    while (rest.length > 0) {
+      const at = rest.indexOf('${');
+      if (at === -1) { flat += rest; break; }
+      flat += rest.slice(0, at);
+      const close = rest.indexOf('}', at + 2);
+      if (close === -1) { unresolved = true; break; }
+      const inner = rest.slice(at + 2, close).trim();
+      const sub = inner.startsWith('"') || inner.startsWith("'") ? readQuoted(inner, 0) : null;
+      if (sub && sub.end === inner.length - 1) flat += sub.value;
+      else { flat += '${'; unresolved = true; }
+      rest = rest.slice(close + 1);
+    }
+    if (!unresolved) push(flat, lit.start);
+  }
+
+  // 4. base64 payloads: Buffer.from('<b64>', 'base64') / atob('<b64>')
+  const markers = ['Buffer.from(', 'atob('];
+  for (const marker of markers) {
+    let from = 0;
+    for (;;) {
+      const at = content.indexOf(marker, from);
+      if (at === -1) break;
+      from = at + marker.length;
+      let p = from;
+      while (p < content.length && (content[p] === ' ' || content[p] === '\t')) p++;
+      const lit = readQuoted(content, p);
+      if (!lit || (lit.quote !== '"' && lit.quote !== "'")) continue;
+      if (!looksLikeBase64(lit.value)) continue;
+      if (marker === 'Buffer.from(') {
+        const tail = content.slice(lit.end + 1, lit.end + 32);
+        if (!/^\s*,\s*(['"`])base64\1\s*\)/.test(tail)) continue;
+      }
+      const decoded = Buffer.from(lit.value, 'base64').toString('utf-8');
+      push(decoded, at);
+    }
+  }
+
+  // 5. Plain literals written as escapes ('\x73\x68\x61\x32\x35\x36').
+  // A literal with no backslash is already visible to the regexes; only the
+  // escaped form needs decoding.
+  for (const lit of lits) {
+    if (lit.value.includes('\\')) push(lit.value, lit.start);
+  }
+
+  return out;
+}
 
 // ── Dependency inference ────────────────────────────────────────────
 
@@ -113,7 +335,10 @@ function loadPackageDeps(dir) {
   try {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
     return { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-  } catch {
+  } catch (err) {
+    // A manifest we cannot parse is a coverage hole, not a clean result:
+    // dependency inference silently degrades to source-only. Say so.
+    warn('cannot parse ' + pkgPath + ' (' + (err.code || err.message) + '); dependency inference skipped');
     return {};
   }
 }
@@ -154,15 +379,27 @@ function scanSource(root, rules) {
   function walk(d) {
     let entries;
     try { entries = fs.readdirSync(d, { withFileTypes: true }); }
-    catch { return; }
+    catch (err) {
+      warn('cannot read directory ' + d + ' (' + (err.code || err.message) + '); skipped');
+      return;
+    }
     for (const entry of entries) {
       if (entry.name.startsWith('.') || SKIP_DIRS.has(entry.name)) continue;
       const full = path.join(d, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
       if (!SCAN_EXT.test(entry.name)) continue;
       let content;
-      try { content = fs.readFileSync(full, 'utf-8'); }
-      catch { continue; }
+      try {
+        const st = fs.statSync(full);
+        if (st.size > MAX_FILE_BYTES) {
+          warn('skipped ' + path.relative(root, full) + ': ' + st.size + ' bytes exceeds ' + MAX_FILE_BYTES);
+          continue;
+        }
+        content = fs.readFileSync(full, 'utf-8');
+      } catch (err) {
+        warn('skipped ' + path.relative(root, full) + ': ' + (err.code || err.message));
+        continue;
+      }
       for (const { re, algs } of rules.sourcePatterns) {
         re.lastIndex = 0;
         let m;
@@ -172,6 +409,23 @@ function scanSource(root, rules) {
           for (const a of algs) {
             const name = a.replace(/\$(\d+)/g, (_, i) => m[i]);
             addOcc(name, full, line, m[0], span);
+          }
+        }
+      }
+      // Second pass over names assembled from literals (concat / join /
+      // template / base64 / escaped bytes). Occurrences are reported at
+      // the line where the literal is written.
+      for (const lit of deriveLiterals(content)) {
+        for (const { re, algs } of rules.sourcePatterns) {
+          const scan = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+          let lm;
+          while ((lm = scan.exec(lit.text)) !== null) {
+            const span = { start: lm.index, end: lm.index + lm[0].length };
+            for (const a of algs) {
+              const name = a.replace(/\$(\d+)/g, (_, i) => lm[i]);
+              addOcc(name, full, lit.line, lm[0], span);
+            }
+            if (lm[0].length === 0) break;
           }
         }
       }
@@ -410,6 +664,16 @@ function main() {
     fail('--spec must be one of ' + SPEC_VERSIONS.join(', ') + ' (got "' + specVersion + '")');
   }
 
+  // A path that does not exist used to produce an empty CBOM and exit 0.
+  // Downstream that reads as "no cryptography here" — a false clean result
+  // on a typo. Refuse instead; see README "Exit codes".
+  let dirStat;
+  try { dirStat = fs.statSync(dir); }
+  catch (err) {
+    fail('--dir not found: ' + dir + ' (' + (err.code || err.message) + ')');
+  }
+  if (!dirStat.isDirectory()) fail('--dir is not a directory: ' + dir);
+
   const deps = loadPackageDeps(dir);
   const fromDeps = matchDeps(deps, DEFAULT_RULES);
   const rawSource = scanSource(dir, DEFAULT_RULES);
@@ -430,3 +694,14 @@ function main() {
 if (require.main === module) {
   main();
 }
+
+module.exports = {
+  DEFAULT_RULES,
+  deriveLiterals,
+  decodeEscapes,
+  scanSource,
+  deduplicateOccurrences,
+  mergeEvidence,
+  toCycloneDX,
+  lookupMeta,
+};
