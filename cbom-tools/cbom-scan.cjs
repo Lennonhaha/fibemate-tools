@@ -338,6 +338,17 @@ function toCycloneDX(components, specVersion) {
     bomFormat: 'CycloneDX',
     specVersion,
     version: 1,
+    // `nistQuantumSecurityLevel` is deliberately absent from every component:
+    // this scan is file-level, so any integer in 0..6 would be an invented
+    // assessment. Omission says "unknown", and the note below says so out
+    // loud, because a consumer that folds absent into 0 would otherwise read
+    // an inventory as a claim that nothing is quantum-safe.
+    properties: [
+      {
+        name: 'fibemate:nistQuantumSecurityLevel:semantics',
+        value: 'omitted means unknown/unassessed, never 0',
+      },
+    ],
     metadata: {
       timestamp: new Date().toISOString(),
       tools: [{ name: 'cbom-scan', version: PKG.version, vendor: 'FIBEMATE' }],
