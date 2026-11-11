@@ -1,5 +1,8 @@
 # cbom-tools
 
+![coverage](https://img.shields.io/badge/coverage-96.5%25%20lines-brightgreen)
+![gate](https://img.shields.io/badge/CI%20floor-90%25%20lines-blue)
+
 **Cryptographic Bill of Materials — scan, diff, report.**
 
 Scan a directory tree for cryptographic assets, emit a
@@ -15,7 +18,9 @@ Zero external dependencies. Pure Node.js.
 Three things that are easy to misread:
 
 - **It does not find vulnerabilities.** No CVE lookup, no taint analysis, no judgement about whether an algorithm choice is sound. It reports *where cryptographic APIs are called*, and says nothing about whether they are called well.
-- **It does not guarantee a complete inventory.** Detection is pattern-based per language and library. A clean scan means "no match against the patterns this version knows" — not "there is no cryptography here". Dynamic loading, generated code, native bindings and vendored binaries can all be missed. The CBOM is evidence of what was found, not a certificate of what exists.
+- **It does not guarantee a complete inventory.** Detection is pattern-based per language and library. A clean scan means "no match against the patterns this version knows" — not "there is no cryptography here". Generated code, native bindings, vendored binaries, and names computed at runtime (`process.env`, a network response, a value assembled from variables) can all be missed. The CBOM is evidence of what was found, not a certificate of what exists.
+
+  Names assembled from *literals* are resolved before matching — `'sha' + '256'`, `['sh','a256'].join('')`, `` `ml-kem-${'768'}` ``, base64 payloads, `\x` escapes. `test/fixtures/evasion/` holds one fixture per form, so this claim is executable rather than aspirational. See [Testing](#testing).
 - **It does not execute the code it scans.** Files are read and parsed. Nothing in the scanned tree is run.
 
 A CBOM is an inventory to review. It is not a compliance conclusion, and it cannot replace an audit.
@@ -94,17 +99,37 @@ which is where `cbom-scan` writes it; `cryptoProperties.quantumSecurity.level` i
 accepted as a fallback for hand-written CBOMs. A missing or malformed level stays
 unknown — it is never inferred from the algorithm name.
 
+## Exit codes
+
+A scan that cannot run must not look like a scan that found nothing.
+
+| code | `cbom-tools scan` | `cbom-tools diff` |
+|---|---|---|
+| 0 | scan completed | no changes |
+| 1 | — | changes found (see severity) |
+| 2 | usage error, bad `--spec`, `--dir` missing or not a directory | missing file, invalid JSON, bad argument |
+| 3 | — | critical change |
+| 4 | — | CBOM could not be loaded |
+
+Until 0.2.7 a missing `--dir` printed an empty CBOM and exited 0. In a pipeline that reads as "no cryptography in this tree", so a typo in the path produced a clean result. It now exits 2. Per-file problems (unreadable file, file over 8 MB, unparsable `package.json`) are warned on stderr and the rest of the tree is still scanned — a partial inventory is reported as partial, never as empty.
+
 ## Testing
 
 ```
-npm test
+npm test              # 122 tests, Node built-in node:test
+npm run test:coverage # same suite, fails below the thresholds
 ```
 
-76 tests (Node built-in `node:test`, zero dependencies). Both binaries are
-spawned as child processes and checked against edge inputs — empty directory,
-dependencies-only, source-only, an 800-file tree (occurrence cap,
-`node_modules` / `.git` / dotfile skipping), unreachable directories, missing
-argument values, and malformed JSON.
+**Coverage: 96.5% lines / 97.4% functions / 86.6% branches**, measured over the five published source files (`cli.cjs`, `cbom-scan.cjs`, `cbom-diff.js`, `cbom-csv.cjs`, `algorithm-hierarchy.cjs`). CI enforces a floor of **90% lines, 90% functions, 80% branches**; the badge at the top reports the measured value, the gate is what makes it true tomorrow.
+
+What the suite covers:
+
+- **Negative controls** (`test/fixtures/evasion/`): ten forms that make an algorithm name hard to see at the call site — constant alias, array join, template interpolation, base64, hex escapes, split `require`, destructured import, Python `getattr`, C macro, string split across lines. Each fixture asserts the algorithm is still reported. This is the anti-false-compliance line: code that uses a weak algorithm must not produce an empty CBOM.
+- **Fault tolerance**: missing `--dir` (exit 2), `--dir` pointing at a file (exit 2), 8 MB+ file skipped with a warning, unreadable file skipped with a warning, malformed `package.json` warned and skipped. None of these crash, and none of them pretend to be a clean scan.
+- **Dispatcher contract** (`cli.cjs`): `--help`, `--version`, unknown subcommand, and exit-code passthrough for both binaries — the entry point `npx cbom-tools` uses was previously untested.
+- **Existing contract tests** unchanged: schema validation against the vendored official CycloneDX schemas, `--spec` behaviour, provenance merge, CSV input, omission semantics.
+
+One caveat stated as a caveat: the unreadable-file case is skipped on Windows, where `chmod` only clears the read-only bit and does not deny reads. It runs on the Linux CI job.
 
 `test/spec-version.test.cjs` covers the `--spec` contract: the default is
 1.7, both `--spec 1.7` and `--spec=1.7` are parsed, an unknown version exits

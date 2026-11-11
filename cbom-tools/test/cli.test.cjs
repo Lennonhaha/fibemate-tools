@@ -69,7 +69,10 @@ function diffRun(a, b, extra = []) {
 // ---------- cbom-scan ----------
 
 test('场景 1 空目录：不崩，输出合法的空 CBOM', () => {
-  const dir = mk('empty-dir', null);
+  // 这里原本用 mk('empty-dir', null)，而 mk 在 files 为 null 时**根本不建目录** ——
+  // 它测的其实是「不存在的路径」，只因旧契约是 exit 0 + 空 CBOM 才一直绿。
+  const dir = path.join(tmp, 'empty-dir');
+  fs.mkdirSync(dir, { recursive: true });
   const cbom = scanDir(dir);
   assert.strictEqual(cbom.bomFormat, 'CycloneDX');
   // Default moved to 1.7 when 1.7 shipped; 1.6 is still reachable with
@@ -170,9 +173,12 @@ test('场景 5 不可达目录：优雅跳过，不崩', () => {
   }
 });
 
-test('场景 5b --dir 指向不存在的路径：当前契约是优雅输出空 CBOM', () => {
-  const cbom = scanDir(path.join(tmp, 'no-such-dir'));
-  assert.deepStrictEqual(cbom.components, []);
+test('场景 5b --dir 指向不存在的路径：拒绝而不是空 CBOM（2026-11 收紧契约）', () => {
+  // 旧契约是 exit 0 + 空 components。那样一条打错的路径会在流水线里被读成
+  // 「这里没有密码学」——假绿。现在改为 exit 2，见 README「Exit codes」。
+  const r = scan(['--dir', path.join(tmp, 'no-such-dir')]);
+  assert.strictEqual(r.status, 2, `exit=${r.status} stderr=${r.stderr}`);
+  assert.ok(r.stderr.includes('--dir not found'), `stderr=${r.stderr}`);
 });
 
 test('参数边界：--dir 缺值 → usage 提示，exit 2，无未捕获堆栈', () => {
