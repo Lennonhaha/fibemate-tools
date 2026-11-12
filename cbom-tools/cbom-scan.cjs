@@ -105,7 +105,9 @@ const DEFAULT_RULES = {
     // same argument is matched without naming the object.
     { re: /\.createHash\(\s*['"]sha-?256['"]/g, algs: ['SHA-256'] },
     { re: /\.createHash\(\s*['"]sha-?512['"]/g, algs: ['SHA-512'] },
-    { re: /\.createCipheriv\(\s*['"][^'"]{0,64}aes[^'"]{0,64}gcm[^'"]{0,64}['"]/gi, algs: ['AES-GCM'] },
+    // `.createCipheriv(...)` is read by collectCipherCallSites(), not by a
+    // regex: see "Call-site arguments" below. A bounded quantifier would
+    // only hide the backtracking from the scanner instead of removing it.
     // ── Bare algorithm identifiers ────────────────────────────────
     // Names that appear as data (config, CLI flag, registry key) rather
     // than as part of a known function name.
@@ -147,6 +149,46 @@ function warn(message) {
 // environment variable, or a network response is NOT recovered — see
 // README "What a static scan cannot see". Claiming otherwise would be the
 // exact false assurance this tool exists to prevent.
+
+// ── Call-site arguments ─────────────────────────────────────────────
+//
+// `.createCipheriv('aes-256-gcm', key, iv)` names its algorithm in the
+// first argument, and the receiver is irrelevant: a wrapper object
+// (`c.createCipheriv`) or a destructured import hides the object name.
+// So the argument is read at the call site, by walking characters — not by
+// a regex. There is no quantifier to backtrack over: an unterminated
+// literal simply ends the walk for that call site, in linear time.
+//
+// Known limit, stated rather than papered over: if the first argument is a
+// variable (`createCipheriv(ALGO, …)`), nothing is reported. That is the
+// same boundary as the rest of this static pass.
+
+const CIPHER_CALL = '.createCipheriv(';
+
+function collectCipherCallSites(content) {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const at = content.indexOf(CIPHER_CALL, from);
+    if (at === -1) break;
+    from = at + CIPHER_CALL.length;
+    let i = from;
+    while (i < content.length) {
+      const ch = content[i];
+      if (ch !== ' ' && ch !== '\t' && ch !== '\n' && ch !== '\r') break;
+      i++;
+    }
+    if (i >= content.length) break;
+    const quote = content[i];
+    if (quote !== '"' && quote !== "'" && quote !== '`') continue;
+    const lit = readQuoted(content, i);
+    if (!lit) continue;
+    const name = decodeEscapes(lit.value).toLowerCase();
+    if (!name.includes('aes') || !name.includes('gcm')) continue;
+    out.push({ text: name, line: lineAt(content, at), index: at });
+  }
+  return out;
+}
 
 function decodeEscapes(text) {
   return text.replace(/\\(x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|.)/g, (m, seq) => {
@@ -411,6 +453,10 @@ function scanSource(root, rules) {
             addOcc(name, full, line, m[0], span);
           }
         }
+      }
+      // Call-site arguments, read lexically (see collectCipherCallSites).
+      for (const site of collectCipherCallSites(content)) {
+        addOcc('AES-GCM', full, site.line, site.text, { start: site.index, end: site.index + CIPHER_CALL.length });
       }
       // Second pass over names assembled from literals (concat / join /
       // template / base64 / escaped bytes). Occurrences are reported at
@@ -698,6 +744,7 @@ if (require.main === module) {
 module.exports = {
   DEFAULT_RULES,
   deriveLiterals,
+  collectCipherCallSites,
   decodeEscapes,
   scanSource,
   deduplicateOccurrences,
