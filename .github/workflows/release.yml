@@ -163,7 +163,13 @@ jobs:
         run: |
           set -euo pipefail
           TB="${{ steps.pack.outputs.tarball }}"
+          # cosign v3 (installed by cosign-installer v4) enables the bundle format
+          # and the signing config by default, which discards the detached
+          # signature file. Pin both defaults off so the .sig/.pem artefacts below
+          # are still written for the release notes and Scorecard's probe.
           cosign sign-blob --yes \
+            --new-bundle-format=false \
+            --use-signing-config=false \
             --output-signature "$TB.sig" \
             --output-certificate "$TB.pem" \
             "$TB"

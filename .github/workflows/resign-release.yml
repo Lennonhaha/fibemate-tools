@@ -86,7 +86,14 @@ jobs:
             gh api -H 'Accept: application/octet-stream' "repos/$GITHUB_REPOSITORY/releases/assets/$id" > "out/$name"
             before="$(sha256sum "out/$name" | cut -d' ' -f1)"
             echo "sha256 before: $before"
-            cosign sign-blob --yes --output-signature "out/$name.sig" --output-certificate "out/$name.pem" "out/$name"
+            # cosign v3 defaults to the bundle format; keep the detached .sig/.pem
+            # that this workflow re-uploads for existing releases.
+            cosign sign-blob --yes \
+              --new-bundle-format=false \
+              --use-signing-config=false \
+              --output-signature "out/$name.sig" \
+              --output-certificate "out/$name.pem" \
+              "out/$name"
             after="$(sha256sum "out/$name" | cut -d' ' -f1)"
             echo "sha256 after:  $after"
             if [ "$before" != "$after" ]; then
