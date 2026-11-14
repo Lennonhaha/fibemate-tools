@@ -64,7 +64,7 @@ jobs:
       # is not a theorem. Pinned to lean-action v1.6.2 by commit SHA, and the
       # toolchain is pinned by lean-toolchain, so neither can drift silently.
       - name: Lean proof with axiom audit
-        uses: leanprover/lean-action@fe408643ea7367d8c0404a8be3975bb145f5fb64 # v1.7.0
+        uses: leanprover/lean-action@ba3fdfe5c4476c925da13bf11a005ddb47e47aee # v1.7.1
         with:
           lake-package-directory: undecryptable-prover/proof
           auto-config: "false"
