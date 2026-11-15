@@ -4,7 +4,39 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## 0.2.8 — 2026-11-15
+
+### Fixed: `exit 1` was unreachable for BOMs this tool produced
+
+`classifyRisk()` decided how loud a new algorithm should be by reading
+`cryptoProperties.assetType`. `cbom-scan` writes `"algorithm"` for every
+component, that word matches no branch, and so every added algorithm fell
+through to `warning`. `info` — and with it `exit 1` — could not be produced from
+a CBOM this tool wrote itself (issue #183).
+
+A gate written as "`1` passes, `2` blocks" therefore blocked the case it was
+meant to allow: adopting a *new safe* algorithm looked identical to adopting a
+weak one.
+
+Grading now follows the algorithm, in this order:
+
+1. `quantumSecurity:level = vulnerable` → `critical` (unchanged shortcut)
+2. `quantumSecurity:level = weak` → `warning`
+3. `algorithmProperties.primitive` — `kem`, `signature`, `hash`, `xof`,
+   `block-cipher`, `aead`, `stream-cipher` → `info`; `key-agree`, `key-derive`,
+   `key-wrap`, `other` → `warning`
+4. fall back to `assetType`, then to the component name
+5. anything unrecognised stays `warning`
+
+`pke` is deliberately *not* an `info` primitive: RSA and ML-KEM-768 share it, and
+the word alone cannot tell a safe addition from a vulnerable one. `vulnerable`
+still short-circuits before any of this, so RSA cannot be graded quiet.
+
+Tests: `test/classify-risk.test.cjs` (8 cases) covers each branch, including the
+regression that `vulnerable` keeps winning over an `info`-looking primitive.
+
 ## 0.2.7 — 2026-11-11
+
 
 ### Breaking change: an invalid `--dir` is now an error
 

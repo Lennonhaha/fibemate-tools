@@ -96,6 +96,11 @@ const newCBOM = loadCBOM(newHash);
 // field therefore means "the default version", not 0 and not "no version".
 // Coercing absence to 0 made one side omitted look like a version change
 // (false "bumped") or a rollback (false "downgraded").
+// 'pke' is deliberately absent: RSA and ML-KEM-768 share that primitive, so
+// the word alone cannot tell a safe addition from a vulnerable one.
+const PRIMITIVE_INFO = /^(kem|signature|hash|xof|block-cipher|aead|stream-cipher)$/;
+const PRIMITIVE_WARN = /^(key-agree|key-derive|key-wrap|other)$/;
+
 const BOM_VERSION_DEFAULT = 1;
 
 function readBomVersion(bom) {
@@ -164,7 +169,7 @@ if (oldCBOM && newCBOM) {
         ref,
         name: c.name,
         type: assetType,
-        risk: classifyRisk(crypto, quantumLevel(c)),
+        risk: classifyRisk(crypto, quantumLevel(c), c.name),
       });
     }
   });
@@ -275,18 +280,31 @@ function quantumLevel(component) {
 // caller only classifies added components, so "present here and absent before"
 // is already established by the time we get here. A vulnerable algorithm that
 // merely stays present is not a regression and must not turn the build red.
-function classifyRisk(cryptoProps, quantum) {
+// What the algorithm *is* decides how loud its arrival should be. Reading
+// assetType was the original mistake: cbom-scan writes "algorithm" for every
+// component, that word matches none of these branches, and so every added
+// algorithm fell through to `warning` — exit 1 was unreachable for BOMs this
+// tool produced itself (issue #183). Primitive is the field that carries the
+// meaning; assetType and name are fallbacks for BOMs written by other tools.
+function classifyRisk(cryptoProps, quantum, name = '') {
+  // A vulnerable algorithm is never quiet, whatever else it claims to be.
   if (quantum === 'vulnerable') return 'critical';
-  const type = ((cryptoProps && cryptoProps.assetType) || '').toLowerCase();
-  // PQC algorithms: safe additions
-  if (/kem|sign|signature|post.quantum|pqc|mlkem|mldsa|slh/i.test(type)) return 'info';
-  // Primitive/verification: neutral
-  if (/ntt|sha|hash|primitive|verification|protocol/i.test(type)) return 'info';
-  // Classic ECC: warning
-  if (/ecc|ecdh|p-256|sm2|curve/i.test(type)) return 'warning';
-  // Classic symmetric: info (still safe with large keys)
-  if (/sym|sm4|aes|gcm/i.test(type)) return 'info';
-  // Unknown: treat as warning
+  // Weak is weak: a new SHA-256 is worth a look, not a shrug.
+  if (quantum === 'weak') return 'warning';
+
+  const alg = (cryptoProps && cryptoProps.algorithmProperties) || {};
+  const primitive = String(alg.primitive || '').toLowerCase();
+  if (PRIMITIVE_INFO.test(primitive)) return 'info';
+  if (PRIMITIVE_WARN.test(primitive)) return 'warning';
+
+  // No usable primitive (vendor BOMs, hand-written files). Silence is the
+  // failure mode that matters, so an unrecognised addition stays a warning;
+  // only a name or assetType that positively identifies a family is quiet.
+  const type = String((cryptoProps && cryptoProps.assetType) || '').toLowerCase();
+  const label = type + ' ' + String(name).toLowerCase();
+  if (/\bkem\b|mlkem|ml-kem|signature|mldsa|ml-dsa|slh|hash|sha3|xof/.test(label)) return 'info';
+  if (/ecc|ecdh|p-256|sm2|curve|key-agree/.test(label)) return 'warning';
+  if (/sym|sm4|aes|gcm|chacha/.test(label)) return 'info';
   return 'warning';
 }
 
