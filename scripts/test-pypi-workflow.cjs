@@ -84,9 +84,25 @@ const CHECKS = [
     run: (t) => t.includes('pypa/gh-action-pypi-publish@' + PIN) && !/gh-action-pypi-publish@(release|v)\//.test(t),
   },
   {
-    id: 'dry_run_guard',
-    what: 'workflow_dispatch dry_run keeps publish from running',
-    run: (t, all) => jobBlock(all, 'publish').includes('inputs.dry_run == false'),
+    id: 'rehearsal_only',
+    what: 'a dispatch rehearses the tag: no dry_run, tag required, checkout follows it, HEAD == tag',
+    run: (t, all) => {
+      if (/\bdry_run\b/.test(t)) return false;
+      if (!/tag:[\s\S]{0,200}?required:\s*true/.test(t)) return false;
+      if (!t.includes('ref: ${{ github.event.inputs.tag || github.ref }}')) return false;
+      if (!t.includes('The checked-out tree is the tag')) return false;
+      return true;
+    },
+  },
+  {
+    id: 'only_a_tag_push_publishes',
+    what: 'publish requires a tag push and reads no input',
+    run: (t, all) => {
+      const block = jobBlock(all, 'publish');
+      if (!block.includes("github.event_name == 'push'")) return false;
+      if (!block.includes("startsWith(github.ref, 'refs/tags/')")) return false;
+      return !/if:.*inputs\./.test(block);
+    },
   },
 ];
 
@@ -134,7 +150,10 @@ const MUTATIONS = [
   ['M8 environment dropped', (t) => t.replace('    environment: pypi\n', ''), 'publish_environment'],
   ['M9 id-token dropped', (t) => t.replace('      id-token: write\n', ''), 'id_token_write'],
   ['M10 floating tag instead of SHA', (t) => t.replace('pypa/gh-action-pypi-publish@' + PIN, 'pypa/gh-action-pypi-publish@release/v1'), 'pypi_publish_pinned'],
-  ['M11 dry_run guard removed', (t) => t.replace("    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}\n", ''), 'dry_run_guard'],
+  ['M11 publish no longer gated on a tag push', (t) => t.replace("if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}", 'if: ${{ true }}'), 'only_a_tag_push_publishes'],
+  ['M12 checkout stops following the tag', (t) => t.replace('          ref: ${{ github.event.inputs.tag || github.ref }}\n', ''), 'rehearsal_only'],
+  ['M13 dry_run returns', (t) => t.replace('      tag:\n', '      dry_run:\n        type: boolean\n        default: true\n      tag:\n'), 'rehearsal_only'],
+  ['M14 HEAD == tag assertion removed', (t) => t.replace('      - name: The checked-out tree is the tag\n', '      - name: (removed)\n'), 'rehearsal_only'],
 ];
 
 function selfTest(text) {

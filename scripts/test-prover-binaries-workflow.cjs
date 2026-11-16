@@ -8,8 +8,13 @@
  * not about YAML shape.
  *
  * Exit codes: 0 ok, 1 a check failed, 2 usage.
- * `--self-test` mutates the workflow in memory six ways and requires the
+ * `--self-test` mutates the workflow in memory nine ways and requires the
  * matching check to fail, so a check that cannot go red is reported as a bug.
+ *
+ * The release gate was rewritten in #192: a manual run is a rehearsal, not a
+ * release with a switch. The checks below encode that, and the mutation list
+ * covers each new invariant separately - an assertion nobody can break does not
+ * prove anything.
  */
 
 const fs = require('node:fs');
@@ -81,10 +86,21 @@ const checks = {
     must(floating.length === 0, 'floating refs: ' + floating.join(', '));
     return uses.length + ' pinned';
   },
-  manual_runs_default_to_dry_run: (s) => {
-    must(/dry_run:[\s\S]{0,200}?default:\s*true/.test(s), 'workflow_dispatch dry_run does not default to true');
-    must(/if:\s*\$\{\{\s*github\.event\.inputs\.dry_run != 'true'\s*\}\}/.test(s), 'release job is not gated on dry_run');
-    return 'dry_run defaults true and gates the release';
+  manual_runs_are_rehearsal_only: (s) => {
+    // A boolean input is a switch somebody flips; the release gate used to read
+    // one (`dry_run`) and a dispatch could publish whatever main carried.
+    must(!/\bdry_run\b/.test(s), 'dry_run is back in the workflow');
+    must(/tag:[\s\S]{0,200}?required:\s*true/.test(s), 'workflow_dispatch has no required tag input');
+    must(/ref:\s*\$\{\{\s*github\.event\.inputs\.tag \|\| github\.ref\s*\}\}/.test(s), 'checkout does not follow the tag');
+    must(/checked-out tree is the tag/.test(s), 'nothing asserts HEAD == the tag commit');
+    return 'dispatch takes a tag, checkout follows it, HEAD == tag asserted';
+  },
+  only_a_tag_push_can_publish: (s) => {
+    must(
+      /if:\s*\$\{\{\s*github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\)\s*\}\}/.test(s),
+      'release job is not gated on a tag push',
+    );
+    return 'release job requires push on refs/tags/*';
   },
   no_silent_failure_switches: (s) => {
     must(!/continue-on-error:\s*true/.test(s), 'continue-on-error: true would let a failed run look green');
@@ -101,8 +117,11 @@ if (process.argv.includes('--self-test')) {
     ['M2 windows dropped from the matrix', /          - os: windows-latest\n            artifact: windows-x86_64\n            exe: '\.exe'\n/, '', 'matrix_covers_linux_and_windows'],
     ['M3 tests on the debug profile', /cargo test --release --locked/, 'cargo test --locked', 'tests_use_the_release_profile'],
     ['M4 checkout unpinned', /actions\/checkout@[0-9a-f]{40}/, 'actions/checkout@v4', 'all_actions_are_commit_pinned'],
-    ['M5 release no longer gated', /if: \$\{\{ github\.event\.inputs\.dry_run != 'true' \}\}\n/, '', 'manual_runs_default_to_dry_run'],
+    ['M5 release not gated on a tag push', /if: \$\{\{ github\.event_name == 'push' && startsWith\(github\.ref, 'refs\/tags\/'\) \}\}/, "if: ${{ true }}", 'only_a_tag_push_can_publish'],
     ['M6 silent failures allowed', /permissions:\n/, 'permissions:\n  # injected\n', 'no_silent_failure_switches'],
+    ['M7 checkout no longer follows the tag', /\n\s*ref: \$\{\{ github\.event\.inputs\.tag \|\| github\.ref \}\}/, '', 'manual_runs_are_rehearsal_only'],
+    ['M8 dry_run comes back', /      tag:\n/, '      dry_run:\n        type: boolean\n        default: true\n      tag:\n', 'manual_runs_are_rehearsal_only'],
+    ['M9 HEAD == tag assertion removed', /      - name: The checked-out tree is the tag\n/, '      - name: (removed)\n', 'manual_runs_are_rehearsal_only'],
   ];
 
   let selfFailed = 0;
