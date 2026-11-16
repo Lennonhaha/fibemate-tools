@@ -131,6 +131,43 @@ defect in the release. The same reasoning applies to a scan range that silently
 excluded the files under test, and to a gate whose threshold was read out of
 the document it was checking.
 
+## 9. PyPI's attestation does not say which ref built the file
+
+npm's provenance carries `workflow_ref`, so "published from `main` under a tag's
+name" is visible after the fact. PyPI's PEP 740 attestation is a different
+animal. The decoded statement is:
+
+```json
+{
+  "publisher": {"kind": "GitHub", "repository": "Lennonhaha/fibemate-tools",
+                "workflow": "release-pypi.yml", "environment": "pypi"},
+  "predicateType": "https://docs.pypi.org/attestations/publish/v1",
+  "subject": [{"name": "crypto_time_machine-0.1.2-py3-none-any.whl",
+               "digest": {"sha256": "55f3fd86…"}}],
+  "predicate": null
+}
+```
+
+**No `ref`, no commit, `predicate` null.** It proves which repository and
+workflow uploaded these bytes over OIDC. It does not prove which tree produced
+them; a tag build and a `main` build yield the same shape.
+
+Two consequences, both binding:
+
+- **An audit may not ask PyPI for the ref.** The rule for PyPI is
+  `publisher.workflow == expected` plus `subject.digest.sha256 == recomputed
+  sha256`, with the limitation stated in the report: the criterion "built from
+  the tag" is **not available**. Writing a check that expects a ref there would
+  report "unprovable" forever and teach people to ignore it.
+- **The guarantee has to be produced at build time**, inside the workflow:
+  `checkout` follows the tag, `HEAD == <tag>^{commit}` is asserted before
+  building, and publishing requires a tag push. Nothing downstream can add this
+  property afterwards.
+
+The general form: before promising a check, confirm the field it reads exists in
+this ecosystem's attestation. Same failure family as a threshold read out of the
+document it checks, or a scan range that excluded the files under test.
+
 ## Checking a release, in order
 
 1. `npm view <name> name` — is this our package?

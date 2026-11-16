@@ -20,14 +20,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag, example undecryptable-prover-v0.1.0'
+        description: 'Release tag to rehearse, example undecryptable-prover-v0.1.0 (a dispatch never publishes)'
         required: true
         type: string
-      dry_run:
-        description: 'Build and run on both platforms, but do not create a release'
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -49,6 +44,21 @@ jobs:
     steps:
       - name: Check out the commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The binaries must be built from the tagged tree. A dispatch without this
+          # built the branch it was started from and published it under a tag name.
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: The checked-out tree is the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG_SHA="$(git ls-remote origin "refs/tags/$TAG^{}" | cut -f1)"
+          test -n "$TAG_SHA" || { echo "::error::tag $TAG does not exist"; exit 1; }
+          HEAD_SHA="$(git rev-parse HEAD)"
+          echo "tag=$TAG tag_commit=$TAG_SHA head=$HEAD_SHA"
+          test "$TAG_SHA" = "$HEAD_SHA" || { echo "::error::HEAD is not the tag commit ($HEAD_SHA != $TAG_SHA)"; exit 1; }
 
       - name: Show the Rust toolchain the runner ships with
         run: |
@@ -97,7 +107,9 @@ jobs:
 
   release:
     needs: build
-    if: ${{ github.event.inputs.dry_run != 'true' }}
+    # A tag push, and nothing else. A dispatch rehearses both builds and stops here;
+    # the previous gate compared a boolean input to the string 'true'.
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -131,3 +143,12 @@ jobs:
               --notes "Binaries built and executed on their own platform before upload (see the build jobs). Each file has a sha256 in SHA256SUMS."
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
+
+  rehearsal:
+    needs: build
+    if: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nothing was published
+        run: |
+          echo "not a tag push: both binaries were built and executed, no release was created"
