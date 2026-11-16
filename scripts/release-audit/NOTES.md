@@ -56,6 +56,23 @@ UNKNOWN rather than FAIL.
 | `pqc-kem` | `fibemate-pqc-kem` |
 | `verifact`, `cbom-tools` | same as the prefix |
 
+## PyPI 审计判据（与 npm 不同）
+
+npm 的 provenance 有 `workflow_ref` 和 `gitCommit`，可校验 `ref == refs/tags/<tag>`。
+PyPI 的 PEP 740 attestation 只有 `publisher{kind,repository,workflow,environment}` +
+`subject{digest}`，`predicate: null`，**没有 ref、没有 commit**。
+
+因此：
+
+- 若给 PyPI 写 verify-one，判据固定为 `publisher.workflow == 期望值` +
+  `subject.digest.sha256 == 现算 sha256`；
+- 报告里必须显式写“ref 不可得”，**不允许**给 PyPI 造 ref 校验；
+- “从 tag 构建”只能在 workflow 内保证（checkout 跟 tag + `HEAD == tag` 断言），事后审计补不上。
+
+实测依据：`crypto-time-machine@0.1.2` 的 wheel/sdist 各有一份 attestation，解码结果就是
+上面这个结构；同一份 attestation 对 tag 构建与 main 构建完全一样。已发布版本不回填，
+只记录不修。
+
 ## The two FAILs are the same shape
 
 Both `verifact@0.2.4` and `crypto-hallucination-detector@0.1.2` were published with
