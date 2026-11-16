@@ -7,14 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build, example crypto-time-machine-v0.1.1'
+        description: 'Existing tag to rehearse, example crypto-time-machine-v0.1.2 (a dispatch never publishes)'
         required: true
         type: string
-      dry_run:
-        description: 'Build and verify but do not upload to PyPI'
-        required: false
-        type: boolean
-        default: true
 
 concurrency:
   group: release-pypi-${{ github.event.inputs.tag || github.ref_name }}
@@ -29,6 +24,23 @@ jobs:
     steps:
       - name: Check out the tagged commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A dispatch builds the branch it was started from unless this is set. PyPI's
+          # PEP 740 attestation records the repository and workflow but no ref and no
+          # commit, so "was this built from the tag?" cannot be checked after the fact:
+          # the tree has to be right at build time.
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: The checked-out tree is the tag
+        # The only in-workflow substitute for the ref the attestation does not carry.
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG_SHA="$(git ls-remote origin "refs/tags/$TAG^{}" | cut -f1)"
+          test -n "$TAG_SHA" || { echo "::error::tag $TAG does not exist"; exit 1; }
+          HEAD_SHA="$(git rev-parse HEAD)"
+          echo "tag=$TAG tag_commit=$TAG_SHA head=$HEAD_SHA"
+          test "$TAG_SHA" = "$HEAD_SHA" || { echo "::error::HEAD is not the tag commit ($HEAD_SHA != $TAG_SHA)"; exit 1; }
 
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
@@ -79,7 +91,9 @@ jobs:
 
   publish:
     needs: build
-    if: ${{ github.event_name == 'push' || inputs.dry_run == false }}
+    # A tag push, and nothing else. There is no dry_run input to flip: a dispatch
+    # rehearses the build and stops here.
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -96,3 +110,12 @@ jobs:
         with:
           packages-dir: dist/
           print-hash: true
+
+  rehearsal:
+    needs: build
+    if: ${{ github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Nothing was uploaded
+        run: |
+          echo "not a tag push: the distributions were built and checked, publish was skipped by construction"
