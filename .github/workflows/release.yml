@@ -9,12 +9,18 @@
 #   - publishing from CI instead of a laptop removes the "works on my machine,
 #     trust me" step from the release.
 #
-# Triggers on a package tag (verifact-v0.2.4) so the version is decided by the
+# Triggers on a package tag (verifact-v0.2.5) so the version is decided by the
 # tag and checked against package.json, never typed twice.
 #
-# Manual runs default to dry_run: true - build, test, sign and verify, but do
-# not publish and do not create a release. Flipping dry_run to false is the
-# only way this workflow can publish.
+# Only a tag push publishes. workflow_dispatch is a rehearsal: it checks out the
+# tag you name and builds, tests, signs and verifies the tarball, but it cannot
+# reach the registry. The earlier version of this file left the dispatch path
+# able to publish, and - because actions/checkout fell back to the default ref -
+# it also built from main. That is how verifact@0.2.4 and
+# crypto-hallucination-detector@0.1.2 ended up with
+# provenance ref = refs/heads/main while the tag pointed somewhere else: the
+# tarball was fine, the evidence was not. Two locks now: checkout follows the
+# tag, and the publish step refuses anything that is not a tag push.
 
 name: release
 
@@ -28,14 +34,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to release, example verifact-v0.2.4'
+        description: 'Existing tag to rehearse, example verifact-v0.2.5 (never publishes)'
         required: true
         type: string
-      dry_run:
-        description: 'Build, test, sign and verify but do not publish or create a release'
-        required: false
-        type: boolean
-        default: true
 
 concurrency:
   group: release-${{ github.event.inputs.tag || github.ref_name }}
@@ -57,6 +58,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # A dispatch otherwise checks out the branch it was started from
+          # (main), which is what put refs/heads/main into the provenance record.
+          ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Resolve package dir and version from the tag
         id: meta
@@ -76,8 +80,8 @@ jobs:
             echo "refusing to publish a tarball whose version nobody tagged" >&2
             exit 2
           fi
-          DRY="${{ github.event.inputs.dry_run }}"
-          if [ -z "$DRY" ] || [ "$DRY" = "null" ]; then DRY="false"; fi
+          # Everything that is not a tag push is a rehearsal, with no input to flip.
+          if [ "${{ github.event_name }}" = "push" ]; then DRY="false"; else DRY="true"; fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "dir=$PREFIX" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -137,6 +141,13 @@ jobs:
             # of turning a rehearsal into a version-existence assertion.
             echo "dry_run is true - tarball built, nothing is sent to the registry"
             exit 0
+          fi
+          # Second lock, for the day someone edits dry_run out: a publish is only
+          # legitimate from a tag push.
+          if [ "${{ github.event_name }}" != "push" ] || [ "${GITHUB_REF#refs/tags/}" = "$GITHUB_REF" ]; then
+            echo "refusing to publish: releases only come from a tag push" >&2
+            echo "this run was ${{ github.event_name }} on ${GITHUB_REF}" >&2
+            exit 2
           fi
           if [ "$HAS_NPM_TOKEN" = "true" ]; then
             echo "authenticating with secrets.NPM_TOKEN"
