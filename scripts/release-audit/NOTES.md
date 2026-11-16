@@ -120,6 +120,14 @@ Operator facts confirmed here:
 | `tmp-inspect.cjs` / `tmp-audit.cjs` / `tmp-evidence.cjs` / `tmp-behavior.cjs` / `tmp-redcheck.cjs` | 0.2.9 字典补全的取证脚本 | 结论已固化进 `algorithm-hierarchy.cjs` + `test/legacy-recall.test.cjs`；`tmp-audit` 里"固定候选参数表"的做法**已废弃**（会产生 SHA3-128、Camellia-l1 之类假组合），现行做法是从规则首个捕获组读备选 |
 | `probe-slsa.cjs` / `probe-prov-all.cjs` / `probe-mismatch.cjs` | `verify-one.cjs` 的字段 + 本文的等价性判据 | `probe-slsa` 的字段枚举 → `builder` / `workflow.*` / `resolvedDependencies`；`probe-mismatch` 的 `merge-base --is-ancestor` + `git diff --stat <tag> <built> -- <pkgdir>` → `rec.tag_is_ancestor_of_built` / `rec.pkg_dir_diff_empty` |
 
+## 包名编码：只编 `/`，不编 `@`
+
+npm registry 的 scoped 包标准 URL 是 `@scope%2Fname` —— `@` 原样保留，只把分隔的 `/` 编成
+`%2F`。所以两个工具都只用 `replaceAll('/', '%2F')`，**不要**换成 `encodeURIComponent`
+（它会把 `@` 变成 `%40`，拼出来的 URL 不是 registry 认的形式）。用 `replaceAll` 而不是
+`replace('/', ...)`，是因为后者只换第一个斜杠：`a/b/c` 这种手误输入会静默拼出错误 URL、
+查到 404 或别人的包，不报错——静默错误比抛错难查得多。
+
 ## 为什么 `builder` 必须从 `runDetails.builder.id` 取
 
 `buildDefinition` 里没有 builder 字段。GitHub 的 SLSA v1 predicate 把构建者放在

@@ -33,7 +33,8 @@ const ignoreLatest = process.argv.includes('--ignore-latest');
 const pkgDir = arg('--pkg-dir', null); // repo-relative package dir, for the equivalence check
 let repo = arg('--repo', null);
 
-function encPkg(p) { return p.replace(/\//g, '%2F'); } // scoped names contain one slash, but replace-all survives nesting
+// npm registry wants scoped names as @scope%2Fname: only `/` is encoded, `@` is not.
+function encPkg(p) { return p.replaceAll('/', '%2F'); }
 
 async function fetchText(url, opts = {}) {
   const ctrl = new AbortController();

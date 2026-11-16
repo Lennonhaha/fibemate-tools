@@ -13,6 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const REG = 'https://registry.npmjs.org';
+// npm registry wants scoped names as @scope%2Fname: only `/` is encoded, `@` is not.
+function encPkg(name) { return name.replaceAll('/', '%2F'); }
 const HDRS = { 'cache-control': 'no-cache', 'user-agent': 'release-audit/1.0' };
 
 function arg(n, d) { const i = process.argv.indexOf(n); return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : d; }
@@ -65,7 +67,7 @@ function findPackageJsons(root, depth, acc) {
     const isPrivatePkg = manifests.some(m => m.name === name && m.private);
     // private packages are never published; querying the registry only produces noise
     if (!isPrivatePkg) try {
-      const r = await fetch(`${REG}/${name.replace(/\//g, '%2F')}`, { headers: HDRS });
+      const r = await fetch(`${REG}/${encPkg(name)}`, { headers: HDRS });
       if (r.ok) {
         const j = await r.json();
         reg = { versions: Object.keys(j.versions || {}), latest: (j['dist-tags'] || {}).latest || null, repository: (j.repository || {}).url || null };
