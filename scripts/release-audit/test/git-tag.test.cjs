@@ -13,7 +13,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-const { classifyGitResult, lookupTag } = require('../lib/git-tag.cjs');
+const { classifyGitResult, lookupTag, countTagRefs } = require('../lib/git-tag.cjs');
 const { classify } = require('../lib/classify.cjs');
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'cbom-tools-0.2.9.json');
@@ -148,4 +148,51 @@ test('the 0.3.0 incident record no longer grades FAIL / D', () => {
   const g = classify(rec, { tagExplicit: true });
   assert.notEqual(g.verdict, 'FAIL');
   assert.equal(g.level, null);
+});
+
+// ---- absence has a precondition ----
+//
+// Second false-FAIL of the same day, from the other direction: a checkout with no
+// tag refs at all (actions/checkout without fetch-depth: 0). git answers "not a
+// valid object name" for every tag, and the tool believed it. A repository that
+// carries no tags cannot testify that a tag does not exist.
+
+test('a repository with no tag refs reports an error, not an absent tag', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-notags-'));
+  try {
+    const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8', env: { ...process.env, GIT_CONFIG_NOSYSTEM: '1' } });
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.name', 'Audit Test');
+    git('config', 'user.email', 'audit@example.invalid');
+    git('config', 'commit.gpgsign', 'false');
+    fs.writeFileSync(path.join(dir, 'file.txt'), 'x\n', 'utf8');
+    git('add', 'file.txt');
+    git('commit', '-q', '-m', 'init');
+
+    assert.equal(countTagRefs(dir).count, 0);
+    const r = lookupTag(dir, 'cbom-tools-v0.3.0');
+    assert.equal(r.state, 'error');
+    assert.match(r.why, /no tag refs/);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('a repository WITH tags keeps the absent verdict for a tag it does not have', () => {
+  const dir = makeRepo();
+  try {
+    assert.ok(countTagRefs(dir).count > 0);
+    const r = lookupTag(dir, 'cbom-tools-v0.3.0');
+    assert.equal(r.state, 'absent');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the no-tags record grades UNKNOWN, not FAIL / D', () => {
+  const rec = base();
+  rec.tag_lookup = 'error';
+  rec.tag_exists = null;
+  rec.latest_matches = true;
+  rec.tag_lookup_error = { why: 'repository carries no tag refs (shallow or --no-tags checkout)', status: null };
+  const g = classify(rec, { tagExplicit: true });
+  assert.equal(g.verdict, 'UNKNOWN');
+  assert.equal(g.level, null);
+  assert.ok(!g.reasons.some((x) => x === 'FAIL: tag exists'));
 });
