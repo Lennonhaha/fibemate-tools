@@ -137,10 +137,10 @@ cbom-scan: wrote 7 algorithms to regressed.json (CycloneDX 1.7)
     "identity": [
       {
         "field": "name",
-        "confidence": 0.7,
+        "confidence": 0.9,
         "concludedValue": "ECDH",
         "methods": [
-          { "technique": "source-code-analysis", "confidence": 0.7, "value": "ecdh" }
+          { "technique": "source-code-analysis", "confidence": 0.9, "value": "ecdh" }
         ]
       }
     ],
@@ -167,6 +167,7 @@ cbom-scan: wrote 7 algorithms to regressed.json (CycloneDX 1.7)
 | 字段 | 含义 | 谁在用 |
 |---|---|---|
 | `evidence.occurrences` | 文件 + 行号 + 符号，每算法最多 50 条、去重 | 人：追到调用点；`evidence.count` 参与 diff |
+| `evidence.identity[].confidence` | `0.9` = 在源码里见到了标识符/调用点；`0.7` = 只在依赖清单里见到（有能力，未证明使用）。**与参数族无关**：`ML-KEM` 和 `ML-KEM-768` 都是 0.9 | 人：判断这条证据有多硬；不参与 diff |
 | `cryptoProperties.assetType` | 资产类型。**扫描器一律写 `"algorithm"`** | `cbom-diff` 的风险分级（见 §7 坑 1） |
 | `properties[fibemate:quantumSecurity:level]` | `vulnerable` / `weak` / `safe` | 就绪度计算、diff 的 exit 3 判定 |
 

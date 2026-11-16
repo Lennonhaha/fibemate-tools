@@ -4,6 +4,45 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## 0.3.0 — 2026-11-16
+
+### Changed (output): source confidence no longer depends on `params`
+
+`evidence.identity[].confidence` was computed as `params !== null ? 0.9 : 0.7`, so a
+family-level name (`ML-KEM`, `SHA-256`, `Ed448`) scored 0.7 while its parameterised
+sibling (`ML-KEM-768`) scored 0.9 — and a dependency that merely appears in
+`package.json` scored 0.7 too. Three different statements, one number, and the one that
+mattered most read backwards: the flagship post-quantum detections looked like the
+weakest evidence in the document. The tutorial shipped that reading in its own example
+(`ECDH`, seen in source, shown as 0.7).
+
+Confidence now follows the technique that established the name, which is what the
+CycloneDX field means:
+
+| technique | confidence | why |
+|---|---|---|
+| `source-code-analysis` | 0.9 | a token in code: the algorithm is used at that site |
+| `manifest-analysis` | 0.7 | a declared dependency: capability, usage unproven |
+
+`identity.confidence` is still the maximum over its methods. `params` keeps its other
+job — deciding which match may absorb a covered generic one — and no longer touches
+scoring. Name specificity is carried by `name` and `cryptoProperties`, which is where a
+consumer looks for it. Decision record: `docs/adr-0001-confidence-model.md`.
+
+No schema change, no API change, no CLI change. Components previously at 0.7 because
+their name had no parameter family now report 0.9 when seen in source; manifest-only
+components stay at 0.7. A test asserts the invariant that matters: changing any
+dictionary `params` value must not move a confidence value.
+
+### Added: the sample BOM is regenerated from a pinned fixture, and CI proves it
+
+`cbom-cyclonedx.json` was produced from a demo project that no longer exists and had
+been frozen at 0.2.1 while the format changed under it — a checked-in artifact
+describing behaviour the code no longer had. It is now generated from
+`fixtures/sample-project/` with `SOURCE_DATE_EPOCH` pinned
+(`scripts/gen-sample-cbom.cjs`), and `scripts/check-sample-cbom.cjs` fails CI when the
+committed bytes differ from a fresh scan, naming the components that moved.
+
 ## 0.2.9 — 2026-11-16
 
 ### Added: the algorithm dictionary is complete and tested for drift
