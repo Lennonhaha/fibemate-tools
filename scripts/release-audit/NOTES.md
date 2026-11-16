@@ -181,3 +181,31 @@ npm registry 的 scoped 包标准 URL 是 `@scope%2Fname` —— `@` 原样保�
 证明不了"这个 tarball 就是从 tag 构建的"——后者只有 provenance 能证明。把等价性当
 通过条件，等于允许任何 branch dispatch 混过去，门禁就失效了。所以它只写进 `NOTE:`，
 verdict 与 level 都不看它。
+
+## 2026-11-16 傍晚：`tag_exists: false` 的假 FAIL 已修（判据分三态，不是两态）
+
+**事故形态**：审计 `cbom-tools@0.3.0` 时头两次运行记录 `tag_exists: false`，随后 `classify()` 据此判 **FAIL / D**。而同一时刻同一 checkout 里 `git cat-file -t refs/tags/cbom-tools-v0.3.0` 成功，06:12 的 instrumented 复跑也成功。**工具把自己没查成的事，报成了"不存在"。**
+
+**根因**：`verify-one.cjs` 的 `git()` 把任何非零退出都返回 `null`，于是三种完全不同的结果被压成一个 `false`：
+
+| git 实际回答 | 旧行为 | 新行为 |
+|---|---|---|
+| 存在（exit 0, stdout `tag`） | `tag_exists: true` | 不变 |
+| 确实没有（stderr `Not a valid object name`） | `false` | `tag_lookup: 'absent'` |
+| 根本没查成（exit 128 非仓库 / ENOENT / 被信号杀） | `false` ← **假 FAIL 来源** | `tag_lookup: 'error'` + `tag_exists: null` |
+
+**判据细节（踩出来的）**：缺对象时 git 用的是 **exit 128 而不是 1**，所以**退出码不能当判据**，必须看 stderr：`Not a valid object name` / `bad object` / `unknown revision or path` 是"问了，答没有"；其余一律是"没查成"。第一版实现按 `status === 1` 判 absent，在真仓库上直接红（测试 7 抓到）。
+
+**改动**：
+
+- 新增 `lib/git-tag.cjs`：`classifyGitResult()` 纯函数（拿 spawnSync 的形状，不碰 IO，可用捕获的 stderr 做离线测试）+ `lookupTag()` + `describeRepo()`（失败时记录 toplevel 与 remote URL，下次异常自解释）。
+- `verify-one.cjs`：`tag_exists` 改为三态；新增 `tag_lookup`、`tag_lookup_error`（why/status/argv/cwd/stderr）、`git_toplevel`、`git_remote`；**退出码新增 3** = "工具答不出，结论只是暂定"，与 1（FAIL）区分。
+- `classify.cjs`：`tagLookupError` 单独成支 → verdict `UNKNOWN`、level `null`，reason 明写 "tool or environment failure, not a missing tag"；provenance 两条比较也说 "tag presence could not be determined" 而不是 "tag not found"。**显式 `--tag` 也不再把它变 FAIL / D**（这正是旧行为最危险的地方）。
+
+**证据（可复现）**：
+
+- 新增 `test/git-tag.test.cjs` 12 条：三个纯函数分支 + 真仓库（present/annotated）+ 临时非仓库目录（error，且 stderr 匹配 "not a git repository"）+ 不存在路径（error）+ classify 拒绝评级 + "absent 且显式 --tag 仍然 FAIL/D" 的回归保护 + 0.3.0 事故记录不再判 FAIL/D。
+- 负向自证三组，全部可红：把 `tagLookupError` 从 `tagUnknown` 里删掉 → #10/#12 红；所有非零退出判 absent → #3/#8 红；所有非零退出判 error（原始 bug）→ #2/#3/#7 红。每组跑完均恢复且字节一致。
+- 端到端：`--git-dir` 指向临时非仓库 → `exit 3 / UNKNOWN / level null / tag_lookup error`，reasons 三条全是 UNKNOWN 无 FAIL；指向真仓库 → 仍旧 `exit 0 / PASS / A / annotated / dco true`（无回归）。
+
+**纪律**：审计工具里「查不到」和「没有」必须是两个词。凡工具输出 `false`，要能回答"这是谁问的、问的什么、为什么是这个答案"——否则它迟早把环境故障写成产品缺陷。

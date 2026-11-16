@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { classify } = require('./lib/classify.cjs');
+const { lookupTag, describeRepo } = require('./lib/git-tag.cjs');
 
 const REG = 'https://registry.npmjs.org';
 const HDRS = { 'cache-control': 'no-cache', 'user-agent': 'release-audit/1.0' };
@@ -80,7 +81,8 @@ function git(args) {
     subject_sha512: null, subject_match: null, prov_git_commit: null,
     cosign_sig: false, cosign_pem: false,
     sha256sums: false, sha256_match: null,
-    tag_exists: false, tag_type: null, tag_commit: null,
+    tag_exists: false, tag_lookup: null, tag_lookup_error: null, tag_type: null, tag_commit: null,
+    git_toplevel: null, git_remote: null,
     release_target_commitish: null, tag_commit_match: null,
     prov_commit_match: null, tag_is_ancestor_of_built: null, pkg_dir_diff_empty: null,
     dco: null, reasons: [], verdict: 'UNKNOWN', level: null,
@@ -182,17 +184,34 @@ function git(args) {
   }
 
   // 5. local git
+  // tag_lookup separates "git says there is no such tag" from "git could not
+  // answer at all". Collapsing both into tag_exists:false is how a transient git
+  // failure once produced a FAIL/D against a release whose tag was present.
   if (gitDir) {
-    const type = git(['cat-file', '-t', `refs/tags/${tag}`]);
-    if (type) {
+    const found = lookupTag(gitDir, tag);
+    rec.tag_lookup = found.state;
+    if (found.state === 'present') {
       rec.tag_exists = true;
-      rec.tag_type = type === 'tag' ? 'annotated' : 'lightweight';
+      rec.tag_type = found.type === 'tag' ? 'annotated' : 'lightweight';
       rec.tag_commit = git(['rev-parse', `${tag}^{commit}`]);
       if (rec.tag_commit) {
         const body = git(['log', '-1', '--format=%B', rec.tag_commit]);
         rec.dco = body ? /^Signed-off-by:\s+.+<.+>$/m.test(body) : null;
       }
-    } else { rec.reasons.push(`tag ${tag} not present in ${gitDir}${tagExplicit ? '' : ' (derived from the package name; pass --tag if the prefix differs)'}`); }
+    } else if (found.state === 'absent') {
+      rec.tag_exists = false;
+      rec.reasons.push(`tag ${tag} not present in ${gitDir}${tagExplicit ? '' : ' (derived from the package name; pass --tag if the prefix differs)'}`);
+    } else {
+      // Do not claim the tag is missing: record what went wrong, keep tag_exists
+      // unknown (null), and let classify() decline to grade rather than invent one.
+      rec.tag_exists = null;
+      const repo = describeRepo(gitDir);
+      rec.git_toplevel = repo.toplevel;
+      rec.git_remote = repo.remote;
+      rec.tag_lookup_error = { state: 'error', why: found.why, status: found.status, argv: found.argv, cwd: found.cwd, stderr: found.stderr || null };
+      // classify() words the reason (it knows whether a tag was named explicitly);
+      // here we only keep the evidence.
+    }
   } else { rec.reasons.push('--git-dir not given; git tag checks skipped'); }
 
   if (rec.tag_commit && rec.release_target_commitish) {
@@ -231,5 +250,11 @@ function finish(rec, outFile) {
     fs.writeFileSync(outFile, line + '\n', 'utf8');
   }
   console.log(line);
-  process.exit(rec.verdict === 'FAIL' ? 1 : 0);
+  // Exit codes: 0 = a verdict was reached (PASS/UNKNOWN), 1 = FAIL, 2 = usage,
+  // 3 = the tool could not answer (currently: tag lookup failed) and the verdict
+  // is therefore only provisional. A caller that treats non-zero as "release is
+  // bad" needs 3 to be distinguishable from 1.
+  if (rec.verdict === 'FAIL') process.exit(1);
+  if (rec.tag_lookup === 'error') process.exit(3);
+  process.exit(0);
 }

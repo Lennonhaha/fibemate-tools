@@ -9,7 +9,7 @@
 //   registry_exists, latest_matches, sha1_match, sha512_match,
 //   provenance, workflow_path, workflow_ref, tag, subject_match, prov_commit_match,
 //   sha256sums, sha256_match, cosign_sig, cosign_pem,
-//   tag_exists, tag_type, tag_commit_match, dco,
+//   tag_exists, tag_lookup, tag_type, tag_commit_match, dco,
 //   tag_is_ancestor_of_built, pkg_dir_diff_empty
 //
 // opts.tagExplicit says whether the caller named the tag itself. A tag that was
@@ -35,7 +35,12 @@ function classify(rec, opts = {}) {
     else if (cond == null) unknown.push(label);
   };
   // A missing tag that nobody named may be a naming mismatch, not a missing release.
-  const tagUnknown = rec.tag_exists === false && !opts.tagExplicit;
+  // A tag lookup that *failed* (git exited 128, git was not installed, the path is
+  // not a repository) is neither: the tool never established the fact, so it must
+  // not turn into FAIL / D. That conflation is what produced a false FAIL against
+  // cbom-tools@0.3.0 while the tag existed in the same checkout.
+  const tagLookupError = rec.tag_lookup === 'error';
+  const tagUnknown = tagLookupError || (rec.tag_exists === false && !opts.tagExplicit);
 
   need(rec.registry_exists, 'registry exists');
   if (!opts.ignoreLatest) need(rec.latest_matches, 'latest matches');
@@ -46,9 +51,11 @@ function classify(rec, opts = {}) {
     need(!!rec.workflow_path, 'workflow.path');
     need(rec.subject_match, 'provenance subject matches integrity');
     if (tagUnknown) {
-      // Comparing against a tag we could not find would manufacture a failure.
-      unknown.push(`provenance ref matches tag (tag ${rec.tag} not found)`);
-      unknown.push('provenance gitCommit matches tag commit (tag not found)');
+      // Comparing against a tag we could not find (or could not look up) would
+      // manufacture a failure; say which of the two it was.
+      const why = tagLookupError ? 'tag presence could not be determined' : `tag ${rec.tag} not found`;
+      unknown.push(`provenance ref matches tag (${why})`);
+      unknown.push(`provenance gitCommit matches tag commit (${why})`);
     } else {
       need(rec.workflow_ref === TAG_REF(rec), 'provenance ref matches tag');
       need(rec.prov_commit_match, 'provenance gitCommit matches tag commit');
@@ -58,7 +65,10 @@ function classify(rec, opts = {}) {
   else warn.push('SHA256SUMS asset missing');
   if (!rec.cosign_sig) warn.push('cosign .sig missing');
   if (!rec.cosign_pem) warn.push('cosign .pem missing');
-  if (tagUnknown) {
+  if (tagLookupError) {
+    const why = (rec.tag_lookup_error && rec.tag_lookup_error.why) || 'git did not return a result';
+    unknown.push(`tag ${rec.tag}: could not determine whether it exists (${why}) - tool or environment failure, not a missing tag`);
+  } else if (tagUnknown) {
     unknown.push(`default tag ${rec.tag} not found; pass --tag explicitly if the tag prefix differs from the package name`);
   } else {
     need(rec.tag_exists, 'tag exists');
@@ -86,7 +96,7 @@ function classify(rec, opts = {}) {
   const refIsTag = !!(rec.provenance && rec.workflow_ref === TAG_REF(rec));
   let level;
   if (!rec.registry_exists) level = 'D';
-  else if (tagUnknown) level = null; // cannot grade a release whose tag name we never resolved
+  else if (tagUnknown) level = null; // cannot grade a release whose tag presence was never resolved
   else if (!rec.tag_exists || rec.tag_commit_match === false) level = 'D';
   else if (!rec.provenance) level = 'C';
   else if (!refIsTag || !rec.cosign_sig || !rec.sha256sums || rec.tag_type === 'lightweight' || rec.dco === false) level = 'B';

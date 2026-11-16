@@ -34,7 +34,12 @@ jobs:
         with:
           node-version: '22'
       - name: Offline grading tests
-        run: node --test scripts/release-audit/test/classify.test.cjs
+        run: |
+          node --test scripts/release-audit/test/classify.test.cjs
+          # The tag lookup must distinguish "git says no" from "git could not look".
+          # Both files are offline; the second one creates its own non-repository
+          # directory so the failure path is exercised on every run.
+          node --test scripts/release-audit/test/git-tag.test.cjs
 
   live:
     name: end to end (live registry)
