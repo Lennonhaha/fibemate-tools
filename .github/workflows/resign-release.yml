@@ -11,6 +11,16 @@ name: resign-release
 #
 # Default is dry_run=true: download and sign locally, publish nothing. Flipping it
 # to false is a public, permanent change to a release page.
+#
+# What a signature added here does and does not mean:
+#   - it is made when this workflow runs, which can be long after the artifact was
+#     built and published (measured on undecryptable-prover-v0.1.0: binaries created
+#     2026-10-27T14:45Z, .sig/.pem uploaded 17:48Z the same day);
+#   - it attests the bytes that were on the release page at signing time, and the
+#     step below aborts if signing changed them - it says nothing about how they
+#     were built, which is a separate record;
+#   - SHA256SUMS on these releases covers the binaries and their .sha256 sidecars,
+#     not the .sig/.pem files, because those did not exist when it was written.
 
 on:
   workflow_dispatch:
