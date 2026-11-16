@@ -1,0 +1,52 @@
+# Offline tests for the release-audit grading logic.
+#
+# Why separate from cbom-ci.yml: that workflow only watches cbom-tools/** and two
+# named scripts, so a change under scripts/release-audit/ would otherwise merge with
+# nothing verifying that the A/B/C/D rules still mean what they say.
+#
+# No network here. The live end-to-end check is opt-in (AUDIT_LIVE=1) and runs in the
+# weekly job, not on every PR.
+name: release-audit
+
+on:
+  push:
+    paths:
+      - 'scripts/release-audit/**'
+      - '.github/workflows/release-audit-ci.yml'
+  pull_request:
+    paths:
+      - 'scripts/release-audit/**'
+      - '.github/workflows/release-audit-ci.yml'
+  schedule:
+    - cron: '17 4 * * 1' # Monday, before the release-verify weekly job
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    name: classify (offline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Offline grading tests
+        run: node --test scripts/release-audit/test/classify.test.cjs
+
+  live:
+    name: end to end (live registry)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Smoke test against the real registry
+        env:
+          AUDIT_LIVE: '1'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node --test scripts/release-audit/test/live.test.cjs
