@@ -18,21 +18,43 @@
    GitHub SLSA v1 buildtype does not emit. Replaced by `runDetails.builder.id` and
    `resolvedDependencies[0].digest.gitCommit`. `verify-prov.cjs` itself is superseded by
    `verify-one.cjs` and kept only as scratch.
+4. **`verify-one.cjs` graded a wrong tag guess as FAIL / D.** It derives the tag from the
+   package name (`<pkg>-v<version>`), but the tag prefix is not always the npm name — see the
+   table below. For `crypto-hallucination-detector@0.1.3` the guess
+   `crypto-hallucination-detector-v0.1.3` does not exist, so the audit reported FAIL / D for a
+   release that is actually PASS / A. A missing tag that nobody named is now UNKNOWN with
+   `level: null`, and the tag-dependent provenance comparisons are reported as unknown too;
+   a missing tag passed explicitly with `--tag` is still FAIL / D. Rule: **a guessed name must
+   not be able to fail a release.**
 
 ## Naming / repository facts confirmed by this audit
 
 | directory | npm name | registry | note |
 |---|---|---|---|
 | `cbom-tools/` | `cbom-tools` | 13 versions, latest 0.2.9 | full chain |
-| `verifact/` | `verifact` | 7 versions, latest 0.2.4 | published from `main`, see below |
+| `verifact/` | `verifact` | 7 versions, latest 0.2.5 | tag-published after #189, PASS / A |
 | `xdiff/` | `fibemate-xdiff` | 3 versions, latest 0.1.0 | bare `xdiff` is not ours |
-| `hallucination-detector/` | `crypto-hallucination-detector` | 4 versions, latest 0.1.2 | published from `main`, see below |
+| `hallucination-detector/` | `crypto-hallucination-detector` | 4 versions, latest 0.1.3 | tag-published after #189, PASS / A |
 | `crypto-time-ledger/` | `crypto-time-ledger` | not published | `private: true`, expected |
 | — | `crypto-time-machine` | not published | tags `v0.1.1`, `v0.1.2` remain, no package dir |
 | — | `undecryptable-prover` | not published | tag `v0.1.0` remains, no package dir |
 | `fibemate-core` (separate repo `Lennonhaha/fibemate-core`) | `fibemate-core` | 2 versions, latest 0.1.0 | tag `v0.1.0` lives in that repo |
 | `fibemate` monorepo | `fml-dsa` | 2 versions, latest 0.1.0 | tag `v0.1.0-fml-dsa` |
-| `fibemate` monorepo | `pqc-kem` | tag `pqc-kem-v0.1.0` exists, not audited yet | next batch |
+| `fibemate` monorepo | `fibemate-pqc-kem` | 1 version, latest 0.1.0 | no provenance attestation -> C; tag `pqc-kem-v0.1.0` lives in the `fibemate` repo |
+
+### Tag prefix → npm package name
+
+The release workflow derives the package directory and version from the tag
+(`<dir>-v<version>`), so the tag prefix is the **directory**, not the published name. Pass
+`--tag` whenever these differ; a default-derived tag that does not exist is now reported as
+UNKNOWN rather than FAIL.
+
+| tag prefix | npm package name |
+|---|---|
+| `hallucination-detector` | `crypto-hallucination-detector` |
+| `xdiff` | `fibemate-xdiff` |
+| `pqc-kem` | `fibemate-pqc-kem` |
+| `verifact`, `cbom-tools` | same as the prefix |
 
 ## The two FAILs are the same shape
 
