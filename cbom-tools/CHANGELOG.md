@@ -25,9 +25,10 @@ the output.
 ### Fixed: `npm test` executed the fixtures instead of scanning them
 
 `node --test` treats every file under `test/` as a test file, so
-`test/fixtures/legacy/*.cjs` were run rather than scanned and threw on
-their CBC initialization vectors. The script now names the test files
-explicitly: `node --test "test/*.test.cjs"`.
+`test/fixtures/legacy/*.cjs` were run rather than scanned and threw on their
+CBC initialization vectors. The fixtures a test needs to *scan* now live in
+`fixtures/legacy/`, outside the directory the runner walks, and `npm test`
+stays a plain `node --test`.
 
 ### Note: single-value algorithms keep a 0.7 source confidence
 

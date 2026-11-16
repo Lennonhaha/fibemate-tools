@@ -4,6 +4,11 @@
 //
 // Recall gate for cbom-scan (issue #186).
 //
+// The fixtures live in `fixtures/legacy/` rather than `test/fixtures/` on
+// purpose: `node --test` treats every file under `test/` as a test file and
+// would execute them, and the cipher calls in them throw on a real run. They
+// are meant to be read as source text by the scanner, nothing else.
+//
 // The scanner's failure mode is a silent omission, not an error: a file full
 // of md5/3des/dsa used to produce a valid, empty-looking CBOM and exit 0. A
 // test that only checks "the scanner ran" cannot catch that, so every case
@@ -21,7 +26,7 @@ const { HIERARCHY } = require('../algorithm-hierarchy.cjs');
 
 const ROOT = path.join(__dirname, '..');
 const SCAN = path.join(ROOT, 'cbom-scan.cjs');
-const FIXTURES = path.join(__dirname, 'fixtures', 'legacy');
+const FIXTURES = path.join(ROOT, 'fixtures', 'legacy');
 const NODE = process.execPath;
 
 let tmp;

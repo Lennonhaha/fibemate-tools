@@ -21,7 +21,7 @@ const poly1305 = crypto.createHmac('poly1305', key).update('x').digest('hex');
 const ed448 = crypto.generateKeyPairSync('ed448');
 const x448 = crypto.generateKeyPairSync('x448');
 const dsa = crypto.generateKeyPairSync('dsa');
-const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 1024 });
+const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 
 module.exports = {
   md5, sha1, blake2b, des3, blowfish, camellia,
