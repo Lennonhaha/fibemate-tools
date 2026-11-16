@@ -140,7 +140,7 @@ jobs:
             gh release create "$TAG" dist/* \
               --repo "$GITHUB_REPOSITORY" \
               --title "undecryptable-prover ${TAG##*-v}" \
-              --notes "Binaries built and executed on their own platform before upload (see the build jobs). Each file has a sha256 in SHA256SUMS."
+              --notes "Binaries built and executed on their own platform before upload (see the build jobs). Each file has a sha256 in SHA256SUMS. Signature files (.sig/.pem) may have been added later by resign-release.yml; they cover the bytes at signing time and SHA256SUMS does not include them."
           fi
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
 
