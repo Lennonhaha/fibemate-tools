@@ -4,6 +4,40 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## 0.2.9 — 2026-11-16
+
+### Added: the algorithm dictionary is complete and tested for drift
+
+`algorithm-hierarchy.cjs` covered the NIST post-quantum families but not
+most of what the legacy rules emit. A name with no entry still produced a
+component, so the omission was invisible: it only lost generic/specific
+absorption (`camellia-256-cbc` shipped as both `Camellia-256` and
+`Camellia`) and dropped to 0.7 source confidence.
+
+The dictionary now covers every name a rule can emit — classical hashes,
+block ciphers, Poly1305, SM2/SM3/SM4, the classical public-key names and
+the remaining PQC families — and `test/legacy-recall.test.cjs` asserts that
+every rule resolves to both a metadata entry and a hierarchy entry. The
+parameter values are read out of each rule's own capture group, so adding a
+regex without a dictionary entry fails the gate instead of quietly weakening
+the output.
+
+### Fixed: `npm test` executed the fixtures instead of scanning them
+
+`node --test` treats every file under `test/` as a test file, so
+`test/fixtures/legacy/*.cjs` were run rather than scanned and threw on their
+CBC initialization vectors. The fixtures a test needs to *scan* now live in
+`fixtures/legacy/`, outside the directory the runner walks, and `npm test`
+stays a plain `node --test`.
+
+### Note: single-value algorithms keep a 0.7 source confidence
+
+Source confidence is `params !== null ? 0.9 : 0.7`. MD5, RSA, DES and
+friends have no parameter family, so they are dictionary entries with
+`params: null` and stay at 0.7. That is the current model, not a
+regression: 0.3.0 will decide whether such names deserve a non-null
+marker or a separate rule.
+
 ## 0.2.8 — 2026-11-15
 
 ### Fixed: `exit 1` was unreachable for BOMs this tool produced

@@ -30,6 +30,13 @@ function lookupMeta(name) {
   if (ALGO_META[name]) return ALGO_META[name];
   const alias = NAME_ALIASES[name];
   if (alias && ALGO_META[alias]) return ALGO_META[alias];
+  // Parameterised names inherit the family's metadata. Keccak-224 and
+  // Camellia-256 have no entry of their own, and used to ship with no
+  // primitive and no quantum level at all (issue #186).
+  const family = name.replace(/-(?:[a-z]*\d+|\d+[a-z]*)$/i, '');
+  if (family !== name && ALGO_META[family]) return ALGO_META[family];
+  const h = HIERARCHY[name];
+  if (h && ALGO_META[h.family]) return ALGO_META[h.family];
   return null;
 }
 
@@ -119,6 +126,59 @@ const DEFAULT_RULES = {
     { re: /\brsa\b/gi, algs: ['RSA'] },
     { re: /\bsha-?256\b/gi, algs: ['SHA-256'] },
     { re: /\bsha-?512\b/gi, algs: ['SHA-512'] },
+
+    // ── Legacy / classical (issue #186) ───────────────────────────
+    // A CBOM that omits md5/3des/dsa reads downstream as "no such crypto
+    // here" — the same false-clean failure mode as a silently bad --dir.
+    { re: /\.createHash\(\s*['"]md5['"]/gi, algs: ['MD5'] },
+    { re: /\bmd5\b/gi, algs: ['MD5'] },
+    { re: /\.createHash\(\s*['"]sha-?1['"]/gi, algs: ['SHA-1'] },
+    { re: /\bsha-?1\b/gi, algs: ['SHA-1'] },
+    { re: /\bsha-?224\b/gi, algs: ['SHA-224'] },
+    { re: /\bdes-ede3?\b/gi, algs: ['3DES'] },
+    { re: /\b(?:3des|des3)\b/gi, algs: ['3DES'] },
+    { re: /\bdes-(?:cbc|ecb|cfb|ofb)\b/gi, algs: ['DES'] },
+    { re: /\bbf-(?:cbc|ecb|cfb|ofb)\b/gi, algs: ['Blowfish'] },
+    { re: /\bblowfish\b/gi, algs: ['Blowfish'] },
+    { re: /\bcamellia[-_]?(128|192|256)\b/gi, algs: ['Camellia-$1'] },
+    { re: /\bcamellia\b/gi, algs: ['Camellia'] },
+    { re: /\baria[-_]?(128|192|256)\b/gi, algs: ['ARIA-$1'] },
+    { re: /\baria\b/gi, algs: ['ARIA'] },
+    { re: /(?<!chacha20-)poly1305\b/gi, algs: ['Poly1305'] },
+    { re: /\bblake2b(256|384|512)\b/gi, algs: ['Blake2b-$1'] },
+    { re: /\bblake2b\b/gi, algs: ['Blake2b'] },
+    { re: /\bblake2s256\b/gi, algs: ['Blake2s-256'] },
+    { re: /\bblake2s\b/gi, algs: ['Blake2s'] },
+    { re: /(?<![-\w])dsa\b/gi, algs: ['DSA'] },
+    { re: /\becdsa\b/gi, algs: ['ECDSA'] },
+    { re: /\bed448\b/gi, algs: ['Ed448'] },
+    { re: /\bx448\b/gi, algs: ['X448'] },
+
+    // ── PQC families beyond ML-KEM / ML-DSA / SLH-DSA ─────────────
+    // `cross`, `bike` and `mayo` require a parameter context: the bare
+    // words are ordinary English and would turn comments into components.
+    { re: /\bkyber[-_]?(512|768|1024)\b/gi, algs: ['Kyber-$1'] },
+    { re: /\bkyber\b/gi, algs: ['Kyber'] },
+    { re: /\bdilithium[-_]?(2|3|5)\b/gi, algs: ['Dilithium-$1'] },
+    { re: /\bdilithium\b/gi, algs: ['Dilithium'] },
+    { re: /\bfalcon[-_]?(512|1024)\b/gi, algs: ['Falcon-$1'] },
+    { re: /\bfalcon\b/gi, algs: ['Falcon'] },
+    { re: /\bsphincs\+?/gi, algs: ['SLH-DSA'] },
+    { re: /\bhqc[-_]?(128|192|256)\b/gi, algs: ['HQC-$1'] },
+    { re: /\bhqc\b/gi, algs: ['HQC'] },
+    { re: /\bbike[-_]?(l1|l3|l5|128|192|256)\b/gi, algs: ['BIKE-$1'] },
+    { re: /\bmceliece\b/gi, algs: ['Classic-McEliece'] },
+    { re: /\bfrodo[-_]?kem\b|\bfrodokem\b/gi, algs: ['FrodoKEM'] },
+    { re: /\bntru[-_]?prime\b/gi, algs: ['NTRU-Prime'] },
+    { re: /\bntru\b/gi, algs: ['NTRU'] },
+    { re: /\bmayo[-_]?(1|2|3|5)\b/gi, algs: ['MAYO-$1'] },
+    { re: /\bcross[-_]?(?:rsdp|rsdpg|sdp|sl)[-_]?(?:128|192|256)?\b/gi, algs: ['CROSS'] },
+    { re: /\bsqisign\b/gi, algs: ['SQIsign'] },
+    { re: /\bsnova\b/gi, algs: ['SNOVA'] },
+    { re: /\bsdith\b/gi, algs: ['SDitH'] },
+    { re: /\bmqom\b/gi, algs: ['MQOM'] },
+    { re: /\bqruov\b/gi, algs: ['QR-UOV'] },
+    { re: /\buov\b/gi, algs: ['UOV'] },
   ],
 };
 
@@ -409,12 +469,21 @@ function scanSource(root, rules) {
   /** @type {Map<string, Array<{location:string, line:number, symbol:string}>>} */
   const result = new Map();
 
+  // Occurrences dropped by the per-algorithm cap, keyed by algorithm.
+  const truncated = new Map();
+
   function addOcc(algoName, file, line, symbol, span) {
     if (!result.has(algoName)) result.set(algoName, []);
     const arr = result.get(algoName);
-    if (arr.length >= MAX_OCC_PER_ALGO) return;
     const loc = path.relative(root, file).replace(/\\/g, '/');
-    if (arr.some(o => o.location === loc && o.line === line && o.span.start === span.start && o.span.end === span.end)) return;
+    // One occurrence per (file, line, symbol). Overlapping patterns and the
+    // literal-derivation pass used to report the same hit twice: duplicates
+    // shipped in the BOM and burned the per-algorithm budget (issue #186).
+    if (arr.some(o => o.location === loc && o.line === line && o.symbol === symbol)) return;
+    if (arr.length >= MAX_OCC_PER_ALGO) {
+      truncated.set(algoName, (truncated.get(algoName) || 0) + 1);
+      return;
+    }
     arr.push({ location: loc, line, symbol, span });
   }
 
@@ -478,6 +547,9 @@ function scanSource(root, rules) {
     }
   }
   walk(root);
+  // Side channel on the returned Map: callers that only read entries are
+  // unaffected, while main() can report what the cap swallowed.
+  result.truncated = truncated;
   return result;
 }
 
@@ -545,7 +617,7 @@ function deduplicateOccurrences(source) {
  * @param {Map<string, Array<{location:string, line:number, symbol:string}>>} fromSource
  * @returns {Array<object>} components
  */
-function mergeEvidence(fromDeps, fromSource) {
+function mergeEvidence(fromDeps, fromSource, truncated) {
   const names = new Set([...fromDeps.keys(), ...fromSource.keys()]);
   const components = [];
 
@@ -623,6 +695,15 @@ function mergeEvidence(fromDeps, fromSource) {
         props.push({ name: 'fibemate:quantumSecurity:level', value: meta.quantumSecurity.level });
       }
       if (props.length) comp.properties = props;
+    }
+
+    // Never let the cap look like a count: a component at the limit says so
+    // and reports a lower bound for the real hit count (issue #186).
+    const dropped = truncated && truncated.get(name);
+    if (dropped) {
+      comp.properties = comp.properties || [];
+      comp.properties.push({ name: 'fibemate:occurrencesTruncated', value: String(dropped) });
+      comp.properties.push({ name: 'fibemate:occurrenceCountAtLeast', value: String(occurrences.length + dropped) });
     }
 
     components.push(comp);
@@ -724,7 +805,12 @@ function main() {
   const fromDeps = matchDeps(deps, DEFAULT_RULES);
   const rawSource = scanSource(dir, DEFAULT_RULES);
   const fromSource = deduplicateOccurrences(rawSource);
-  const components = mergeEvidence(fromDeps, fromSource);
+  const truncated = rawSource.truncated || new Map();
+  const components = mergeEvidence(fromDeps, fromSource, truncated);
+  if (truncated.size) {
+    const parts = [...truncated.entries()].map(([n, c]) => `${n}+${c}`).join(', ');
+    warn(`occurrence cap ${MAX_OCC_PER_ALGO} reached (dropped: ${parts}); affected components carry fibemate:occurrencesTruncated`);
+  }
   const bom = toCycloneDX(components, specVersion);
 
   const output = JSON.stringify(bom, null, 2);

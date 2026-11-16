@@ -251,5 +251,368 @@
     "quantumSecurity": {
       "level": "safe"
     }
+  },
+  "MD5": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "SHA-1": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "SHA-224": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "DES": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "3DES": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Blowfish": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "DSA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "deprecated",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "ECDSA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Ed448": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "X448": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "key-agree"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "Camellia": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "ARIA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "Poly1305": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "mac"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "Blake2s": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "Falcon": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "HQC": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "BIKE": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "Classic-McEliece": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "FrodoKEM": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "NTRU": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "NTRU-Prime": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "MAYO": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "CROSS": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "UOV": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SNOVA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SQIsign": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SDitH": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "MQOM": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "QR-UOV": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "Kyber": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "kem"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "Dilithium": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SHA3": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "SHA-384": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "hash"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
   }
 }
