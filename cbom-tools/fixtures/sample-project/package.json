@@ -1,0 +1,10 @@
+{
+  "name": "sample-project",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fixture used to produce cbom-tools/cbom-cyclonedx.json. Not a real package.",
+  "dependencies": {
+    "@noble/post-quantum": "^0.5.0",
+    "@noble/hashes": "^1.5.0"
+  }
+}

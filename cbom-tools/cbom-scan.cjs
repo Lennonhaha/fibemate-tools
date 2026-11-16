@@ -446,6 +446,26 @@ function loadPackageDeps(dir) {
 }
 
 /**
+ * Confidence is a claim about how the name was established, not about how much
+ * we know regarding its parameters. CycloneDX defines
+ * `evidence.identity[].confidence` as certainty about the identity of the
+ * component, and its `technique` enum is
+ * `#/definitions/componentIdentityEvidence/properties/methods/items/properties/technique`
+ * (both bom-1.6.schema.json and bom-1.7.schema.json): one value per kind of
+ * evidence, and nothing here reads `HIERARCHY[...].params`.
+ *
+ * A token in code means the algorithm is used at that call site. A declared
+ * dependency means the capability is present, not that it is used - weaker
+ * evidence, lower number. Name specificity (family-level vs parameter set) is
+ * carried by `name` and `cryptoProperties`, which is where a consumer looks
+ * for it; it must not leak into this number.
+ */
+const CONFIDENCE = Object.freeze({
+  'source-code-analysis': 0.9,
+  'manifest-analysis': 0.7,
+});
+
+/**
  * Match manifest dependencies against rules.
  * @returns {Map<string, {pkgName: string, confidence: number}>}
  */
@@ -457,7 +477,7 @@ function matchDeps(deps, rules) {
     if (!algos) continue;
     for (const algo of algos) {
       if (!found.has(algo)) found.set(algo, { origins: [] });
-      found.get(algo).origins.push({ pkgName, confidence: 0.7 });
+      found.get(algo).origins.push({ pkgName, confidence: CONFIDENCE['manifest-analysis'] });
     }
   }
   return found;
@@ -637,11 +657,12 @@ function mergeEvidence(fromDeps, fromSource, truncated) {
       }
     }
     if (srcOccs.length) {
-      const h = HIERARCHY[name];
-      const conf = (h && h.params !== null) ? 0.9 : 0.7;
+      // `params` used to decide this number, which made a family-level name
+      // (ML-KEM) look like weaker evidence than a parameterised one
+      // (ML-KEM-768). It no longer participates: see ADR-0001.
       methods.push({
         technique: 'source-code-analysis',
-        confidence: conf,
+        confidence: CONFIDENCE['source-code-analysis'],
         value: srcOccs[0].symbol,
       });
     }
@@ -731,7 +752,13 @@ function toCycloneDX(components, specVersion) {
       },
     ],
     metadata: {
-      timestamp: new Date().toISOString(),
+      // SOURCE_DATE_EPOCH makes the document reproducible, which is what lets
+      // CI assert that the committed sample still equals a fresh scan. Without
+      // it a sample checked into the repository goes stale silently - the
+      // 0.2.1 sample in this directory did exactly that.
+      timestamp: process.env.SOURCE_DATE_EPOCH
+        ? new Date(Number(process.env.SOURCE_DATE_EPOCH) * 1000).toISOString()
+        : new Date().toISOString(),
       tools: [{ name: 'cbom-scan', version: PKG.version, vendor: 'FIBEMATE' }],
     },
     components,
@@ -829,6 +856,7 @@ if (require.main === module) {
 
 module.exports = {
   DEFAULT_RULES,
+  CONFIDENCE,
   deriveLiterals,
   collectCipherCallSites,
   decodeEscapes,

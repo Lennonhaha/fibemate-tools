@@ -62,4 +62,25 @@ The mapping below is identical in 1.6 and 1.7; only `specVersion` differs.
 - merged → one identity, two methods, all occurrences retained
 - separate → one component per record, one method each
 
+`confidence` describes the evidence, not the name's specificity: `0.9` when the
+algorithm was seen in source, `0.7` when it is only a declared dependency, and the
+identity's value is the maximum over its methods. A family-level name (`ML-KEM`) and a
+parameterised one (`ML-KEM-768`) both score `0.9` when found in source; which of the
+two it is, is carried by `component.name` and `cryptoProperties`. See
+`docs/adr-0001-confidence-model.md`.
+
+## Reproducible output
+
+`metadata.timestamp` is the current time by default. Set `SOURCE_DATE_EPOCH` (seconds
+since the epoch) to pin it — that is what makes the committed sample
+`cbom-cyclonedx.json` byte-for-byte reproducible:
+
+```bash
+node scripts/gen-sample-cbom.cjs        # regenerates from fixtures/sample-project/
+node scripts/check-sample-cbom.cjs      # exits 1 if the committed bytes drifted
+```
+
+CI runs the second command; a checked-in BOM that nobody regenerates goes stale
+silently, which is what happened to this sample between 0.2.1 and 0.3.0.
+
 This is a **conservative generator policy** — not a CycloneDX mandate.
