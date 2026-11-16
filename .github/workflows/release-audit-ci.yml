@@ -46,7 +46,15 @@ jobs:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 is load-bearing, not tidiness. The audit correlates the
+      # registry artifact with the git tag that built it, so it needs refs/tags and
+      # the tagged commit. The default shallow checkout has neither, and every tag
+      # then looks absent - which is exactly how this job went red on 2026-11-16
+      # while the same command passed on a full clone.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'

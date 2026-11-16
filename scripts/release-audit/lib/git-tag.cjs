@@ -56,7 +56,35 @@ function lookupTag(gitDir, tag) {
   };
   if (verdict.state === 'present') out.type = String(res.stdout || '').trim();
   if (verdict.state === 'error') out.stderr = String(res.stderr || '').trim().split('\n').slice(0, 3).join(' | ');
+
+  // "git says there is no such object" is only proof of absence in a repository
+  // that carries tags at all. actions/checkout without fetch-depth: 0 gives you a
+  // single commit and no refs/tags, so every tag looks absent - which is how a
+  // correct release got graded FAIL / D from CI while the same command passed on
+  // a full clone. Absence has a precondition; check it before asserting.
+  if (out.state === 'absent') {
+    const refs = countTagRefs(gitDir);
+    if (refs.known && refs.count === 0) {
+      out.state = 'error';
+      out.why = `repository carries no tag refs (shallow or --no-tags checkout); absence of ${tag} cannot be proven`;
+      out.stderr = out.why;
+    }
+  }
   return out;
+}
+
+/**
+ * How many refs/tags does this repository have? 0 disqualifies an "absent" verdict.
+ * Returns {known:false} when the question cannot be answered, in which case the
+ * caller keeps whatever it already concluded.
+ */
+function countTagRefs(gitDir) {
+  const args = ['for-each-ref', '--format=%(refname)', 'refs/tags'];
+  const r = spawnSync('git', args, { cwd: gitDir, encoding: 'utf8' });
+  if (r.error) return { known: false, why: `git could not be started: ${r.error.message}` };
+  if (r.status !== 0) return { known: false, why: String(r.stderr || '').trim() };
+  const count = String(r.stdout || '').split('\n').filter(Boolean).length;
+  return { known: true, count };
 }
 
 /** Where did git think it was? Recorded only when a lookup fails, for diagnosis. */
@@ -68,4 +96,4 @@ function describeRepo(gitDir) {
   return { toplevel: run(['rev-parse', '--show-toplevel']), remote: run(['remote', 'get-url', 'origin']) };
 }
 
-module.exports = { classifyGitResult, lookupTag, describeRepo, ABSENT };
+module.exports = { classifyGitResult, lookupTag, countTagRefs, describeRepo, ABSENT };
