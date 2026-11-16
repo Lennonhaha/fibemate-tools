@@ -23,9 +23,13 @@ const mutations = [
   ['M2 wrong registry-url', (s) => s.replace('registry-url: https://registry.npmjs.org', 'registry-url: https://registry.yarnpkg.com')],
   ['M3 drop id-token write from permissions', (s) => s.replace('      id-token: write\n', '')],
   ['M4 bundle instead of output-signature', (s) => s.replace('--output-signature "$TB.sig"', '--bundle "$TB.sigstore"')],
-  ['M5 unpin checkout', (s) => s.replace('actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683', 'actions/checkout@v4')],
-  ['M6 dry_run defaults to false', (s) => s.replace('default: true', 'default: false')],
-  ['M7 mismatch branch no longer exits', (s) => s.replace('            exit 2\n          fi\n          DRY=', '            true\n          fi\n          DRY=')],
+  ['M5 unpin checkout', (s) => s.replace(/actions\/checkout@[0-9a-f]{40}/, 'actions/checkout@v4')],
+  // The dispatch path can no longer publish, so "the input defaults to true" is
+  // no longer the invariant. What has to stay true is the derivation itself:
+  // a flip here would publish every push.
+  ['M6 flip dry_run derivation', (s) => s.replace('then DRY="false"; else DRY="true"; fi', 'then DRY="true"; else DRY="false"; fi')],
+  ['M7 drop the tag-push guard', (s) => s.replace(/if \[ "\$\{\{ github\.event_name \}\}" != "push" \] \|\| \[ "\$\{GITHUB_REF#refs\/tags\/\}" = "\$GITHUB_REF" \]; then/, 'if false; then')],
+  ['M13 checkout stops following the tag', (s) => s.replace(/\n\s*ref: \$\{\{ github\.event\.inputs\.tag \|\| github\.ref \}\}/, '')],
   ['M8 publish without tests', (s) => s.replace('        run: npm test', '        run: echo skipped')],
   ['M9 verification step no longer verifies', (s) => s.replace('          cosign verify-blob \\', '          cosign help-blob \\')],
   // A rehearsal that queries the registry fails for any version already on it;
@@ -38,12 +42,16 @@ const mutations = [
 
 let red = 0;
 let applied = 0;
+let skipped = 0;
 for (const [label, mutate] of mutations) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wfmut-'));
   fs.mkdirSync(path.join(dir, '.github/workflows'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'scripts'), { recursive: true });
   const mutated = mutate(wf);
-  if (mutated === wf) { console.log(`SKIP ${label} (mutation did not apply)`); fs.rmSync(dir, { recursive: true, force: true }); continue; }
+  // A mutation that no longer applies is drift, not a pass: it means this file
+  // stopped testing the thing it claims to test (a stale pinned SHA did exactly
+  // that for months). Count it and fail at the end.
+  if (mutated === wf) { console.log(`SKIP ${label} (mutation did not apply - pattern drifted)`); skipped++; fs.rmSync(dir, { recursive: true, force: true }); continue; }
   applied++;
   fs.writeFileSync(path.join(dir, '.github/workflows/release.yml'), mutated);
   fs.writeFileSync(path.join(dir, 'scripts/test-release-workflow.cjs'), tester);
@@ -56,5 +64,5 @@ for (const [label, mutate] of mutations) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-console.log(`\n${red}/${applied} mutations detected`);
-process.exit(red === applied ? 0 : 1);
+console.log(`\n${red}/${applied} mutations detected, ${skipped} skipped`);
+process.exit(red === applied && skipped === 0 ? 0 : 1);

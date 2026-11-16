@@ -72,13 +72,40 @@ check('workflow.declares_name_and_on', () => {
   return 'name + on present';
 });
 
-check('workflow.has_workflow_dispatch_with_dry_run_default_true', () => {
+check('workflow.dispatch_is_rehearsal_only', () => {
   assert(/workflow_dispatch:/.test(src), 'no workflow_dispatch trigger');
   const idx = src.indexOf('workflow_dispatch:');
   const tail = src.slice(idx, idx + 600);
-  assert(/dry_run:/.test(tail), 'workflow_dispatch has no dry_run input');
-  assert(/default:\s*true/.test(tail), 'dry_run does not default to true (safe default required)');
-  return 'dispatchable, dry_run defaults to true';
+  assert(/\btag:/.test(tail), 'workflow_dispatch has no tag input');
+  // A boolean input that can be flipped is how a manual run published from
+  // main in the first place. Rehearsal must be the only thing dispatch can do,
+  // so there is nothing to flip.
+  assert(!/^\s{6}dry_run:/m.test(tail), 'workflow_dispatch still exposes a dry_run input that can be flipped');
+  // Order matters: the flip (push -> true) is a publish-on-every-push bug that
+  // still leaves a DRY="false" somewhere, so match the whole derivation.
+  const flat = code.replace(/\s+/g, ' ');
+  assert(flat.includes('event_name }}" = "push" ]; then DRY="false"; else DRY="true"; fi'),
+    'dry_run is not derived from the event name as: push -> false, anything else -> true');
+  return 'dispatch can only rehearse; dry_run derived from event_name';
+});
+
+check('workflow.checkout_follows_the_tag', () => {
+  // Root cause of refs/heads/main in the provenance of verifact@0.2.4 and
+  // crypto-hallucination-detector@0.1.2: checkout had no ref, so a dispatch
+  // built the branch it was started from while naming the release after a tag.
+  assert(/ref:\s*\$\{\{\s*github\.event\.inputs\.tag\s*\|\|\s*github\.ref\s*\}\}/.test(code),
+    'actions/checkout does not follow the dispatch tag, so a manual run builds the branch it started from');
+  return 'checkout follows the dispatch tag';
+});
+
+check('workflow.publish_refuses_non_push', () => {
+  const at = code.indexOf('refusing to publish: releases only');
+  assert(at >= 0, 'publish step has no tag-push guard');
+  const block = code.slice(Math.max(0, at - 500), at + 240);
+  assert(/event_name[\s\S]{0,60}?push/.test(block), 'guard does not test the event name');
+  assert(/refs\/tags\//.test(block), 'guard does not test that the ref is a tag');
+  assert(/exit\s+2/.test(block), 'guard does not exit non-zero');
+  return 'publish refuses anything that is not a tag push';
 });
 
 check('workflow.tag_triggers_are_package_prefixed', () => {
