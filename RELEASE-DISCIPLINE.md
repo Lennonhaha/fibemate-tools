@@ -113,6 +113,24 @@ Collect chunks and `Buffer.concat(chunks)`. Then compare `sha1` against
 `dist.shasum` and the `sha512-` SRI against `dist.integrity`. If the two differ
 from the registry's own numbers, suspect the reader before the publisher.
 
+## 8. A guessed name must not be able to fail a release
+
+The tag prefix is a directory name, not necessarily the published name:
+`hallucination-detector-v0.1.3` publishes `crypto-hallucination-detector`,
+`xdiff-v*` publishes `fibemate-xdiff`, `pqc-kem-v0.1.0` publishes
+`fibemate-pqc-kem`. A checker that derives the tag from the package name is
+guessing, and a wrong guess produced FAIL / D for a release that is PASS / A.
+
+A missing tag that nobody named is **UNKNOWN, with no level**, and the
+comparisons that depend on that tag are unknown too. A missing tag passed
+explicitly (`--tag`) is still FAIL / D — that one really is absent.
+
+Generalised: **when a check's input was guessed rather than given, its failure
+is not evidence about the artifact.** Report it as a gap in the check, not as a
+defect in the release. The same reasoning applies to a scan range that silently
+excluded the files under test, and to a gate whose threshold was read out of
+the document it was checking.
+
 ## Checking a release, in order
 
 1. `npm view <name> name` — is this our package?

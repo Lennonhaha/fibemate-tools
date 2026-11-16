@@ -29,6 +29,10 @@ function arg(n, d) { const i = process.argv.indexOf(n); return i >= 0 && process
 const outFile = arg('--out', null);
 const gitDir = arg('--git-dir', null);
 const tag = arg('--tag', `${pkg}-v${version}`);
+// The tag is derived from the package name by default, and those two names can
+// differ (`hallucination-detector-v*` publishes as `crypto-hallucination-detector`).
+// classify() must know whether a missing tag means "no tag" or "wrong guess".
+const tagExplicit = process.argv.includes('--tag');
 const ignoreLatest = process.argv.includes('--ignore-latest');
 const pkgDir = arg('--pkg-dir', null); // repo-relative package dir, for the equivalence check
 let repo = arg('--repo', null);
@@ -188,7 +192,7 @@ function git(args) {
         const body = git(['log', '-1', '--format=%B', rec.tag_commit]);
         rec.dco = body ? /^Signed-off-by:\s+.+<.+>$/m.test(body) : null;
       }
-    } else { rec.reasons.push(`tag ${tag} not present in ${gitDir}`); }
+    } else { rec.reasons.push(`tag ${tag} not present in ${gitDir}${tagExplicit ? '' : ' (derived from the package name; pass --tag if the prefix differs)'}`); }
   } else { rec.reasons.push('--git-dir not given; git tag checks skipped'); }
 
   if (rec.tag_commit && rec.release_target_commitish) {
@@ -216,7 +220,7 @@ function git(args) {
 function finish(rec, outFile) {
   // Grading lives in lib/classify.cjs so it can be exercised offline; this file
   // only fills the record (network + git) and prints the result.
-  const graded = classify(rec, { ignoreLatest });
+  const graded = classify(rec, { ignoreLatest, tagExplicit });
   rec.reasons.push(...graded.reasons);
   rec.verdict = graded.verdict;
   rec.level = graded.level;

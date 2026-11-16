@@ -65,15 +65,42 @@ test('no provenance at all is FAIL / C', () => {
   assert.ok(g.reasons.includes('FAIL: provenance'));
 });
 
-test('a version published without a tag is FAIL / D', () => {
+test('a version published without a tag is FAIL / D when the tag was named explicitly', () => {
   const rec = base();
   rec.tag_exists = false;
   rec.tag_type = null;
   rec.tag_commit = null;
-  const g = classify(rec);
+  const g = classify(rec, { tagExplicit: true });
   assert.equal(g.verdict, 'FAIL');
   assert.equal(g.level, 'D');
   assert.ok(g.reasons.includes('FAIL: tag exists'));
+});
+
+test('a default-derived tag that does not exist is UNKNOWN with no level, not FAIL / D', () => {
+  // crypto-hallucination-detector is tagged hallucination-detector-v0.1.3, so the
+  // default guess <pkg>-v<version> never exists. That is a naming mismatch, not a
+  // missing release, and grading it D hides the real state of the chain.
+  const rec = base();
+  rec.tag = 'crypto-hallucination-detector-v0.1.3';
+  rec.tag_exists = false;
+  rec.tag_type = null;
+  rec.tag_commit = null;
+  rec.tag_commit_match = null;
+  rec.prov_commit_match = null;
+  const g = classify(rec);
+  assert.equal(g.verdict, 'UNKNOWN');
+  assert.equal(g.level, null);
+  assert.ok(g.reasons.some(r => r.startsWith('UNKNOWN: default tag ') && r.includes('pass --tag')));
+  assert.ok(!g.reasons.includes('FAIL: tag exists'), 'a guessed tag name must not fail the release');
+  // and the tag-dependent provenance checks must not fire either
+  assert.ok(!g.reasons.includes('FAIL: provenance ref matches tag'));
+});
+
+test('the same record with --tag stays gradeable', () => {
+  const rec = base();
+  const g = classify(rec, { tagExplicit: true });
+  assert.equal(g.verdict, 'PASS');
+  assert.equal(g.level, 'A');
 });
 
 test('tag commit disagreeing with the Release target is FAIL / D', () => {

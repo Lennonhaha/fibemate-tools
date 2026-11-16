@@ -12,6 +12,12 @@
 //   tag_exists, tag_type, tag_commit_match, dco,
 //   tag_is_ancestor_of_built, pkg_dir_diff_empty
 //
+// opts.tagExplicit says whether the caller named the tag itself. A tag that was
+// derived from the package name and does not exist may simply mean the tag prefix
+// differs from the package name (`hallucination-detector-v0.1.3` publishes as
+// `crypto-hallucination-detector`), which is not a release defect. That case is
+// UNKNOWN with no level; only an explicitly named missing tag is FAIL / D.
+//
 // Level grades evidence strength and process compliance; verdict grades whether the
 // chain checks out. They are deliberately independent: B + FAIL means "evidence is
 // complete, but the artifact was not built from the tag", which is not the same
@@ -28,6 +34,8 @@ function classify(rec, opts = {}) {
     if (cond === false) fail.push(label);
     else if (cond == null) unknown.push(label);
   };
+  // A missing tag that nobody named may be a naming mismatch, not a missing release.
+  const tagUnknown = rec.tag_exists === false && !opts.tagExplicit;
 
   need(rec.registry_exists, 'registry exists');
   if (!opts.ignoreLatest) need(rec.latest_matches, 'latest matches');
@@ -36,15 +44,25 @@ function classify(rec, opts = {}) {
   need(rec.provenance, 'provenance');
   if (rec.provenance) {
     need(!!rec.workflow_path, 'workflow.path');
-    need(rec.workflow_ref === TAG_REF(rec), 'provenance ref matches tag');
     need(rec.subject_match, 'provenance subject matches integrity');
-    need(rec.prov_commit_match, 'provenance gitCommit matches tag commit');
+    if (tagUnknown) {
+      // Comparing against a tag we could not find would manufacture a failure.
+      unknown.push(`provenance ref matches tag (tag ${rec.tag} not found)`);
+      unknown.push('provenance gitCommit matches tag commit (tag not found)');
+    } else {
+      need(rec.workflow_ref === TAG_REF(rec), 'provenance ref matches tag');
+      need(rec.prov_commit_match, 'provenance gitCommit matches tag commit');
+    }
   }
   if (rec.sha256sums) need(rec.sha256_match, 'SHA256SUMS matches tarball');
   else warn.push('SHA256SUMS asset missing');
   if (!rec.cosign_sig) warn.push('cosign .sig missing');
   if (!rec.cosign_pem) warn.push('cosign .pem missing');
-  need(rec.tag_exists, 'tag exists');
+  if (tagUnknown) {
+    unknown.push(`default tag ${rec.tag} not found; pass --tag explicitly if the tag prefix differs from the package name`);
+  } else {
+    need(rec.tag_exists, 'tag exists');
+  }
   if (rec.tag_exists) {
     if (rec.tag_type === 'lightweight') warn.push('tag is lightweight (not annotated)');
     if (rec.tag_commit_match === false) fail.push('tag commit vs Release target');
@@ -67,7 +85,9 @@ function classify(rec, opts = {}) {
 
   const refIsTag = !!(rec.provenance && rec.workflow_ref === TAG_REF(rec));
   let level;
-  if (!rec.registry_exists || !rec.tag_exists || rec.tag_commit_match === false) level = 'D';
+  if (!rec.registry_exists) level = 'D';
+  else if (tagUnknown) level = null; // cannot grade a release whose tag name we never resolved
+  else if (!rec.tag_exists || rec.tag_commit_match === false) level = 'D';
   else if (!rec.provenance) level = 'C';
   else if (!refIsTag || !rec.cosign_sig || !rec.sha256sums || rec.tag_type === 'lightweight' || rec.dco === false) level = 'B';
   else level = 'A';
