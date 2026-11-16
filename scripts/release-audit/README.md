@@ -60,17 +60,35 @@ A content-equivalence note (`tag_is_ancestor_of_built` + `pkg_dir_diff_empty`) i
 recorded for branch builds, but it never changes the verdict or the level. Accepting
 "content is the same" as a pass would let any branch-triggered release through.
 
+### Exit codes
+
+| code | meaning |
+|---|---|
+| `0` | a verdict was reached (`PASS` or `UNKNOWN`) |
+| `1` | `FAIL` — the chain does not hold |
+| `2` | usage error |
+| `3` | the tool could not answer (currently: the tag lookup failed), so the verdict is only provisional |
+
+`3` exists because `1` means "the release is bad" and "git would not tell me" is not
+that. A CI step that treats any non-zero exit as a release failure will misreport the
+second case; check for `3` explicitly.
+
 ## Tests
 
 ```bash
 node --test scripts/release-audit/test/classify.test.cjs   # offline, runs in CI
+node --test scripts/release-audit/test/git-tag.test.cjs    # offline, runs in CI
 AUDIT_LIVE=1 node --test scripts/release-audit/test/live.test.cjs
 ```
 
-The offline test is the real gate: it feeds a captured `cbom-tools@0.2.9` record and
-mutates it into each failure shape (branch ref, no provenance, no tag, wrong tag
-commit, hash mismatch, unknown) and asserts the verdict and level. The live test only
-proves that the network path still works today.
+The offline tests are the real gate. `classify.test.cjs` feeds a captured
+`cbom-tools@0.2.9` record and mutates it into each failure shape (branch ref, no
+provenance, no tag, wrong tag commit, hash mismatch, unknown) and asserts the verdict
+and level. `git-tag.test.cjs` provokes the three answers git can give - present,
+absent, could-not-look - against a real repository, a temporary non-repository and a
+path that does not exist, and asserts that a failed lookup never becomes
+"the tag is missing". The live test only proves that the network path still works
+today.
 
 ## Notes
 
