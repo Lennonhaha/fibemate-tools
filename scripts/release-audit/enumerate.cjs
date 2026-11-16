@@ -65,7 +65,7 @@ function findPackageJsons(root, depth, acc) {
     const isPrivatePkg = manifests.some(m => m.name === name && m.private);
     // private packages are never published; querying the registry only produces noise
     if (!isPrivatePkg) try {
-      const r = await fetch(`${REG}/${name.replace('/', '%2F')}`, { headers: HDRS });
+      const r = await fetch(`${REG}/${name.replace(/\//g, '%2F')}`, { headers: HDRS });
       if (r.ok) {
         const j = await r.json();
         reg = { versions: Object.keys(j.versions || {}), latest: (j['dist-tags'] || {}).latest || null, repository: (j.repository || {}).url || null };
