@@ -127,6 +127,18 @@
       "key": "key-protocol",
       "kind": "count",
       "note": "OPK 不变式数已由 3 修正为 7（OPK.cfg 自 2026-07-15 首版起即列 7 条）；此处拒绑以防被 cars-scorecard 的 C2 handshake（7 条）对上——两个模型不是一回事"
+    },
+    {
+      "file": "**/fibemate/reports/2026-11-16/pin-0.2.6-to-0.3.0.md",
+      "key": "confidence",
+      "kind": "kv",
+      "note": "标题的 0.7/0.9 是本报告对 evidence.identity[0].confidence 的实测值（§2/§3：0.2.6 -> 0.3.0，19 个共有组件），不是 BOM schema 的取值；候选 tools/schemas/bom-1.6.schema.json 的 confidence.score.maximum=1 是取值范围上界，与声明不同义，绑定为误配"
+    },
+    {
+      "file": "**/fibemate-tools/scripts/release-audit/reports/2026-11-16/audit.md",
+      "key": "pass",
+      "kind": "kv",
+      "note": "PASS: 6 是同一文件表格的统计（18 个条目里 6 个 PASS、12 个 FAIL，逐行可数）；候选 pqc-hw-bench/README.md#L93 的 128 runs 全 PASS 是 TVLA 流水线运行次数，只撞了 pass 一词，绑定为误配"
     }
   ],
   "ignore": [
