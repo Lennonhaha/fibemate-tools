@@ -79,6 +79,28 @@ test('control fixture: the previously detected set still works', () => {
   assert.deepStrictEqual(missing, [], `missing: ${missing.join(', ')}; got: ${[...got].sort().join(', ')}`);
 });
 
+// liboqs and PQClean spell the family and its parameter set without a
+// separator (`OQS_KEM_alg_frodokem_640_aes`, `pqclean_mceliece348864_clean`).
+// Word-boundary rules match the canonical name (`FrodoKEM-640-AES`) but not the
+// identifier a vendored implementation directory actually contains, which is
+// the source an auditor usually has (issue #186 follow-up).
+const COMPACT = ['Classic-McEliece', 'FrodoKEM', 'NTRU', 'NTRU-Prime'];
+
+test('liboqs/PQClean compact identifiers are reported', () => {
+  const { bom } = scan(path.join(ROOT, 'fixtures', 'liboqs-compact'));
+  const got = names(bom);
+  const missing = COMPACT.filter((n) => !got.has(n));
+  assert.deepStrictEqual(missing, [], `missing: ${missing.join(', ')}; got: ${[...got].sort().join(', ')}`);
+  const unexpected = [...got].filter((n) => !COMPACT.includes(n));
+  assert.deepStrictEqual(unexpected, [], `unexpected: ${unexpected.join(', ')}`);
+});
+
+test('prose that shares a word with an algorithm produces no component', () => {
+  const { bom } = scan(path.join(ROOT, 'fixtures', 'prose'));
+  const got = [...names(bom)];
+  assert.deepStrictEqual(got, [], `unexpected components: ${got.join(', ')}`);
+});
+
 test('no duplicate (location, line, symbol) occurrences ship', () => {
   const { bom } = scan(FIXTURES);
   for (const comp of bom.components) {

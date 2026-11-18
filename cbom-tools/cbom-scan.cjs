@@ -179,6 +179,23 @@ const DEFAULT_RULES = {
     { re: /\bmqom\b/gi, algs: ['MQOM'] },
     { re: /\bqruov\b/gi, algs: ['QR-UOV'] },
     { re: /\buov\b/gi, algs: ['UOV'] },
+
+    // ── Compact identifiers (issue #186, follow-up) ──────────────────
+    // liboqs and PQClean glue the family name to its parameter set with an
+    // underscore or nothing at all: `OQS_KEM_alg_frodokem_640_aes`,
+    // `pqclean_mceliece348864_clean`, `OQS_KEM_alg_ntruprime_sntrup761`.
+    // `\b` cannot match those: `_` and digits are word characters, so the
+    // patterns above saw the canonical spelling (`FrodoKEM-640-AES`) and
+    // missed the identifier a vendored implementation directory actually
+    // contains. The separator is part of the match and a hyphen is excluded,
+    // so the canonical form is left to the rules above instead of producing
+    // a second occurrence on the same line.
+    { re: /(?:^|[^A-Za-z0-9-])frodokem_?\d/gi, algs: ['FrodoKEM'] },
+    { re: /(?:^|[^A-Za-z0-9-])mceliece_?\d/gi, algs: ['Classic-McEliece'] },
+    { re: /(?:^|[^A-Za-z0-9-])ntru(?:hps|hrss)_?\d/gi, algs: ['NTRU'] },
+    { re: /(?:^|[^A-Za-z0-9-])ntruprime_?\d/gi, algs: ['NTRU-Prime'] },
+    { re: /(?:^|[^A-Za-z0-9-])ntrulpr_?\d/gi, algs: ['NTRU-Prime'] },
+    { re: /(?:^|[^A-Za-z0-9-])sntrup_?\d/gi, algs: ['NTRU-Prime'] },
   ],
 };
 

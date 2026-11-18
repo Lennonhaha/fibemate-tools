@@ -4,6 +4,37 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## 0.3.1 - 2026-11-18
+
+### Fixed: compact liboqs / PQClean identifiers were still invisible
+
+Issue #186 measured the dictionary gap on canonical names (`FrodoKEM-640-AES`). Those
+are matched. The identifiers a vendored implementation directory actually contains are
+not: liboqs and PQClean glue the family to its parameter set with an underscore or with
+nothing at all.
+
+| source line | before | after |
+|---|---|---|
+| `OQS_KEM_alg_frodokem_640_aes` | nothing | FrodoKEM |
+| `pqclean_mceliece348864_clean` | nothing | Classic-McEliece |
+| `OQS_KEM_alg_ntruprime_sntrup761` | nothing | NTRU-Prime |
+| `crypto_kem_ntruhps2048509_keypair` | nothing | NTRU |
+
+A word boundary cannot match these: `_` and digits are word characters, so
+`\bfrodokem\b` sees `FrodoKEM-640-AES` and not `frodokem_640_aes`. The new rules take
+the separator as part of the match and exclude `-`, so the canonical spelling is still
+handled once, by the existing rule, instead of producing a second occurrence on the
+same line.
+
+Verification:
+
+- `node --test test/legacy-recall.test.cjs`: 10 tests pass, including the two new ones
+  (the compact fixture must yield exactly the four families; a prose fixture must yield
+  none).
+- The negative control is real, not asserted: the 0.3.0 scanner reports 0 components on
+  `fixtures/liboqs-compact/`; the patched one reports the four families.
+- `npm test`: 155 tests, 154 pass, 1 skip (the existing Windows chmod case).
+
 ## 0.3.0 — 2026-11-16
 
 ### Changed (output): source confidence no longer depends on `params`
