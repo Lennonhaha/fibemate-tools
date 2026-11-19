@@ -1,114 +1,111 @@
-# verifact — 事实哨兵
+# verifact
 
-**把文档里的硬数字声明绑定到真实产出物上逐条核验，漂移即红。**
+**Bind the numbers a document claims to the artefacts that should back them, and fail when they drift.**
 
-Markdown 文档里的性能基准、测试计数、版本号——这些数字会漂移。代码改了三轮，README 里的数字还是三个月前的。verifact 自动化「文档声明 vs 产出物」的交叉比对，把核对从肉眼 grep 变成门禁。
+Markdown documents accumulate numbers: benchmark results, test counts, version strings. The code moves; the numbers do not. verifact extracts claims that carry units, binds each one to a candidate artefact (benchmark JSON, test log, manifest, release metadata), and compares the two. Drift exits non-zero.
 
-Zero external dependencies. Pure Node.js.
+Zero runtime dependencies. Pure Node.js.
 
-## 这个工具不做什么
+## What this tool does not do
 
-三件容易被误解的事，写在最前面：
+Three things it is often mistaken for:
 
-- **不扫漏洞。** 它不分析代码、不查 CVE、不做污点分析。它只核对「文档里写的数字」与「仓库里的产出物」是否一致。没有产出物可对的声明会落到 `unbound`，那是「缺证据」，不是「安全」。
-- **不保证安全。** `drift 0` 只代表本次扫描范围内没有发现数值漂移。它不是合规结论，也不能替代渗透测试或第三方审计。
-- **不执行被审代码。** 扫描过程只读文件、解析文本与 JSON，不运行仓库里的任何脚本或二进制。
+- **It is not a vulnerability scanner.** It does not analyse code, query CVEs, or score risk. It checks whether a number in a document matches an artefact in the repository.
+- **It does not certify security.** `drift 0` means no numeric mismatch was found in the scanned scope. That is not a compliance result, and it does not replace a penetration test or an external audit.
+- **It does not execute the code it reads.** Scanning reads files and parses text and JSON. Nothing in the repository is run.
 
-报告长什么样、怎么读：<https://fibemate.net/tools/verifact-demo/>（那个页面只渲染 JSON，不做任何判定）。
+## How it decides
 
-判定边界写在 `VERIFACT-DESIGN.md`。绑不上的声明会被列出来，工具不会替你补一个数字。
+Six states:
 
-## 与 OWASP CycloneDX 规范的关系
-
-本工具对「字段缺失」与「显式零值」的区分，与 OWASP CycloneDX 密码学属性（cryptoProperties）语义澄清的方向一致。作者就该语义向上游规范仓库提交了澄清提案，已获规范维护者评审通过；**提案尚未合并，合并前不代表规范文本已变更**。
-
-## 核心流程
-
-```
-[文档] ──→ 抽取带单位的关键数字 ──→ 按键名+数值绑定到产出物 ──→ 六态判定
-                                              ↑
-                                     [基准/日志/TSR 等产出物]
-```
-
-### 六态判定
-
-| 判定 | 含义 | 处置 |
+| State | Meaning | Treated as |
 |:--|:--|:--|
-| `verified` | 文档值与产出物在容差内一致 | 绿 |
-| `drift` | 绑定成功但数值超出容差 | 🔴 门禁拦截 |
-| `ambiguous` | 多个产出物候选冲突 | 交人工 |
-| `unbound` | 找不到产出物依据 | 交人工 |
-| `ref-matched` | 声明引用 `lg-XXX` 等实体，在扫描范围内找到 | 绿 |
-| `ref-missing` | 引用实体不在扫描范围内 | 交人工 |
+| `verified` | The documented value matches the artefact within tolerance | pass |
+| `drift` | A binding was found but the value is outside tolerance | gate failure |
+| `ambiguous` | More than one candidate artefact matches | human review |
+| `unbound` | No artefact could back the claim | human review |
+| `ref-matched` | The claim names an entity (for example `lg-069`) that exists in scope | pass |
+| `ref-missing` | The named entity is not in scope | human review |
 
-## 安装
+A claim that cannot be bound is reported as missing evidence, not as safe.
+
+## Install
 
 ```bash
-npm i -g verifact      # 全局安装，得到 verifact 命令
-npx verifact --help    # 免安装试用
+npm i -g verifact
+npx verifact --help
 ```
 
-零外部依赖。从源码检出运行时，下文的 `verifact` 可替换为 `node bin/verifact.js`。
+From a source checkout, replace `verifact` with `node bin/verifact.js`.
 
-### 核验文档
+## Quick start
 
 ```bash
-verifact verify                   # 默认配置，drift 即退出码 1
-verifact verify --fail-on none    # 仅报告，不拦截
+verifact init                      # write a starter verifact.json
+verifact verify                    # scan; drift exits 1
+verifact verify --fail-on none     # report only, never block
 verifact verify --format md --out report.md
 ```
 
-### 审查单条声明
+Inspect a single claim:
 
 ```bash
 verifact explain <claimId>
 ```
 
-### 历史对比
+Compare runs:
 
 ```bash
-verifact diff --since 3    # 最近 3 次运行的状态迁移
+verifact diff --since 3
 ```
 
-### 本地看板
+Local read-only dashboard:
 
 ```bash
 verifact serve --port 8080
 ```
 
-## 退出码
+## Configuration
 
-| 码 | 含义 |
-|---|-------|
-| 0 | 核验通过 / 无命中门禁条件 |
-| 1 | 命中门禁条件（存在 drift 等） |
-| 2 | 用法或配置错误 |
+Place `verifact.json` at the project root:
 
-## 配置
+- `docs.roots` - directories or files to scan for claims
+- `artifacts.roots` - directories that hold candidate evidence
+- `ignore` - claims that are known-irrelevant; excluded from the totals
+- `deny` - manual refusals: the claim stays in the report and in the totals, but is never auto-bound; `note` records why
 
-项目根目录放置 `verifact.json`：
+Relative paths are resolved against the directory that holds the configuration file, not the current working directory.
 
-- `docs.roots` / `artifacts.roots` — 要扫描的目录或文件；**相对路径以配置文件所在目录为基准**（不是 cwd）
-- `artifacts` — 产出物目录列表
-- `ignore` — 已知可忽略的声明（不计入统计）
-- `deny` — 人工拒绑：声明仍留在报告与总数里，但不做自动绑定，note 写出理由
+See [`verifact.json.example`](./verifact.json.example) for a complete example.
 
-详见 [`verifact.json.example`](./verifact.json.example)。
+## Exit codes
 
-## 设计
+| Code | Meaning |
+|:--|:--|
+| 0 | Verification passed, or no gate condition was hit |
+| 1 | A gate condition was hit (for example drift, or a scan error) |
+| 2 | Usage or configuration error |
 
-详见 [`VERIFACT-DESIGN.md`](./VERIFACT-DESIGN.md)：六态判定设计、绑定算法、ignore/deny 策略。
+## In CI
 
-## 项目状态
+```yaml
+- name: Check that documentation numbers still match the repository
+  run: npx verifact verify --fail-on drift
+```
 
-| 项 | 状态 |
-|---|-------|
-| 回归测试 | ✅ 77 项 (`node test/run.js`) |
-| CI 集成 | ✅ sentinel 门禁（`fail-on-drift`）+ 语料门禁（变异必红） |
-| 平台 | Node.js ≥18，零外部依赖 |
-| 发布 | npm 公共包 `verifact`（无 scope，公开；`npm i -g verifact`） |
-| 许可证 | Apache-2.0 |
+`--fail-on` accepts `none`, `drift`, `review`, `lint-high`. The default is `drift`.
 
-## LICENSE
+## Design
 
-Apache-2.0 — see [LICENSE](./LICENSE).
+[`VERIFACT-DESIGN.md`](./VERIFACT-DESIGN.md) documents the six-state model, the binding algorithm, and the ignore/deny policy. [`CHANGELOG.md`](./CHANGELOG.md) records releases.
+
+## Status
+
+- Regression suite: `node test/run.js`
+- Platform: Node.js 18 or newer, zero runtime dependencies
+- Published as the unscoped public package `verifact` on npm
+- License: Apache-2.0
+
+## License
+
+Apache-2.0. See [LICENSE](./LICENSE).
