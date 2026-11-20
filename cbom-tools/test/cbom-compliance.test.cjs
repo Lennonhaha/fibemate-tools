@@ -23,6 +23,7 @@ const { spawnSync } = require('node:child_process');
 const CLI = path.join(__dirname, '..', 'cbom-compliance.cjs');
 
 const {
+  verdicts,
   classify,
   familyOf,
   collect,
@@ -245,4 +246,66 @@ test('CLI rejects a --dir that is not a directory', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── three judgements, and the one that must stay unanswered ──────────
+
+test('the three judgements exist and cover the three questions a 密评 reviewer asks', () => {
+  const s = summarise(bom([comp('SM4')]), {});
+  const v = verdicts(s);
+  assert.deepEqual(Object.keys(v).sort(), ['hardcoded', 'storage', 'strength']);
+  for (const k of ['strength', 'hardcoded', 'storage']) {
+    assert.match(v[k].verdict, /^(合规|建议整改|高风险|无法判定)$/, k + ' invented a fifth verdict');
+    assert.ok(v[k].why.length > 10, k + ' states a verdict without saying why');
+  }
+});
+
+test('storage boundary is 无法判定, always: a list of algorithms cannot see a data flow', () => {
+  // This is the guard against the most tempting lie in the report. "Encrypted
+  // storage boundary" sounds like something an inventory could answer, and a
+  // reviewer will ask. It cannot: CBOM knows which algorithms the tree mentions,
+  // not which fields land on disk, or whether keys and ciphertext share a place.
+  for (const components of [[comp('SM4')], [comp('MD5')], [comp('RSA')], []]) {
+    const v = verdicts(summarise(bom(components), {}));
+    assert.equal(v.storage.verdict, '无法判定');
+    assert.match(v.storage.why, /数据分类分级|数据流/);
+  }
+});
+
+test('algorithm strength moves with what is actually in the tree', () => {
+  assert.equal(verdicts(summarise(bom([comp('SM2'), comp('SM3')]), {})).strength.verdict, '合规');
+  assert.equal(verdicts(summarise(bom([comp('AES-GCM')]), {})).strength.verdict, '建议整改');
+  assert.equal(verdicts(summarise(bom([comp('AES-GCM'), comp('MD5')]), {})).strength.verdict, '高风险');
+  // MD5 outranks AES-GCM: one abolished algorithm is not traded against a
+  // migration item.
+  assert.match(verdicts(summarise(bom([comp('MD5'), comp('SM4')]), {})).strength.why, /已废止/);
+  // Nothing scanned is not "compliant".
+  assert.equal(verdicts(summarise(bom([]), {})).strength.verdict, '无法判定');
+});
+
+test('hardcoded risk distinguishes "not scanned" from "scanned and clean"', () => {
+  const notScanned = verdicts(summarise(bom([comp('SM4')]), {}));
+  assert.equal(notScanned.hardcoded.verdict, '无法判定');
+  assert.match(notScanned.hardcoded.why, /--dir/);
+
+  const clean = verdicts(summarise(bom([comp('SM4')]), { pem: { root: '.', scannedFiles: 12, found: [] } }));
+  assert.equal(clean.hardcoded.verdict, '合规');
+  assert.match(clean.hardcoded.why, /hex\/base64|仅此一类/);
+
+  const found = verdicts(summarise(bom([comp('SM4')]), { pem: { root: '.', scannedFiles: 12, found: [{ location: 'k.pem', line: 1, label: 'RSA PRIVATE KEY' }] } }));
+  assert.equal(found.hardcoded.verdict, '高风险');
+  assert.match(found.hardcoded.why, /轮换/);
+});
+
+test('the rendered report carries the three blocks and their verdicts', () => {
+  const md = renderMarkdown(summarise(bom([comp('SM2'), comp('SM4')]), {}));
+  assert.match(md, /## 三、三项判定/);
+  assert.match(md, /### 3\.1 算法强度/);
+  assert.match(md, /### 3\.2 硬编码风险/);
+  assert.match(md, /### 3\.3 加密存储边界/);
+  assert.equal((md.match(/\*\*结论：/g) || []).length, 3, 'one conclusion per block, or the table and the prose disagree');
+  assert.match(md, /`无法判定` 不是委婉的「通过」/);
+  assert.match(md, /## 四、汇总/);
+  assert.match(md, /## 七、未评估项（需人工确认）/);
+  assert.match(md, /见第七节未评估项/);
 });
