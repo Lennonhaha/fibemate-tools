@@ -4,6 +4,30 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## Unreleased
+
+### Added: a compliance view that refuses to grade
+
+`cbom-tools compliance --bom cbom.json --dir ./project --out report.md` turns a
+CBOM into a Markdown self-check report oriented at 密评 review. Five buckets
+(approved / not approved / deprecated / construct / unknown), evidence locations
+per algorithm, an explicit "not assessed" table, and no score.
+
+Two failure modes this is written against:
+
+- Reading `quantumSecurity.level` as a compliance verdict. SM3 and SM4 are
+  `weak` on that axis (Grover) and approved on the other. The report states the
+  two axes separately; `test/cbom-compliance.test.cjs` asserts the SM4 case
+  specifically, and a mutant that treats quantum-weak as deprecated turns the
+  suite red.
+- Reporting an empty scan as a clean result. An empty CBOM says "not found",
+  not "compliant", and the test asserts the wording.
+
+PEM private-key blocks are counted when `--dir` is supplied. Key length,
+key lifecycle (GB/T 39786-2021 Annex B), RNG quality, module certification,
+protocol correctness and side channels are listed as not assessed instead of
+being silently out of scope.
+
 ## 0.3.1 - 2026-11-18
 
 ### Fixed: compact liboqs / PQClean identifiers were still invisible

@@ -21,6 +21,7 @@ const path = require('node:path');
 const COMMANDS = {
   scan: 'cbom-scan.cjs',
   diff: 'cbom-diff.js',
+  compliance: 'cbom-compliance.cjs',
 };
 
 function usage() {
@@ -30,10 +31,12 @@ Usage:
   cbom-tools scan [--dir <path>] [--out <file>] [--spec 1.6|1.7]
                                                   scan a tree, emit a CBOM (default 1.7)
   cbom-tools diff <old.json> <new.json> [--json]  diff two CBOMs
+  cbom-tools compliance --bom <json> [--dir <path>] [--out <file>]
+                                                  turn a CBOM into a 密评 self-check report
   cbom-tools --version
   cbom-tools --help
 
-Aliases installed alongside: cbom-scan, cbom-diff.
+Aliases installed alongside: cbom-scan, cbom-diff, cbom-compliance.
 Zero external dependencies. Pure Node.js.`);
 }
 

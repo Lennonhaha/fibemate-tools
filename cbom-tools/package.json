@@ -7,7 +7,8 @@
   "bin": {
     "cbom-tools": "cli.cjs",
     "cbom-scan": "cbom-scan.cjs",
-    "cbom-diff": "cbom-diff.js"
+    "cbom-diff": "cbom-diff.js",
+    "cbom-compliance": "cbom-compliance.cjs"
   },
   "repository": {
     "type": "git",
@@ -34,6 +35,7 @@
     "cli.cjs",
     "algorithm-hierarchy.cjs",
     "cbom-scan.cjs",
+    "cbom-compliance.cjs",
     "cbom-diff.js",
     "algo-metadata.json",
     "README.md",
