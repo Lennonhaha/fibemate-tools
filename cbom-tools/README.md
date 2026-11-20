@@ -107,6 +107,11 @@ requires, and where is the rest". `compliance` reads a CBOM and writes a
 Markdown report that answers the second question without pretending to answer
 the first.
 
+The rule table behind each verdict, and the things the tool refuses to decide, are
+written down in
+[docs/compliance-methodology.md](docs/compliance-methodology.md); read it before
+quoting a verdict in a review.
+
 ```bash
 cbom-tools scan --dir ./project --out cbom.json
 cbom-tools compliance --bom cbom.json --dir ./project --out 密评自查报告.md
