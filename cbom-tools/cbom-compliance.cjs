@@ -255,6 +255,51 @@ function summarise(bom, opts) {
   };
 }
 
+/**
+ * The three judgements, each with the scope it covers.
+ *
+ * There are four verdicts, and `unable` is one of them. A static inventory of
+ * algorithm names cannot answer "is the data that should be encrypted actually
+ * encrypted" -- that needs a data-flow and storage model this tool never sees.
+ * Saying so is the professional answer; inventing a verdict there is how a
+ * report loses the reader at the first question.
+ */
+function verdicts(s) {
+  const d = s.counts.deprecated || 0;
+  const n = s.counts.not_approved || 0;
+  const u = s.counts.unknown || 0;
+  const a = s.counts.approved || 0;
+
+  let strength;
+  if (!s.rows.length) {
+    strength = { verdict: '无法判定', why: '本次 CBOM 中没有密码资产：这表示没扫到，不表示没用到，也不表示算法合规。' };
+  } else if (d) {
+    strength = { verdict: '高风险', why: '存在已废止算法 ' + d + ' 个（MD5/SHA-1/DES 一类）。这一类没有讨论空间：替换前不应进入测评准备。' };
+  } else if (n) {
+    strength = { verdict: '建议整改', why: '未发现已废止算法，但有非商用密码算法 ' + n + ' 个。按场景评估替换为国密的可行性；PQC 属迁移路线，不能替代国密的合规地位。' };
+  } else if (u) {
+    strength = { verdict: '无法判定', why: '有 ' + u + ' 个算法缺少元数据，无法分类。补齐元数据后再判定，不要默认通过。' };
+  } else {
+    strength = { verdict: '合规', why: '清单内 ' + a + ' 个算法均为商用密码算法，且未见已废止与非国密项。这是算法维度的结论，不含参数与实现。' };
+  }
+
+  let hardcoded;
+  if (!s.pem) {
+    hardcoded = { verdict: '无法判定', why: '本次未提供 `--dir`，没有执行 PEM 私钥块扫描。' };
+  } else if (s.pem.found.length) {
+    hardcoded = { verdict: '高风险', why: '在 ' + s.pem.scannedFiles + ' 个文本文件中命中 ' + s.pem.found.length + ' 处 PEM 私钥块。私钥进版本库即视为已泄露，须轮换。' };
+  } else {
+    hardcoded = { verdict: '合规', why: '扫描 ' + s.pem.scannedFiles + ' 个文本文件，未见 PEM 私钥块。覆盖范围仅此一类：代码里的 hex/base64 密钥材料、`.env` 口令、外部配置中心不在此列。' };
+  }
+
+  const storage = {
+    verdict: '无法判定',
+    why: 'CBOM 记录的是「用了什么算法」，不记录「哪份数据落在哪里、是否加密、密钥与密文是否分离」。判定存储与传输边界需要数据分类分级、存储介质与链路清单，本工具不采集这些。'
+  };
+
+  return { strength: strength, hardcoded: hardcoded, storage: storage };
+}
+
 function renderMarkdown(summary) {
   const s = summary;
   const L = [];
@@ -281,7 +326,42 @@ function renderMarkdown(summary) {
   L.push('- **本报告不识别密钥长度。** 扫描是文件级的：`RSA` 就是 RSA，既不是 RSA-1024，也不是 RSA-2048。若实际使用 RSA-1024，风险结论需由人工依据实际参数给出。');
   L.push('- **`unknown` 不是「安全」。** 它表示 CBOM 中没有该名称的元数据，需要人工确认。');
   L.push('');
-  L.push('## 三、汇总');
+  const v = verdicts(s);
+  L.push('## 三、三项判定');
+  L.push('');
+  L.push('先说结论，再说依据。每一项都写明它覆盖了什么范围——密评专家最先问的不是分数，而是「你到底看了什么」。');
+  L.push('');
+  L.push('| 判定项 | 结论 | 依据 |');
+  L.push('| --- | --- | --- |');
+  L.push('| 算法强度 | **' + v.strength.verdict + '** | 3.1 |');
+  L.push('| 硬编码风险 | **' + v.hardcoded.verdict + '** | 3.2 |');
+  L.push('| 加密存储边界 | **' + v.storage.verdict + '** | 3.3 |');
+  L.push('');
+  L.push('> 结论只有四种取值：`合规`、`建议整改`、`高风险`、`无法判定`。`无法判定` 不是委婉的「通过」，而是「这个问题超出静态清单能回答的范围，必须由人接手」。');
+  L.push('');
+  L.push('### 3.1 算法强度');
+  L.push('');
+  L.push('**结论：' + v.strength.verdict + '**');
+  L.push('');
+  L.push(v.strength.why);
+  L.push('');
+  L.push('判据：出现已废止算法即高风险；仅出现非国密算法为建议整改；元数据缺失导致无法分类时，答案是不可判定，不是通过。');
+  L.push('');
+  L.push('### 3.2 硬编码风险');
+  L.push('');
+  L.push('**结论：' + v.hardcoded.verdict + '**');
+  L.push('');
+  L.push(v.hardcoded.why);
+  L.push('');
+  L.push('### 3.3 加密存储边界');
+  L.push('');
+  L.push('**结论：' + v.storage.verdict + '**');
+  L.push('');
+  L.push(v.storage.why);
+  L.push('');
+  L.push('这一项要的是数据流：哪些字段属于敏感数据、落在磁盘还是内存、传输走哪条链路、密钥与密文是否同处一地。算法清单回答不了它，硬答就是编。');
+  L.push('');
+  L.push('## 四、汇总');
   L.push('');
   L.push('| 分类 | 算法数 | 出现次数 | 含义 |');
   L.push('| --- | ---: | ---: | --- |');
@@ -290,7 +370,7 @@ function renderMarkdown(summary) {
   }
   L.push('');
 
-  L.push('## 四、算法明细');
+  L.push('## 五、算法明细');
   L.push('');
   L.push('「出现次数」是 CBOM 中的证据条数，不是调用点个数：同一行可能因多条匹配规则（字面量、调用参数、拼接字符串）产生多条证据。判断改哪个文件，看位置，不看数字。');
   L.push('');
@@ -311,7 +391,7 @@ function renderMarkdown(summary) {
   }
   L.push('');
 
-  L.push('## 五、疑似硬编码私钥');
+  L.push('## 六、疑似硬编码私钥');
   L.push('');
   if (!s.pem) {
     L.push('未执行。生成本报告时未提供 `--dir`，因此没有做 PEM 私钥块扫描。');
@@ -337,7 +417,7 @@ function renderMarkdown(summary) {
   }
   L.push('');
 
-  L.push('## 六、未评估项（需人工确认）');
+  L.push('## 七、未评估项（需人工确认）');
   L.push('');
   L.push('| 项目 | 为什么不在本报告内 | 建议核对方式 |');
   L.push('| --- | --- | --- |');
@@ -350,7 +430,7 @@ function renderMarkdown(summary) {
   L.push('| 非 PEM 形式的硬编码密钥 | 检测规则只覆盖 PEM 块 | 代码审计 + 密钥管理系统盘点 |');
   L.push('');
 
-  L.push('## 七、建议');
+  L.push('## 八、建议');
   L.push('');
   const d = s.counts.deprecated || 0;
   const n = s.counts.not_approved || 0;
@@ -365,10 +445,10 @@ function renderMarkdown(summary) {
     L.push((d && n ? 3 : (d || n ? 2 : 1)) + '. **未知分类（' + u + ' 个）**：补齐元数据后再判断，不要默认通过。');
   }
   if (!d && !n && !u) {
-    L.push('算法维度未见需要整改的项。**这不等于合规**：见第六节未评估项。');
+    L.push('算法维度未见需要整改的项。**这不等于合规**：见第七节未评估项。');
   }
   L.push('');
-  L.push('## 八、复现');
+  L.push('## 九、复现');
   L.push('');
   L.push('```bash');
   L.push('# 1) 生成 CBOM');
@@ -460,6 +540,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  verdicts,
   classify,
   familyOf,
   collect,

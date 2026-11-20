@@ -112,8 +112,24 @@ cbom-tools scan --dir ./project --out cbom.json
 cbom-tools compliance --bom cbom.json --dir ./project --out 密评自查报告.md
 ```
 
-The report groups every algorithm into one of five buckets — approved
-(SM2/SM3/SM4/SM9/ZUC), not approved (including post-quantum families),
+Section 3 answers the three questions a reviewer asks first, each with a verdict,
+before any table is shown:
+
+| block | question | verdicts |
+| --- | --- | --- |
+| 3.1 算法强度 | is what is here the kind of algorithm the regulation requires? | 合规 / 建议整改 / 高风险 / 无法判定 |
+| 3.2 硬编码风险 | is key material sitting in the tree? | 合规 (PEM blocks only) / 高风险 / 无法判定 |
+| 3.3 加密存储边界 | is the data that should be encrypted actually encrypted? | **无法判定**, always |
+
+The third block is the one worth arguing about. An algorithm inventory cannot see
+a data flow: it does not know which fields land on disk, whether keys and
+ciphertext share a place, or which links carry what. Answering it would require a
+data classification and a storage inventory this tool never collects, so the
+report says so and leaves the question to a human. `无法判定` is not a polite
+pass.
+
+Below the verdicts, the report groups every algorithm into one of five buckets —
+approved (SM2/SM3/SM4/SM9/ZUC), not approved (including post-quantum families),
 deprecated (MD5, SHA-1, DES...), construct (NTT, Double Ratchet — not algorithm
 bodies), unknown — and lists evidence locations for each.
 

@@ -6,6 +6,13 @@ minor number moves for behaviour changes.
 
 ## Unreleased
 
+### Added
+
+- `compliance` now opens with three judgements (算法强度 / 硬编码风险 / 加密存储边界)
+  and a four-value vocabulary: 合规 / 建议整改 / 高风险 / 无法判定. The third
+  judgement is always 无法判定: an algorithm inventory cannot see a data flow, and
+  a made-up verdict there would be the first thing a reviewer catches.
+
 ### Added: a compliance view that refuses to grade
 
 `cbom-tools compliance --bom cbom.json --dir ./project --out report.md` turns a
