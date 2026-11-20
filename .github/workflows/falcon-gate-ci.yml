@@ -1,0 +1,57 @@
+name: falcon-gate-ci
+
+on:
+  pull_request:
+    paths:
+      - 'falcon/**'
+      - 'cbom-tools/**'
+      - 'verifact/**'
+      - '.github/workflows/falcon-gate-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      - name: Self-test
+        run: node --test falcon/test/falcon-gate.test.cjs
+
+      # The gate must be able to pass, and it must be able to fail. Both runs are
+      # the check. A green gate that has never been seen going red is a gate
+      # nobody has tested.
+      - name: Gate passes on this tree
+        run: node falcon/falcon-gate.cjs --cbom-dir cbom-tools --min-assets 10 --require-source-evidence
+
+      - name: Gate goes red on an empty tree
+        run: |
+          set +e
+          mkdir -p "$RUNNER_TEMP/empty-tree"
+          node falcon/falcon-gate.cjs --cbom-dir "$RUNNER_TEMP/empty-tree"
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::expected exit 1 on an empty tree, got $code"
+            exit 1
+          fi
+
+      - name: Gate goes red when documents disagree with artefacts
+        run: |
+          set +e
+          node falcon/falcon-gate.cjs \
+            --cbom-dir cbom-tools \
+            --docs verifact/test/fixtures/docs \
+            --artifacts verifact/test/fixtures/artifacts
+          code=$?
+          set -e
+          if [ "$code" -ne 1 ]; then
+            echo "::error::expected exit 1 on the drift fixture, got $code"
+            exit 1
+          fi
