@@ -8,6 +8,11 @@ minor number moves for behaviour changes.
 
 ### Added
 
+- `docs/compliance-methodology.md`: the rules behind the three judgements
+  (bucket precedence, verdict table, the PEM-only scope, why block 3.3 is always
+  `无法判定`), the four-value vocabulary, what part of GB/T 39786-2021 is used,
+  and the change-control requirements for the decision table. Method only - no
+  behaviour change, no version bump.
 - `compliance` now opens with three judgements (算法强度 / 硬编码风险 / 加密存储边界)
   and a four-value vocabulary: 合规 / 建议整改 / 高风险 / 无法判定. The third
   judgement is always 无法判定: an algorithm inventory cannot see a data flow, and
