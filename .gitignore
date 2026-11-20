@@ -29,6 +29,10 @@ xdiff/xdiff.json
 
 scripts/tmp-*
 
+# c8 coverage output (test:coverage)
+coverage/
+verifact/coverage/
+
 # 打包产物（npm pack）
 verifact/*.tgz
 

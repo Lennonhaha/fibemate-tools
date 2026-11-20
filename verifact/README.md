@@ -112,6 +112,32 @@ See [`verifact.json.example`](./verifact.json.example) for a complete example.
 
 [`VERIFACT-DESIGN.md`](./VERIFACT-DESIGN.md) documents the six-state model, the binding algorithm, and the ignore/deny policy. [`CHANGELOG.md`](./CHANGELOG.md) records releases.
 
+## Testing
+
+```bash
+node test/run.js        # regression suite
+npm run test:coverage   # same suite under c8 (fetches c8 with npx, adds no dependency)
+```
+
+The suite runs the CLI as a subprocess for the exit-code assertions. That is deliberate: a
+report field saying `gate.failed: true` is not a gate; `process.exit(1)` is. Each gate test
+pairs the failing run with a control run that differs only in policy (`--fail-on none`, or
+`--fail-on review` for unbound claims), so a green control cannot be mistaken for a green gate.
+
+Coverage scope, and where not to read it:
+
+- `src/` and `bin/` are measured. The dashboard endpoint (`serve`) is covered by a smoke test
+  that checks it answers `/api/health` and `/api/config`; the rest of the dashboard, including
+  `POST /api/verify` and the history view, is exercised by neither the suite nor CI today.
+- `src/server/www/app.js` is browser code. A Node run reports it as uncovered because nothing
+  in Node imports it, which says nothing about whether it works. Do not use it to set a floor.
+- The worker path (`src/pooled-scan.js` + `src/worker.js`) is covered by a differential test:
+  ten files force the pool, and every claim is compared against the inline extractor, so the
+  two copies of the scan loop cannot drift apart unnoticed.
+
+No coverage threshold is enforced in CI. The number moves whenever tests are added, and a
+threshold set before the baseline is understood only teaches people to delete assertions.
+
 ## Status
 
 - Regression suite: `node test/run.js`
