@@ -39,7 +39,8 @@
   "scripts": {
     "verify": "node bin/verifact.js verify",
     "serve": "node bin/verifact.js serve",
-    "test": "node test/run.js"
+    "test": "node test/run.js",
+    "test:coverage": "npx --yes c8 --all --src=src --src=bin --reporter=text --reporter=text-summary node test/run.js"
   },
   "engines": {
     "node": ">=18"

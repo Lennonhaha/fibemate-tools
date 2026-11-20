@@ -37,9 +37,6 @@ function squash(s) {
 // CJK 参与 key 上下文（文档多为中英混排），最大 CJK 连续段算一个 token。
 const TOKEN_SPLIT = /[^a-z0-9\u4e00-\u9fff]+/;
 
-function squashTokens(s) {
-  return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '');
-}
 
 function tokens(s) {
   const parts = String(s == null ? '' : s).toLowerCase().split(TOKEN_SPLIT);

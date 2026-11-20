@@ -1103,6 +1103,160 @@ test('cli: version 子命令与 --version 一致（防两条路径漂移）', ()
   assert.strictEqual(sub.stdout.trim(), flag.stdout.trim(), '两条路径必须输出同一个版本号');
 });
 
+// ---------- CLI exit codes: the gate must be able to say no ----------
+
+// These assertions exist because every other drift test stops at report.gate.failed.
+// A report flag is not a gate. The gate is `process.exit(1)`, and until it is
+// observed from outside the process, "verifact blocks drift" is an assumption.
+
+const http = require('http');
+
+const CLI = path.join(__dirname, '..', 'bin', 'verifact.js');
+
+function runCli(args, cwd) {
+  return spawnSync(process.execPath, [CLI].concat(args), {
+    cwd: cwd || FIX,
+    encoding: 'utf8',
+    env: Object.assign({}, process.env, { NO_COLOR: '1' })
+  });
+}
+
+function copyFixtures(dirs) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'verifact-cli-'));
+  for (const d of dirs) fs.cpSync(path.join(FIX, d), path.join(root, d), { recursive: true });
+  return root;
+}
+
+test('cli gate: a real drift exits 1, and the same scan with --fail-on none exits 0', () => {
+  const root = copyFixtures(['docs', 'artifacts']);
+  const base = ['verify', '--docs', 'docs', '--artifacts', 'artifacts', '--no-cache'];
+
+  const red = runCli(base, root);
+  assert.strictEqual(red.status, 1, 'drift must exit 1, got ' + red.status + ' stderr=' + (red.stderr || '').slice(0, 300));
+  assert.ok(/drift/i.test(red.stdout), 'the report must say drift, got ' + red.stdout.slice(0, 200));
+  assert.ok(!/internal_error|TypeError|ReferenceError/.test(red.stderr || ''), 'exit 1 must come from the gate, not a crash: ' + red.stderr.slice(0, 300));
+
+  // Mutation control. Same files, same scan, only the policy differs. If this run
+  // is also 1, then the assertion above proves nothing about the gate.
+  const green = runCli(base.concat(['--fail-on', 'none']), root);
+  assert.strictEqual(green.status, 0, 'with --fail-on none the same project must exit 0, got ' + green.status + ' stderr=' + (green.stderr || '').slice(0, 300));
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('cli gate: unbound claims are reported, exit 0 by default, exit 1 under --fail-on review', () => {
+  // Docs with claims but no artifacts at all: nothing can bind.
+  const root = copyFixtures(['docs']);
+  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
+  const base = ['verify', '--docs', 'docs', '--artifacts', 'artifacts', '--no-cache', '--format', 'json'];
+
+  const soft = runCli(base, root);
+  assert.strictEqual(soft.status, 0, 'unbound alone must not fail the default gate, got ' + soft.status + ' stderr=' + (soft.stderr || '').slice(0, 300));
+  const report = JSON.parse(soft.stdout);
+  const loose = report.counts.unbound + report.counts.ambiguous;
+  assert.ok(loose >= 1, 'expected unbound or ambiguous claims, got ' + JSON.stringify(report.counts));
+
+  const strict = runCli(base.concat(['--fail-on', 'review']), root);
+  assert.strictEqual(strict.status, 1, 'review policy must exit 1 when claims are unbound, got ' + strict.status);
+  const strictReport = JSON.parse(strict.stdout);
+  assert.strictEqual(strictReport.gate.failed, true, 'gate.failed must agree with the exit code');
+
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('cli config: a missing config file exits 2 with config_error', () => {
+  const root = tmpProject({ 'docs/a.md': 'x\n' });
+  const r = runCli(['verify', '--config', 'nope.json'], root);
+  assert.strictEqual(r.status, 2, 'usage/config errors exit 2, got ' + r.status + ' stderr=' + (r.stderr || '').slice(0, 200));
+  const err = JSON.parse(r.stderr.trim());
+  assert.strictEqual(err.error, 'config_error', 'stderr must name the error class, got ' + r.stderr.slice(0, 200));
+  assert.ok(/nope\.json/.test(JSON.stringify(err)), 'the error must name the path: ' + r.stderr.slice(0, 300));
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('cli config: invalid JSON exits 2 and does not pretend to have scanned', () => {
+  const root = tmpProject({ 'verifact.json': '{ this is not json', 'docs/a.md': 'x\n' });
+  const r = runCli(['verify'], root);
+  assert.strictEqual(r.status, 2, 'invalid config exits 2, got ' + r.status + ' stdout=' + (r.stdout || '').slice(0, 200));
+  const err = JSON.parse(r.stderr.trim());
+  assert.strictEqual(err.error, 'config_error');
+  assert.ok(/not valid JSON/i.test(err.message), 'the message must say what is wrong: ' + JSON.stringify(err));
+  assert.ok(!/PASS|verified/i.test(r.stdout || ''), 'a broken config must not produce a report');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('cli usage: unknown subcommand and empty argv exit 2 instead of 0', () => {
+  const unknown = runCli(['frobnicate'], FIX);
+  assert.strictEqual(unknown.status, 2, 'unknown subcommand must exit 2, got ' + unknown.status);
+  const err = JSON.parse(unknown.stderr.trim());
+  assert.strictEqual(err.error, 'usage_error', 'stderr must name usage_error, got ' + unknown.stderr.slice(0, 200));
+
+  const empty = runCli([], FIX);
+  assert.strictEqual(empty.status, 2, 'no arguments must exit 2 (help is not success), got ' + empty.status);
+  assert.ok(/verifact/i.test(empty.stdout), 'no arguments must print the help text');
+});
+
+test('scan pool: ten files actually go through workers and agree with the inline extractor', async () => {
+  // worker.js duplicates the scan loop that pooled-scan.js runs inline. Nothing
+  // compared the two, so a fix applied to one side could silently miss the other.
+  // Below 8 files scanFiles falls back to inline, which is why this uses ten:
+  // the assertion on res.workers is what proves the pool really ran.
+  const files = [];
+  for (let i = 0; i < 10; i++) files.push({ rel: 'docs/d' + i + '.md', text: '| KAT | 10,000/10,000 |\n' });
+  const root = tmpProject(Object.fromEntries(files.map((f) => [f.rel, f.text])));
+  const input = files.map((f) => ({ rel: f.rel, full: path.join(root, f.rel) }));
+
+  const res = await scanFiles(input, { modules: MODULES });
+  assert.ok(res.workers >= 1, 'the pool must actually run, workers=' + res.workers);
+  assert.strictEqual(res.errors.length, 0, 'no scan errors expected, got ' + JSON.stringify(res.errors));
+  assert.strictEqual(res.results.length, files.length, 'every file must come back, got ' + res.results.length);
+
+  const seen = new Map(res.results.map((r) => [r.rel, r.claims]));
+  for (const f of files) {
+    const mine = seen.get(f.rel);
+    assert.ok(mine, 'missing result for ' + f.rel);
+    const expected = extractClaims(f.text, f.rel, { modules: MODULES });
+    assert.strictEqual(mine.length, expected.length, 'claim count differs for ' + f.rel + ': pool=' + mine.length + ' inline=' + expected.length);
+    assert.deepStrictEqual(mine.map((c) => c.key), expected.map((c) => c.key), 'claim keys differ for ' + f.rel);
+  }
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+test('serve: the dashboard answers health and config without scanning anything', async () => {
+  const root = tmpProject({ 'docs/a.md': '| k | 1 ms |\n' });
+  const cfg = dispConfig(root);
+  const api = require('../src/server/api');
+  const logger = require('../src/logger').create({ quiet: true });
+  const server = api.createServer(cfg, logger);
+  await new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(0, '127.0.0.1', resolve);
+  });
+  const port = server.address().port;
+  const get = (p) => new Promise((resolve, reject) => {
+    http.get({ host: '127.0.0.1', port, path: p, agent: false }, (res) => {
+      let b = '';
+      res.on('data', (d) => { b += d; });
+      res.on('end', () => resolve({ code: res.statusCode, body: b }));
+    }).on('error', reject);
+  });
+
+  const health = await get('/api/health');
+  assert.strictEqual(health.code, 200, '/api/health must be 200, got ' + health.code);
+  assert.strictEqual(JSON.parse(health.body).status, 'ok');
+
+  const conf = await get('/api/config');
+  assert.strictEqual(conf.code, 200, '/api/config must be 200, got ' + conf.code);
+  assert.strictEqual(JSON.parse(conf.body).failOn, 'drift', 'the dashboard must report the real gate policy');
+
+  const missing = await get('/definitely-not-a-route');
+  assert.strictEqual(missing.code, 404, 'unknown routes must 404, got ' + missing.code);
+
+  if (server.closeAllConnections) server.closeAllConnections();
+  await new Promise((resolve) => server.close(resolve));
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 // ---------- 运行 ----------
 
 (async function main() {

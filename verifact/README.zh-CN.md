@@ -101,6 +101,16 @@ verifact serve --port 8080
 
 详见 [`VERIFACT-DESIGN.md`](./VERIFACT-DESIGN.md)：六态判定设计、绑定算法、ignore/deny 策略。
 
+## 测试与覆盖率
+
+`node test/run.js` 跑回归；`npm run test:coverage` 用 npx 临时调 c8（不新增依赖）。
+
+退出码用子进程跑 CLI 断言：报告里写 `gate.failed: true` 不算门禁，`exit 1` 才算。每条门禁用例都配一条只改策略的对照跑（`--fail-on none`，未绑定用 `--fail-on review`），避免把“对照组也绿”当成“门禁生效”。
+
+覆盖范围：`src/` 与 `bin/`。看板（`serve`）只有一条 smoke 测试（`/api/health`、`/api/config`），下发核验与历史页面当前无人测，属已知缺口。`src/server/www/app.js` 是浏览器代码，Node 跑出来的 0% 不代表它坏了。池化扫描（`pooled-scan.js` + `worker.js`）用差分测试覆盖：十个文件强制走池，逐个与内联提取器对比，两份扫描循环不能悄悄漂移。
+
+CI 不设覆盖率阈值：基线还没稳定时定阈值，只会教人删断言。
+
 ## 项目状态
 
 | 项 | 状态 |
