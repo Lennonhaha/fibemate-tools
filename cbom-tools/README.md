@@ -99,6 +99,44 @@ which is where `cbom-scan` writes it; `cryptoProperties.quantumSecurity.level` i
 accepted as a fallback for hand-written CBOMs. A missing or malformed level stays
 unknown — it is never inferred from the algorithm name.
 
+### 3. Compliance view (密评 self-check report)
+
+A CBOM answers "what cryptography is in this tree". A 密评 reviewer asks a
+different question: "is what is here the kind of algorithm the regulation
+requires, and where is the rest". `compliance` reads a CBOM and writes a
+Markdown report that answers the second question without pretending to answer
+the first.
+
+```bash
+cbom-tools scan --dir ./project --out cbom.json
+cbom-tools compliance --bom cbom.json --dir ./project --out 密评自查报告.md
+```
+
+The report groups every algorithm into one of five buckets — approved
+(SM2/SM3/SM4/SM9/ZUC), not approved (including post-quantum families),
+deprecated (MD5, SHA-1, DES...), construct (NTT, Double Ratchet — not algorithm
+bodies), unknown — and lists evidence locations for each.
+
+Three properties are deliberate, because the alternative is a document that
+flatters its reader:
+
+- **It does not score.** GB/T 39786-2021 sets requirements per level across four
+  technical domains. An inventory is an input to an assessment, never the
+  assessment.
+- **It does not reuse `quantumSecurity.level` as a compliance verdict.** That
+  field is a different axis: SM3 and SM4 are marked `weak` there because Grover
+  halves their margin, and both are approved 商用密码算法. Reading the two axes
+  as one produces "SM4 is weak", which is true and useless.
+- **It does not identify key length.** The scan is file-level. `RSA` in the CBOM
+  is RSA — not RSA-1024, not RSA-2048. If a finding depends on the key size, a
+  human has to measure it.
+
+With `--dir` it also counts PEM private-key blocks (`-----BEGIN … PRIVATE
+KEY-----`) as a fact about the tree. It does not judge whether the key is live,
+and it does not claim to find hex blobs, `.env` secrets, or key-derivation
+logic. The report lists what it did not assess as a separate table rather than
+letting omission read as a pass.
+
 ## Exit codes
 
 A scan that cannot run must not look like a scan that found nothing.
