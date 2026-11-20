@@ -15,6 +15,7 @@ permissions:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -24,17 +25,17 @@ jobs:
       - name: Self-test
         run: node --test falcon/test/falcon-gate.test.cjs
 
-      # The gate must be able to pass, and it must be able to fail. Both runs are
-      # the check. A green gate that has never been seen going red is a gate
-      # nobody has tested.
+      # CI runs --strict. The gate must be able to pass, and it must be able to
+      # fail: both runs are the check. A green gate that has never been seen
+      # going red is a gate nobody has tested.
       - name: Gate passes on this tree
-        run: node falcon/falcon-gate.cjs --cbom-dir cbom-tools --min-assets 10 --require-source-evidence
+        run: node falcon/falcon-gate.cjs --cbom-dir cbom-tools --min-assets 10 --require-source-evidence --strict
 
       - name: Gate goes red on an empty tree
         run: |
           set +e
           mkdir -p "$RUNNER_TEMP/empty-tree"
-          node falcon/falcon-gate.cjs --cbom-dir "$RUNNER_TEMP/empty-tree"
+          node falcon/falcon-gate.cjs --cbom-dir "$RUNNER_TEMP/empty-tree" --strict
           code=$?
           set -e
           if [ "$code" -ne 1 ]; then
@@ -48,10 +49,30 @@ jobs:
           node falcon/falcon-gate.cjs \
             --cbom-dir cbom-tools \
             --docs verifact/test/fixtures/docs \
-            --artifacts verifact/test/fixtures/artifacts
+            --artifacts verifact/test/fixtures/artifacts \
+            --strict
           code=$?
           set -e
           if [ "$code" -ne 1 ]; then
             echo "::error::expected exit 1 on the drift fixture, got $code"
+            exit 1
+          fi
+
+      # Same finding, safe mode: exit 0 and say out loud that this is a report,
+      # not evidence. If this ever starts failing, the two modes have collapsed
+      # into one and the flag is lying.
+      - name: Safe mode reports the same finding without blocking
+        run: |
+          set +e
+          out=$(node falcon/falcon-gate.cjs --cbom-dir "$RUNNER_TEMP/empty-tree" --safe)
+          code=$?
+          set -e
+          printf '%s\n' "$out"
+          if [ "$code" -ne 0 ]; then
+            echo "::error::expected exit 0 in safe mode, got $code"
+            exit 1
+          fi
+          if ! printf '%s\n' "$out" | grep -q 'PASS WITH WARNINGS'; then
+            echo "::error::safe mode did not report the finding"
             exit 1
           fi
