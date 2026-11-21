@@ -112,6 +112,12 @@ written down in
 [docs/compliance-methodology.md](docs/compliance-methodology.md); read it before
 quoting a verdict in a review.
 
+Which clauses of GB/T 39786-2021 these verdicts can speak to, and which ones they
+cannot, are laid out in
+[docs/gb-t-39786-mapping.md](docs/gb-t-39786-mapping.md). It maps only the third
+level (chapter 8) where the clause text could be checked; the fourth level is left
+unmapped rather than paraphrased from a guessed structure.
+
 ```bash
 cbom-tools scan --dir ./project --out cbom.json
 cbom-tools compliance --bom cbom.json --dir ./project --out 密评自查报告.md
@@ -232,6 +238,16 @@ Rule table covers 13 algorithms:
 Detection input:
 - Package names (`@noble/post-quantum`, `sm-crypto`, etc.)
 - API call patterns (`crypto.createHash('sha3-256')`, etc.)
+
+## Listed in
+
+- [CycloneDX tool center](https://github.com/CycloneDX/tool-center) -
+  PR [#170](https://github.com/CycloneDX/tool-center/pull/170), merged.
+- [awesome-cbom](https://github.com/RiccardoBiosas/awesome-cbom) -
+  PR [#1](https://github.com/RiccardoBiosas/awesome-cbom/pull/1), merged.
+
+A directory listing is a listing, not an endorsement, a certification, or a
+review by the CycloneDX project.
 
 ## What this tool does NOT do
 
