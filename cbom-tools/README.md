@@ -239,6 +239,16 @@ Detection input:
 - Package names (`@noble/post-quantum`, `sm-crypto`, etc.)
 - API call patterns (`crypto.createHash('sha3-256')`, etc.)
 
+## Listed in
+
+- [CycloneDX tool center](https://github.com/CycloneDX/tool-center) -
+  PR [#170](https://github.com/CycloneDX/tool-center/pull/170), merged.
+- [awesome-cbom](https://github.com/RiccardoBiosas/awesome-cbom) -
+  PR [#1](https://github.com/RiccardoBiosas/awesome-cbom/pull/1), merged.
+
+A directory listing is a listing, not an endorsement, a certification, or a
+review by the CycloneDX project.
+
 ## What this tool does NOT do
 
 - ❌ Does NOT implement cryptographic algorithms
