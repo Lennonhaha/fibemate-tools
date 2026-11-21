@@ -1,1 +1,1 @@
-// supports ml-dsa-65 and ml-dsa-87
+const algorithms = ['ml-dsa-65', 'ml-dsa-87'];

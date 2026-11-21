@@ -1,1 +1,1 @@
-// keccak based
+const hash = 'keccak';

@@ -1,1 +1,1 @@
-// calls keccak-256
+const hash = 'keccak-256';
