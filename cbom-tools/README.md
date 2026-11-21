@@ -109,12 +109,12 @@ the first.
 
 The rule table behind each verdict, and the things the tool refuses to decide, are
 written down in
-[docs/compliance-methodology.md](docs/compliance-methodology.md); read it before
+[docs/compliance-methodology.md](https://github.com/Lennonhaha/fibemate-tools/blob/main/cbom-tools/docs/compliance-methodology.md); read it before
 quoting a verdict in a review.
 
 Which clauses of GB/T 39786-2021 these verdicts can speak to, and which ones they
 cannot, are laid out in
-[docs/gb-t-39786-mapping.md](docs/gb-t-39786-mapping.md). It maps only the third
+[docs/gb-t-39786-mapping.md](https://github.com/Lennonhaha/fibemate-tools/blob/main/cbom-tools/docs/gb-t-39786-mapping.md). It maps only the third
 level (chapter 8) where the clause text could be checked; the fourth level is left
 unmapped rather than paraphrased from a guessed structure.
 

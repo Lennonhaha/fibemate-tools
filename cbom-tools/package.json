@@ -38,6 +38,7 @@
     "cbom-compliance.cjs",
     "cbom-diff.js",
     "algo-metadata.json",
+    "docs",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
