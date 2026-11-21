@@ -123,7 +123,7 @@ Answering "is the data that should be encrypted actually encrypted" requires a d
 | `高风险` | a retired algorithm or disclosed key material is present | the system is compromised today |
 | `无法判定` | the tool did not collect what the question needs | the system is fine |
 
-**Why no score.** GB/T 39786-2021 states requirements per level (chapters 6–9) across four technical domains plus management requirements; the same finding carries different weight at level 2 and level 4. A single number would have to hide which requirement was unmet, and a number invites optimizing the number instead of the system. The report therefore lists findings and unmet evidence requirements, and leaves grading to the assessment body.
+**Why no score.** The standard (GB/T 39786-2021) defines requirements per level (chapters 6–9) across four technical domains plus management requirements; the same finding carries different weight at level 2 and level 4. A single number would have to hide which requirement was unmet, and a number invites optimizing the number instead of the system. The report therefore lists findings and unmet evidence requirements, and leaves grading to the assessment body.
 
 ## 7. Which part of GB/T 39786-2021 is used
 

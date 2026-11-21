@@ -92,6 +92,12 @@
   "bindings": [],
   "deny": [
     {
+      "file": "**/fibemate/docs/engineering-notes.md",
+      "key": "pass",
+      "kind": "kv",
+      "note": "历史缺陷记录：旧 cron 当时报 PASS=2，实际 241 份里 0 份可验证。这个 2 是当时错误口径的规模，不是待核验指标，不应与 pqc-hw-bench 的 128runs 绑定"
+    },
+    {
       "file": "**/docs/launch-announcement-2026-08-31.md",
       "key": "keygen",
       "kind": "measure",
