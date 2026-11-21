@@ -233,6 +233,22 @@ function cell(value) {
     .trim();
 }
 
+const REDACTED = '<redacted>';
+
+/**
+ * `--redact` exists because a report leaves the machine it was generated on.
+ * An absolute path names a user, a department, often a project codename; the
+ * relative part is what a reviewer actually needs. Only absolute paths are
+ * rewritten - a relative location is already the finding.
+ */
+function scrubLocation(location, redact) {
+  if (!redact) return location;
+  if (/^[A-Za-z]:[\\/]/.test(location) || location.startsWith('/')) {
+    return REDACTED + '/' + location.split(/[\\/]/).pop();
+  }
+  return location;
+}
+
 function summarise(bom, opts) {
   const options = opts || {};
   const rows = collect(bom);
@@ -246,12 +262,22 @@ function summarise(bom, opts) {
     tool: { name: 'cbom-tools', version: PKG.version },
     specVersion: bom && bom.specVersion ? bom.specVersion : '',
     timestamp: bom && bom.metadata && bom.metadata.timestamp ? bom.metadata.timestamp : '',
-    scanRoot: options.dir || '',
+    scanRoot: options.redact ? REDACTED : (options.dir || ''),
+    redacted: !!options.redact,
     componentCount: rows.length,
     rows,
     counts,
     occurrences,
-    pem: options.pem || null,
+    pem: options.pem
+      ? {
+        root: options.redact ? REDACTED : options.pem.root,
+        scannedFiles: options.pem.scannedFiles,
+        skipped: options.pem.skipped,
+        found: options.pem.found.map(function (f) {
+          return { location: scrubLocation(f.location, options.redact), line: f.line, label: f.label };
+        }),
+      }
+      : null,
   };
 }
 
@@ -317,6 +343,7 @@ function renderMarkdown(summary) {
   L.push('| 生成工具 | cbom-tools ' + cell(s.tool.version) + ' |');
   L.push('| CBOM 规格 | CycloneDX ' + cell(s.specVersion || '(未标注)') + ' |');
   if (s.scanRoot) L.push('| 扫描根目录 | `' + cell(s.scanRoot) + '` |');
+  if (s.redacted) L.push('| 路径脱敏 | 已启用：绝对路径以 `' + REDACTED + '` 代替，相对路径保留 |');
   L.push('| 组件数（算法数） | ' + s.componentCount + ' |');
   L.push('');
   L.push('## 二、口径与边界（先读这一节）');
@@ -383,7 +410,7 @@ function renderMarkdown(summary) {
       const label = r.bucket === 'deprecated'
         ? '**' + BUCKET_LABEL[r.bucket] + '**'
         : BUCKET_LABEL[r.bucket] + (r.pqc ? '（PQC）' : '');
-      const locs = r.occurrences.slice(0, 3).map((o) => o.location + (o.line ? ':' + o.line : '')).join('<br>');
+      const locs = r.occurrences.slice(0, 3).map((o) => scrubLocation(o.location, s.redacted) + (o.line ? ':' + o.line : '')).join('<br>');
       const more = r.occurrences.length > 3 ? '<br>… 共 ' + r.occurrences.length + ' 处' : '';
       const count = r.truncatedAt ? '≥' + r.truncatedAt : String(r.count);
       L.push('| ' + cell(r.name) + ' | ' + label + ' | ' + cell(r.primitive || '-') + ' | ' + count + ' | ' + cell(r.methods.join(', ') || '-') + ' | ' + cell(locs || '-') + more + ' |');
@@ -464,7 +491,7 @@ function renderMarkdown(summary) {
 
 // ── CLI ──────────────────────────────────────────────────────────────
 
-const USAGE = 'usage: cbom-compliance --bom <file> [--dir <path>] [--out <file>] [--format md|json]';
+const USAGE = 'usage: cbom-compliance --bom <file> [--dir <path>] [--out <file>] [--format md|json] [--redact]';
 
 function readFlag(args, name) {
   const eq = name + '=';
@@ -503,6 +530,20 @@ function main() {
   const format = fmtFlag.value === null ? 'md' : fmtFlag.value;
   if (format !== 'md' && format !== 'json') fail('--format must be md or json');
 
+  // Boolean flag: readFlag would mistake a following `--bom` for its value.
+  let redact = false;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i].startsWith('--redact=')) {
+      const v = args[i].slice('--redact='.length);
+      if (v !== 'true' && v !== 'false') fail('--redact takes no value, or true / false');
+      redact = v === 'true';
+    } else if (args[i] === '--redact') {
+      const next = args[i + 1];
+      if (next === 'true' || next === 'false') { redact = next === 'true'; i++; }
+      else redact = true;
+    }
+  }
+
   let bom;
   try {
     bom = JSON.parse(fs.readFileSync(bomFlag.value, 'utf-8'));
@@ -523,7 +564,7 @@ function main() {
     pem = { root, scannedFiles: r.scannedFiles, found: r.found, skipped: r.skipped };
   }
 
-  const summary = summarise(bom, { dir: dirFlag.value || '', pem });
+  const summary = summarise(bom, { dir: dirFlag.value || '', pem: pem, redact: redact });
   const out = format === 'json' ? JSON.stringify(summary, null, 2) : renderMarkdown(summary);
 
   if (outFlag.value) {

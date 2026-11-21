@@ -121,7 +121,16 @@ unmapped rather than paraphrased from a guessed structure.
 ```bash
 cbom-tools scan --dir ./project --out cbom.json
 cbom-tools compliance --bom cbom.json --dir ./project --out 密评自查报告.md
+
+# the same report, with absolute paths masked
+cbom-tools compliance --bom cbom.json --dir ./project --out report.md --redact
 ```
+
+Pass `--redact` when the report leaves the machine it was generated on. The
+absolute scan root and any absolute evidence location become `<redacted>`, and
+the report says so in section 1. Relative paths are kept: the relative part is
+the finding, the prefix is the leak. The flag changes presentation only - the
+verdicts and the counts are identical either way.
 
 Section 3 answers the three questions a reviewer asks first, each with a verdict,
 before any table is shown:
