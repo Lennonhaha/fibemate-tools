@@ -102,7 +102,8 @@ const DEFAULT_RULES = {
     { re: /\bmbedtls_ecdh/g, algs: ['ECDH'] },
     { re: /\bmbedtls_rsa/g, algs: ['RSA'] },
     // ── Python hashlib ──
-    { re: /import\s+hashlib/g, algs: ['SHA-256'] },
+    // An import is not a usage: `import hashlib` says nothing about which
+    // digest is used. Only the call sites below count (see #215).
     { re: /hashlib\.sha256\(/g, algs: ['SHA-256'] },
     { re: /hashlib\.new\(\s*["']sha256["']/gi, algs: ['SHA-256'] },
     // ── Receiver-agnostic call sites ──────────────────────────────
