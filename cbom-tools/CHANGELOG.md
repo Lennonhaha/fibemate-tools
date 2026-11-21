@@ -6,6 +6,34 @@ minor number moves for behaviour changes.
 
 ## Unreleased
 
+### Fixed
+
+- Comments no longer count as algorithm evidence. On liboqs (1.94 M lines,
+  commit `8c7f659`) the scanner reported 18 occurrences of deprecated
+  algorithms and the compliance report concluded 高风险; all 18 were prose.
+  Fifteen were the `DSA` inside `ML-DSA` / `SLH-DSA` written with a space, or
+  inside a doc comment; three were the ARM instruction name `SHA1` in a NEON
+  comment. `stripComments()` now blanks comment ranges before matching, keeps
+  every newline (so line numbers still point at the raw file), and leaves
+  string literals alone - `createHash('md5')` is evidence, a comment is not.
+  A space-separated PQC family name no longer degrades to the legacy name.
+  Result on the same tree: `DSA` and `SHA-1` drop to zero, the verdict moves
+  from 高风险 to 建议整改, and scan cost is +18% (3.98 s vs 3.38 s) with peak
+  RSS 70 MB vs 58 MB.
+- Added the OpenSSL DSA call shapes (`DSA_sign(`, `DSA_verify(`,
+  `DSA_do_sign(`, `DSA_do_verify(`). The bare `\bdsa\b` rule cannot see them
+  because `_` is a word character, so a file that called the API without ever
+  naming the type was reported clean.
+
+### Note on coverage
+
+Three components disappeared on liboqs: `Dilithium`, `MQOM`, `UOV`. Every one
+of their occurrences was prose (a paper citation, a credit comment, a sentence
+about the UOV implementation), so their removal is the intended effect. Their
+real identifiers (`OQS_SIG_alg_uov_...`) still need compact-identifier rules
+like the existing FrodoKEM/McEliece ones; that is a recall gap this change does
+not close, and it is not a reason to keep matching comments.
+
 ### Added
 
 - `docs/compliance-methodology.md`: the rules behind the three judgements

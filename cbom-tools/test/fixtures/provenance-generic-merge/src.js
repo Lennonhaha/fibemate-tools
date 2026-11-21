@@ -1,1 +1,1 @@
-// ml-dsa usage
+const algorithm = 'ml-dsa';

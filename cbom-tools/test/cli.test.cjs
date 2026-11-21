@@ -115,7 +115,7 @@ test('场景 3 有源码无 package.json：只走源码扫描，occurrences 带�
       "const crypto = require('crypto');",
       "const smc = require('sm-crypto');",
       "crypto.createHash('sha-256').update('x');",
-      '// ML-KEM-768 decapsulation here',
+      "const kemAlg = 'ML-KEM-768';",
       'module.exports = 1;',
     ].join('\n'),
     'lib/deep/a.cjs': "crypto.createHash('sha3-512');",

@@ -150,6 +150,10 @@ const DEFAULT_RULES = {
     { re: /\bblake2s256\b/gi, algs: ['Blake2s-256'] },
     { re: /\bblake2s\b/gi, algs: ['Blake2s'] },
     { re: /(?<![-\w])dsa\b/gi, algs: ['DSA'] },
+    // OpenSSL's DSA API: `DSA_sign(...)` has no word boundary after `dsa`
+    // (the underscore is a word character), so the rule above cannot see the
+    // call that actually matters. Matched by call shape instead.
+    { re: /\bdsa_(?:sign|verify|do_sign|do_verify)\s*\(/gi, algs: ['DSA'] },
     { re: /\becdsa\b/gi, algs: ['ECDSA'] },
     { re: /\bed448\b/gi, algs: ['Ed448'] },
     { re: /\bx448\b/gi, algs: ['X448'] },
@@ -500,6 +504,142 @@ function matchDeps(deps, rules) {
   return found;
 }
 
+// ── Comment stripping ───────────────────────────────────────────────
+//
+// A comment is prose about the code, not a call site. On liboqs (1.94 M
+// lines, 2026-11-21 benchmark) 18 of 18 "deprecated algorithm" hits were
+// prose: "PCT for DSA keypairs" in a C block comment, and "SHA1
+// instruction" in an ARM NEON comment. Matching comments costs recall
+// nothing and precision everything.
+//
+// Strings are deliberately NOT stripped: `createHash('md5')`,
+// `generateKeyPairSync('dsa')` and `EVP_get_digestbyname("sha1")` put the
+// name inside a literal, and that literal is the evidence this scanner
+// exists to collect. Only comments go.
+//
+// The pass replaces comment characters with spaces and keeps every
+// newline, so offsets and line numbers stay identical to the raw file:
+// the occurrence evidence must point at the real line, not a shifted one.
+const C_LIKE_EXT = new Set([
+  '.c', '.h', '.cc', '.cpp', '.hpp', '.cxx', '.js', '.cjs', '.mjs',
+  '.ts', '.tsx', '.jsx', '.go', '.java', '.cs', '.rs', '.kt', '.swift',
+]);
+
+function stripComments(text, file) {
+  const ext = path.extname(file).toLowerCase();
+  const python = ext === '.py';
+  // An unknown language is left alone: a wrong comment rule is worse than
+  // no comment rule, because it can blank live code.
+  if (!python && !C_LIKE_EXT.has(ext)) return text;
+  // Cheap probe: no comment marker, no work. Most files in a C tree still
+  // have a licence header, but generated tables and KAT vectors do not.
+  if (text.indexOf(python ? '#' : '/') < 0) return text;
+
+  // Ranges [start, end) of comment text. Two passes: one to find them, one
+  // to apply. The first version blanked characters inside a `split('')`
+  // array, which on a 64 MB tree pushed peak RSS from 58 MB to 106 MB, and
+  // walked every character one at a time, which cost 44% scan time. Jumping
+  // with indexOf keeps both proportional to the amount of comment text.
+  //
+  // Known limit, stated rather than papered over: a template literal that
+  // contains a nested template (`` `${a ? `x` : `y`}` ``) ends at the inner
+  // backtick, so a `//` after it inside the outer literal can be mistaken for
+  // a comment. The failure mode is a lost match, never a stripped line of
+  // code; nothing in the test corpus hits it. Regex literals such as
+  // `/a\/b/` are the same class of limit.
+  const ranges = [];
+  const n = text.length;
+  let i = 0;
+  let mode = 'code'; // code | line | block | sq | dq | bq | tq1 | tq2
+  let start = -1;
+
+  // Position of the closing quote, ignoring escaped ones.
+  function closeQuote(from, quote) {
+    let j = from;
+    for (;;) {
+      const k = text.indexOf(quote, j);
+      if (k < 0) return -1;
+      let bs = 0;
+      let p = k - 1;
+      while (p >= from && text[p] === '\\') { bs++; p--; }
+      if (bs % 2 === 0) return k;
+      j = k + 1;
+    }
+  }
+
+  while (i < n) {
+    if (mode === 'code') {
+      const c = text[i];
+      const d = text[i + 1];
+      if (python && c === '#') { start = i; mode = 'line'; i++; continue; }
+      if (!python && c === '/' && d === '/') { start = i; mode = 'line'; i += 2; continue; }
+      if (!python && c === '/' && d === '*') { start = i; mode = 'block'; i += 2; continue; }
+      if (python && (text.startsWith("'''", i) || text.startsWith('"""', i))) {
+        const triple = c === "'" ? "'''" : '"""';
+        const k = text.indexOf(triple, i + 3);
+        i = k < 0 ? n : k + 3;
+        continue; // a docstring is a string, not a comment: kept verbatim
+      }
+      if (c === "'" || c === '"' || (!python && c === '`')) {
+        const k = closeQuote(i + 1, c);
+        i = k < 0 ? n : k + 1;
+        continue; // string literal: kept verbatim
+      }
+      i++;
+      continue;
+    }
+
+    if (mode === 'line') {
+      const k = text.indexOf('\n', i);
+      const end = k < 0 ? n : k;
+      if (end > start) ranges.push([start, end]);
+      start = -1;
+      i = k < 0 ? n : k + 1;
+      mode = 'code';
+      continue;
+    }
+
+    // block
+    {
+      const k = text.indexOf('*/', i);
+      const end = k < 0 ? n : k + 2;
+      if (end > start) ranges.push([start, end]);
+      start = -1;
+      i = end;
+      mode = 'code';
+    }
+  }
+
+  if (ranges.length === 0) return text;
+
+  // Blank the comment ranges, keeping every newline so line numbers and
+  // offsets still point at the real line of the raw file.
+  const parts = [];
+  let cursor = 0;
+  for (const [from, to] of ranges) {
+    parts.push(text.slice(cursor, from));
+    parts.push(text.slice(from, to).replace(/[^\n\r]/g, ' '));
+    cursor = to;
+  }
+  parts.push(text.slice(cursor));
+  return parts.join('');
+}
+
+// ── Compound-name guard ─────────────────────────────────────────────
+//
+// "ML-DSA" and "SLH-DSA" reach the bare `dsa` rule only in their
+// space-separated spellings ("ml dsa", "slh dsa"): the lookbehind in the
+// rule already rejects the hyphenated and underscored forms, because `-`
+// and `_` are word characters or explicitly excluded. Checking the family
+// word here keeps the legacy rule a single readable line, and keeps the
+// reason for the exception in one place.
+const FAMILY_BEFORE_DSA = /(?:^|[^A-Za-z0-9])(?:ml|slh|hash|xmss|lms)[-_ ]$/i;
+
+function suppressedByFamily(name, text, index) {
+  if (name !== 'DSA') return false;
+  return FAMILY_BEFORE_DSA.test(text.slice(Math.max(0, index - 12), index));
+}
+
 // ── Source scanning ─────────────────────────────────────────────────
 
 function scanSource(root, rules) {
@@ -543,7 +683,7 @@ function scanSource(root, rules) {
           warn('skipped ' + path.relative(root, full) + ': ' + st.size + ' bytes exceeds ' + MAX_FILE_BYTES);
           continue;
         }
-        content = fs.readFileSync(full, 'utf-8');
+        content = stripComments(fs.readFileSync(full, 'utf-8'), full);
       } catch (err) {
         warn('skipped ' + path.relative(root, full) + ': ' + (err.code || err.message));
         continue;
@@ -556,6 +696,7 @@ function scanSource(root, rules) {
           const span = { start: m.index, end: m.index + m[0].length };
           for (const a of algs) {
             const name = a.replace(/\$(\d+)/g, (_, i) => m[i]);
+            if (suppressedByFamily(name, content, m.index)) continue;
             addOcc(name, full, line, m[0], span);
           }
         }
