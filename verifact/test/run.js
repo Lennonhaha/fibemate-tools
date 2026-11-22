@@ -1257,6 +1257,72 @@ test('serve: the dashboard answers health and config without scanning anything',
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+// ---------- pendingArtifact (explicit "no artefact yet" label) ----------
+
+function pendingFixture() {
+  const os = require('os');
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'verifact-pending-'));
+  fs.mkdirSync(path.join(base, 'docs'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'artifacts'), { recursive: true });
+  fs.writeFileSync(path.join(base, 'docs', 'bench.md'), '# bench\n\nHandshake p95=78.5ms.\n', 'utf8');
+  fs.writeFileSync(path.join(base, 'artifacts', 'stuff.json'), JSON.stringify({ note: 'nothing comparable' }), 'utf8');
+  return base;
+}
+
+test('pendingArtifact: relabels an unbound claim, and changes nothing else', async () => {
+  const base = pendingFixture();
+  const overrides = {
+    docs: { roots: ['docs'], exclude: ['**/node_modules/**'], maxFiles: 20 },
+    artifacts: { roots: ['artifacts'], exclude: ['**/node_modules/**'], maxFiles: 20 },
+    cache: { enabled: false },
+    gate: { failOn: 'drift' }
+  };
+
+  const control = await engine.run(loadConfig({ cwd: base, overrides }), {});
+  const claim = control.claims.find((c) => c.kind === 'kv' && c.key === 'p95');
+  assert.ok(claim, 'fixture must produce a p95 claim');
+  assert.strictEqual(claim.status, 'unbound', 'control: no artefact entry, so unbound, got ' + claim.status);
+  assert.strictEqual(claim.reason, 'no_artifact_entry', 'control keeps the plain reason, got ' + claim.reason);
+  assert.strictEqual(control.counts.pendingArtifact, 0, 'control must not invent a pending count');
+
+  const labelled = await engine.run(loadConfig({
+    cwd: base,
+    overrides: Object.assign({}, overrides, {
+      pendingArtifact: [{ file: '**/bench.md', kind: 'kv', key: 'p95', why: 'no stored output yet' }]
+    })
+  }), {});
+  const marked = labelled.claims.find((c) => c.kind === 'kv' && c.key === 'p95');
+  assert.strictEqual(marked.status, 'unbound', 'the verdict must stay unbound, got ' + marked.status);
+  assert.strictEqual(marked.reason, 'pending_artifact', 'the reason must name the pending artefact, got ' + marked.reason);
+  assert.strictEqual(marked.score, claim.score, 'the score must not change');
+  assert.strictEqual(labelled.counts.unbound, control.counts.unbound, 'the unbound denominator must not shrink');
+  assert.strictEqual(labelled.counts.verified, control.counts.verified, 'nothing may become verified');
+  assert.strictEqual(labelled.counts.pendingArtifact, 1, 'one labelled claim expected, got ' + labelled.counts.pendingArtifact);
+  assert.strictEqual(labelled.gate.failed, false, 'labelling must not turn the gate red');
+
+  fs.rmSync(base, { recursive: true, force: true });
+});
+
+test('pendingArtifact: a drift is never relabelled as pending', async () => {
+  const cfg = loadConfig({
+    cwd: FIX,
+    overrides: {
+      docs: { roots: ['docs'], exclude: ['**/node_modules/**'], maxFiles: 200 },
+      artifacts: { roots: ['artifacts'], exclude: ['**/node_modules/**'], maxFiles: 500 },
+      modules: ['ML-KEM-768', 'SM2'],
+      cache: { enabled: false },
+      gate: { failOn: 'drift' },
+      pendingArtifact: [{ file: '**/report.md', kind: 'kv', key: 'p95', why: 'trying to hide a drift' }]
+    }
+  });
+  const report = await engine.run(cfg, {});
+  const pending = report.claims.filter((c) => c.reason === 'pending_artifact');
+  assert.strictEqual(pending.length, 0, 'a claim with a comparable mismatch must stay a drift, got ' + pending.length + ' pending');
+  assert.ok(report.counts.drift >= 1, 'the p95 mismatch must still be reported as drift');
+  assert.strictEqual(report.counts.pendingArtifact, 0, 'pending count must stay zero here');
+  assert.strictEqual(report.gate.failed, true, 'the gate must stay red');
+});
+
 // ---------- 运行 ----------
 
 (async function main() {

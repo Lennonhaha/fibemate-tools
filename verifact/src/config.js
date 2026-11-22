@@ -44,6 +44,8 @@ const DEFAULTS = {
   bindings: [],
   ignore: [],
   deny: [],
+  // 显式登记「无产物、也不许硬凑」的声明：仍计入 unbound，但原因标成 pending_artifact。
+  pendingArtifact: [],
   // 哈希存证目录：文件本身被时间戳盖过，插一行注释就改变哈希、破坏存证。
   // 这类目录不能靠 disposition（那要改文件），只能靠配置登记。
   sealed: [],

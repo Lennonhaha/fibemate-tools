@@ -214,7 +214,7 @@ async function run(cfg, opts) {
     // 新增维度：处置分类。claimsTotal = 抽到的全部声明（含 ignored/denied），
     // dispositioned = 因处置分类而未进入判定的条数。
     claimsTotal: claims.length, dispositioned: 0, dispositionCounts: {},
-    standardRefs: 0, sealed: 0
+    standardRefs: 0, sealed: 0, pendingArtifact: 0
   };
 
   // sealed 规则命中率：一条规则零命中就是「配了但没生效」，
@@ -297,6 +297,18 @@ async function run(cfg, opts) {
     }
 
     const res = resolveClaim(claim, index, cfg.resolve);
+    // 显式登记为「待补产物」：判定结果一个字都不改（还是 unbound / ambiguous），
+    // 只把原因换成可追踪的标签，免得它混进 no_artifact_entry 当成「没人管」。
+    // 不允许借这条通道把失败改成通过——分数、cmp、best 全部保持原样。
+    if (res.status === 'unbound' || res.status === 'ambiguous') {
+      const pending = matchRule(cfg.pendingArtifact, claim);
+      if (pending) {
+        res.reason = 'pending_artifact';
+        res.pendingArtifact = pending.why || pending.note || true;
+        res.note = '显式登记为待补产物（pending artifact）：' + (pending.why || pending.note || '无原始输出');
+        stats.pendingArtifact++;
+      }
+    }
     if (res.status === 'verified') stats.verified++;
     else if (res.status === 'drift') stats.drift++;
     else if (res.status === 'ambiguous') stats.ambiguous++;
@@ -304,7 +316,7 @@ async function run(cfg, opts) {
     else if (res.status === 'ref-missing') stats.refMissing++;
     else stats.unbound++;
 
-    results.push(Object.assign({}, claim, res, { note: explain(res) }));
+    results.push(Object.assign({}, claim, res, { note: res.note || explain(res) }));
   }
 
   // 处置分布：只统计「作者表过态」的声明。ignored 与 denied 都不是作者的分类判断，

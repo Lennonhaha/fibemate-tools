@@ -19,7 +19,13 @@
       "**/fibemate/tools/**",
       "**/docs/pr-archive/**",
       "**/whitepaper-risk.md",
-      "**/verifact/**"
+      "**/verifact/**",
+      "docs/audit-log/**",
+      "www/**",
+      "p0_evidence_*/**",
+      "security-assessment/**",
+      "archives/**",
+      "fpga-l8l9-43-tests_*.md"
     ],
     "maxFileBytes": 2097152,
     "maxFiles": 3000,
@@ -90,6 +96,20 @@
     "includeCodeBlocks": false
   },
   "bindings": [],
+  "pendingArtifact": [
+    {
+      "file": "README.md",
+      "kind": "kv",
+      "key": "p95",
+      "why": "2026-08 单机握手 p95，未落盘成产物；补 tls-hybrid bench 输出后再绑定，不许按最接近的 benchmark 数字硬凑"
+    },
+    {
+      "file": "**/pqc-readiness.md",
+      "kind": "ratio",
+      "module": "liboqs",
+      "why": "liboqs 0.12.0 交叉验证 10,000/10,000 没有存盘输出；该文件是 2026-07 就绪度快照，补产物前保持 unbound"
+    }
+  ],
   "deny": [
     {
       "file": "**/fibemate/docs/engineering-notes.md",
