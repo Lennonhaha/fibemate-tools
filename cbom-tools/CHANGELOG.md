@@ -4,7 +4,7 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
-## Unreleased
+## 0.3.2 — 2026-11-23
 
 ### Fixed
 
@@ -24,6 +24,17 @@ minor number moves for behaviour changes.
   `DSA_do_sign(`, `DSA_do_verify(`). The bare `\bdsa\b` rule cannot see them
   because `_` is a word character, so a file that called the API without ever
   naming the type was reported clean.
+
+### Changed
+
+- Coverage toolchain: `c8` 10.1.3 -> 12.0.0, with `overrides` pinning
+  `glob` to 14.0.6 and `minimatch` to 11.0.9. Before this, `npm audit` on this
+  package reported 4 moderate advisories
+  (`GHSA-3g3m-2fjr-6pw4`, `GHSA-g3hv-75wg-m249`) reached through
+  `c8 -> test-exclude -> glob -> minimatch`; `npm audit fix --force` would have
+  "fixed" them by downgrading `c8` to 9.1.0. After the upgrade and the pins,
+  `npm audit` reports 0 vulnerabilities and `npm run test:coverage` still meets
+  its 90/90/80 thresholds.
 
 ### Note on coverage
 
