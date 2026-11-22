@@ -1,0 +1,61 @@
+name: docs-sync
+
+# The README states numbers. Those numbers are claims, and a claim that is not
+# re-derived from a run is a memory - it rots silently. This workflow reruns the
+# tools and fails when the README disagrees with what the code actually says.
+#
+# What runs here:
+#   1. the comparator must demonstrably go red (--selftest), otherwise "green"
+#      only means the comparator is broken;
+#   2. the test counts this repository produces must match the README.
+#
+# What cannot run here: the cross-repository numbers (documents / claims /
+# verified / drift). Those are measured by running verifact against the sibling
+# fibemate checkout *and* its artefact repositories (fibemate-core, pqc-hw-bench,
+# lookingglass, the TSA trees). A runner that has only one of them would measure
+# a different document set and call the difference "drift", so the check prints
+# SKIP here and `--require-cross-repo` is used on a machine that has the full
+# tree. A SKIP is not counted as a pass, and the README says so.
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'scripts/check-docs-sync.cjs'
+      - '**/package.json'
+      - '**/test/**'
+      - '**/*.cjs'
+      - '.github/workflows/docs-sync.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'scripts/check-docs-sync.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  numbers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      # cbom-tools' suite imports a devDependency, so a bare checkout runs fewer
+      # tests than the README claims - which the gate would report as a mismatch
+      # in the wrong direction.
+      - name: Install cbom-tools devDependencies
+        working-directory: cbom-tools
+        run: npm ci --no-audit --no-fund
+
+      - name: The comparator goes red on a broken README
+        run: node scripts/check-docs-sync.cjs --selftest
+
+      - name: Every README number matches a run
+        run: node scripts/check-docs-sync.cjs
