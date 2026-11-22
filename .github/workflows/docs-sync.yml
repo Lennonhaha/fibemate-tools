@@ -1,0 +1,70 @@
+name: docs-sync
+
+# The README states numbers. Those numbers are claims, and a claim that is not
+# re-derived from a run is a memory - it rots silently. This workflow reruns the
+# tools and fails when the README disagrees with what the code actually says.
+#
+# Two halves, both required:
+#   1. the comparator must demonstrably go red (--selftest), otherwise "green"
+#      only means the comparator is broken;
+#   2. the real tree must pass, including the cross-repository numbers, which is
+#      why the fibemate repository is checked out next to this one.
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'scripts/check-docs-sync.cjs'
+      - '**/package.json'
+      - '**/test/**'
+      - '**/*.cjs'
+      - '.github/workflows/docs-sync.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'scripts/check-docs-sync.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  numbers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out this repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # verifact's config resolves ../../fibemate, so the sibling has to exist at
+      # the same relative path it has on a developer machine. A symlink keeps the
+      # config untouched - rewriting paths just for CI would mean CI checks a
+      # different document set than the one the numbers were measured on.
+      - name: Check out the main repository next door
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: LennonHaha/fibemate
+          path: _main/fibemate
+          fetch-depth: 1
+
+      - name: Put the main repository where verifact expects it
+        run: |
+          set -euo pipefail
+          target="$(dirname "$GITHUB_WORKSPACE")/fibemate"
+          ln -sfn "$GITHUB_WORKSPACE/_main/fibemate" "$target"
+          ls -ld "$target"
+          test -d "$target/docs"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+
+      - name: The comparator goes red on a broken README
+        run: node scripts/check-docs-sync.cjs --selftest
+
+      - name: Every README number matches a run
+        # --require-cross-repo turns a "sibling repository missing" SKIP into a
+        # failure: the sibling is checked out above, so a skip here would mean the
+        # gated number was never actually checked.
+        run: node scripts/check-docs-sync.cjs --require-cross-repo
