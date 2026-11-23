@@ -245,7 +245,10 @@ async function atest(name, fn) {
 
   await atest('engine: KAT 三件套在真实向量上给出 provenance 与 perImpl 计数', async () => {
     const path = require('path');
-    const rsp = 'D:/FIBEMATE/fibemate/packages/pqc-kem/test/kat/mlkem-768-KAT.rsp';
+    // 与下面两个实现路径同样按 __dirname 相对解析：裸检出（CI 只 checkout 本仓）
+    // 时 existsSync 为 false，用例照旧跳过，但仓库里不再出现本机绝对路径。
+    const rsp = process.env.XDIFF_KAT_RSP
+      || path.join(__dirname, '..', '..', '..', 'fibemate', 'packages', 'pqc-kem', 'test', 'kat', 'mlkem-768-KAT.rsp');
     if (!require('fs').existsSync(rsp)) { console.log('       (跳过：KAT 向量文件不在本机)'); return; }
     // 只有向量文件还不够：引擎在可加载实现少于 2 个时直接返回（差分不成立），
     // KAT 用例根本不会被记录。裸检出（CI 只 checkout 本仓）必须显式跳过。

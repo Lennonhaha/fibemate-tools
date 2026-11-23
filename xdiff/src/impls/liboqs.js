@@ -10,7 +10,7 @@ const U = require('../util');
  * liboqs 桥接：一个长期进程，stdin 写命令、stdout 读结果。
  * 批协议见 tools/oqsbridge.c。
  *
- * 现状：D:\FIBEMATE\liboqs-build 是算法全禁用的空壳构建，OQS_KEM_new 会返回 NULL，
+ * 现状：本机曾用来构建桥接的 liboqs 是算法全禁用的空壳构建，OQS_KEM_new 会返回 NULL，
  * 适配器因此标记 unavailable —— 不假装它能当参考实现。
  * 用户若编出完整 liboqs，把 config 里的 path 指过去即可自动启用。
  */

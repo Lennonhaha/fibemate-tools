@@ -22,7 +22,7 @@ FIBEMATE 的独立工具集（与 `fibemate` 主仓分离，独立 license）。
 | `undecryptable-prover` | Rust + Lean4 | 多轮覆写销毁 + 证据链 + Lean 证明骨架 | 可跑，12 项测试 PASS（`cargo test --release`）；Lean 主定理 0 `sorry`、1 条显式 axiom，`#print axioms` 可审计 |
 | `crypto-time-ledger` | TypeScript (pkijs) | RFC 3161 锚定的密码算法状态账本（add/verify/query/export CLI） | 可跑，78 项测试 + `tsc --noEmit` PASS |
 | `tla-verifier` | Bash + TLA+ TLC | 钉版 TLC 持续验证主仓 C-2 模型 7 条不变式（nightly） | 可跑，实测 exit 0 / 26,115 distinct states |
-| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，86 项回归 PASS；npm 已发布 `verifact@0.2.5`；主仓 260 份文档 / 1421 条声明 / verified 107 · drift 0（2026-11-23 实测；比对集不含 audit-log / www 镜像 / 安全评估快照 / p0_evidence 等记录类文档） |
+| `verifact` | Node (零依赖) | 事实哨兵：把文档里的硬数字声明绑定到产出物上逐条核验，漂移即红 + 本地看板 | 可跑，86 项回归 PASS；npm 已发布 `verifact@0.2.5`；本仓 260 份文档 / 1415 条声明 / verified 108 · drift 0（2026-11-23 实测；比对集不含 audit-log / www 镜像 / 安全评估快照 / p0_evidence 等记录类文档） |
 | `xdiff` | Node (零依赖) + C 桥接 | 差分哨兵：多套 ML-KEM-768 实现同种子逐字节差分、互操作矩阵、密钥派生根因定位 | 可跑，20 项回归 PASS；实测抓到 fibemate-core 漏拼域分隔符 k（2026-09-25 同结论） |
 | `cbom-tools` | Node (零依赖) | CBOM 生成 / 差分 / 合规视图（scan / diff / compliance 三个 CLI 入口） | 可跑，195 项测试（194 pass / 1 skip）；npm 已发布 `cbom-tools@0.3.2` |
 | `falcon` | Node (零依赖) | FALCON 资产扫描 + 断言检查，两个模式串在一个退出码后 | 可跑，12 项测试 PASS |
