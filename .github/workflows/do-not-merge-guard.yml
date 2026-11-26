@@ -1,0 +1,36 @@
+# Refuses a `do-not-merge` label, on every event that can change the answer.
+#
+# Why the `types` list matters: a `pull_request` workflow without `types` runs only
+# on opened / synchronize / reopened. Label a PR a few seconds after it opens and
+# the guard has already started, reads no label, passes — and nothing re-evaluates
+# it. That happened in the sibling repository (fibemate #733, 2026-11-26): the PR
+# carried `do-not-merge` and still reported 51 SUCCESS / 0 FAILURE.
+#
+# This workflow is ADVISORY until `do-not-merge` is added to the main ruleset.
+# RELEASE-DISCIPLINE.md §5b says so; read that before treating a green here as
+# permission to merge.
+
+name: do-not-merge
+
+on:
+  pull_request:
+    types: [ opened, synchronize, reopened, labeled, unlabeled ]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  do-not-merge:
+    name: do-not-merge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Refuse the do-not-merge label
+        if: contains(github.event.pull_request.labels.*.name, 'do-not-merge')
+        run: |
+          echo "::error::This PR carries the do-not-merge label. It is here on purpose; remove it only when the reason it was added is gone."
+          exit 1
+
+      - name: Nothing to refuse
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'do-not-merge') }}
+        run: echo "no do-not-merge label on this PR"
