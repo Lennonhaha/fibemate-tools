@@ -55,7 +55,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -108,7 +108,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -156,7 +156,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -746,7 +746,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -809,7 +809,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "javascript, python"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -872,7 +872,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
@@ -1217,7 +1217,7 @@
       "properties": [
         {
           "name": "fibemate:implementationLanguages",
-          "value": "c"
+          "value": "javascript"
         },
         {
           "name": "fibemate:testingStatus",
