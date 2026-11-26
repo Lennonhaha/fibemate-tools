@@ -784,16 +784,6 @@
             "symbol": "crypto.createHash('sha-256')"
           },
           {
-            "location": "src/digest.js",
-            "line": 10,
-            "symbol": ".createHash('sha-256'"
-          },
-          {
-            "location": "src/digest.js",
-            "line": 10,
-            "symbol": "sha-256"
-          },
-          {
             "location": "src/registry.js",
             "line": 23,
             "symbol": "SHA-256"
@@ -845,16 +835,6 @@
             "location": "src/digest.js",
             "line": 14,
             "symbol": "crypto.createHash('sha-512')"
-          },
-          {
-            "location": "src/digest.js",
-            "line": 14,
-            "symbol": ".createHash('sha-512'"
-          },
-          {
-            "location": "src/digest.js",
-            "line": 14,
-            "symbol": "sha-512"
           },
           {
             "location": "src/registry.js",
