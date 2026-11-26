@@ -139,16 +139,35 @@ function dropForeignUnit(rawPrefix, tokensArr) {
   return tokensArr.slice(0, -1);
 }
 
+/**
+ * 子句边界：`;` `；` `。` 与「不在数字之间的 `.`」。
+ * 上下文窗口越过边界就会把别处的指标名粘进本值的键：实测第 70 行
+ * "p95 156.1 ms, max 168.2 ms; ten-run timing for 007: ..." 抽出的键是
+ * `p95-ms-max`，多出一个来自后半句的 `ten`，而 `primaryToken` 落成 `max`
+ * 又正撞上产出物 `max_score`（fibemate-tools#228）。十进制小数点不算边界。
+ */
+const CLAUSE_BOUNDARY = /[;；。]|(?<!\d)\.(?!\d)/;
+
+function tailClause(text) {
+  const parts = String(text == null ? '' : text).split(CLAUSE_BOUNDARY);
+  return parts[parts.length - 1];
+}
+
+function headClause(text) {
+  const parts = String(text == null ? '' : text).split(CLAUSE_BOUNDARY);
+  return parts[0];
+}
+
 function contextKey(line, startIdx, endIdx, unitToken) {
-  // 表格行的 "|" 会切断上下文，换成空格（等长，安全）
+  // 表格行的 "|" 会切断上下文，换成空格（等长，安全）；链接先还原成文字再切子句，
+  // 否则 URL 里的 "." 会被当句界。
   const rawPrefix = line.slice(Math.max(0, startIdx - 64), startIdx);
-  let prefix = rawPrefix.replace(/\|/g, ' ');
-  prefix = prefix.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1');
+  let prefix = rawPrefix.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\|/g, ' ');
   const before = dropForeignUnit(prefix, cleanTokens(tokens(prefix)));
   if (!before.length) {
     // 数字在行首时（"43/43 cross-validation tests PASS"），用后面的描述词充当键
     let afterRaw0 = '';
-    if (endIdx != null) afterRaw0 = line.slice(endIdx, endIdx + 64).replace(/\|/g, ' ');
+    if (endIdx != null) afterRaw0 = headClause(line.slice(endIdx, endIdx + 64).replace(/\|/g, ' '));
     const tail = cleanTokens(tokens(afterRaw0)).filter((w) => w !== unitToken).slice(0, 3);
     if (!tail.length) return { keyTokens: [], primaryToken: null, key: '' };
     return { keyTokens: tail.slice(0, 2), primaryToken: tail[0], key: tail[0] };
@@ -170,7 +189,7 @@ function contextKey(line, startIdx, endIdx, unitToken) {
 
   // 数字后面的描述词同样参与匹配（"43/43 cross-validation tests PASS" 的情况）
   let afterRaw = '';
-  if (endIdx != null) afterRaw = line.slice(endIdx, endIdx + 48).replace(/\|/g, ' ');
+  if (endIdx != null) afterRaw = headClause(line.slice(endIdx, endIdx + 48).replace(/\|/g, ' '));
   const after = cleanTokens(tokens(afterRaw)).filter((w) => w !== unitToken).slice(0, 2);
 
   const combined = cleanTokens(keyPart.concat(after)).slice(0, 4);

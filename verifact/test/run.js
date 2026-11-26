@@ -6,10 +6,10 @@ const path = require('path');
 const fs = require('fs');
 
 const { compilePatterns } = require('../src/core/walk');
-const { extractClaims } = require('../src/core/claims');
+const { extractClaims, contextKey } = require('../src/core/claims');
 const { buildDispositionScopes, DispositionError } = require('../src/core/dispositions');
 const { collectArtifacts, buildIndex } = require('../src/core/artifacts');
-const { resolveClaim } = require('../src/core/resolve');
+const { resolveClaim, isWeakEvidence } = require('../src/core/resolve');
 const { lintDoc } = require('../src/core/lint');
 const { loadConfig, buildModules } = require('../src/config');
 const engine = require('../src/engine');
@@ -23,6 +23,103 @@ const tests = [];
 function test(name, fn) { tests.push({ name, fn }); }
 
 function read(rel) { return fs.readFileSync(path.join(FIX, rel), 'utf8'); }
+
+// ---------- 弱证据：量纲不可比（fibemate-tools#228）----------
+
+// 2026-11-26 实测：docs/deploy-evidence/2d1e75c.md:70 的 `168.2ms`（dim=time）
+// 被绑到 tools/cars-scorecard.json 的 `max_score = 100`（dim=null），score 0.475
+// 过了 minScore 0.45 → 判 drift。旧判据只拦「无单位小整数 ≤ 50」，100 从缝里过。
+test('弱证据: 有量纲 vs 无量纲 一律不可比，与数值大小无关', () => {
+  assert.strictEqual(isWeakEvidence(mkValue('168.2', 'ms'), mkValue('100', null)), true,
+    '168.2ms(dim=time) 对 max_score=100(dim=null) 必须判弱证据');
+  assert.strictEqual(isWeakEvidence(mkValue('100', null), mkValue('168.2', 'ms')), true,
+    '反向也必须判弱证据（对称）');
+});
+
+test('弱证据: 原例 23957ms vs usageCount=1 仍然丢弃', () => {
+  assert.strictEqual(isWeakEvidence(mkValue('23957', 'ms'), mkValue('1', null)), true);
+});
+
+test('弱证据: 同量纲跨单位不算弱证据（78.5ms vs 78500us 仍可核验）', () => {
+  assert.strictEqual(isWeakEvidence(mkValue('78.5', 'ms'), mkValue('78500', 'us')), false,
+    '两侧 dim 都是 time，必须允许比较');
+  assert.strictEqual(isWeakEvidence(mkValue('168.2', 'ms'), mkValue('141', 'ms')), false);
+});
+
+test('弱证据: 量纲不同（time vs size）也不可比', () => {
+  assert.strictEqual(isWeakEvidence(mkValue('168.2', 'ms'), mkValue('1024', 'kb')), true);
+});
+
+test('绑定: 量纲判据生效后 168.2ms 不再被绑到 max_score，也不判 drift', () => {
+  const entry = {
+    source: 'tools/cars-scorecard.json', path: 'max_score', keyTokens: ['max', 'score'], primaryToken: 'score',
+    module: null, value: mkValue('100', null), raw: '100'
+  };
+  const byToken = new Map([['max', [entry]], ['p95', [entry]], ['score', [entry]]]);
+  const index = { byToken, presence: [], entries: [entry], fileLines: new Map() };
+  const claim = {
+    kind: 'measure', key: 'p95-ms-max', keyTokens: ['p95', 'ms', 'max'], primaryToken: 'max',
+    module: null, value: mkValue('168.2', 'ms')
+  };
+  const res = resolveClaim(claim, index, {});
+  assert.strictEqual(res.status, 'unbound', '应变 unbound，不是 drift');
+  assert.ok(res.weakEvidence >= 1, '应记录到弱证据候选被丢弃');
+});
+
+// ---------- key 抽取：上下文不跨子句（fibemate-tools#228）----------
+
+const TWO_DEVICE_LINE = '- Twenty-run timing for 009: p95 **156.1 ms**, max **168.2 ms**; ten-run timing for 007: p95 **141.0 ms**, max **141.0 ms**. Pre-deploy live log samples were 122-164 ms.';
+
+test('抽取: 句界之后的词不进入前一句的 key（不含 ten / pre / deploy）', () => {
+  const claims = extractClaims(TWO_DEVICE_LINE + '\n', 'acc.md', { modules: [], dispositions: false });
+  const keys = claims.map((c) => c.key);
+  const allTokens = claims.reduce((acc, c) => acc.concat(c.keyTokens), []);
+  for (const bad of ['ten', 'pre', 'deploy']) {
+    assert.ok(allTokens.indexOf(bad) < 0, `keyTokens 不应含 ${bad}（实际 ${JSON.stringify(allTokens)}，keys ${JSON.stringify(keys)}）`);
+  }
+  const first = claims.find((c) => c.value.raw === '156.1ms');
+  assert.ok(first, '应抽出 156.1ms 这条');
+  assert.strictEqual(first.primaryToken, 'p95', '009 的 p95 指标名不应被后文的 max 顶掉');
+});
+
+test('抽取: 十进制小数点不算句界（168.2 不被切断）', () => {
+  const ctx = contextKey('p95 168.2 ms', 9, 15, 'ms');
+  assert.ok(ctx.keyTokens.indexOf('p95') >= 0, '小数点前的 p95 必须留在上下文里');
+});
+
+test('抽取: 分号是句界（后半句的指标名不粘进前半句）', () => {
+  const before = contextKey('a: p95 156.1 ms, max 168.2 ms; ten-run timing', 29, 35, 'ms');
+  assert.ok(before.keyTokens.indexOf('ten') < 0, 'ten 来自分号之后，不该进 key');
+});
+
+test('绑定: 单 token 产出物只在主词命中时可比较（31/36 不再被绑成 drift）', () => {
+  const entry = {
+    source: 'scripts/hooks/forbidden-literals.txt', path: 'scripts/hooks/forbidden-literals.txt#L14#tvla',
+    keyTokens: ['tvla'], primaryToken: 'tvla', module: null, value: mkRatio('36', '36'), raw: '36/36'
+  };
+  const byToken = new Map([['tvla', [entry]]]);
+  const index = { byToken, presence: [], entries: [entry], fileLines: new Map() };
+  const claim = {
+    kind: 'measure', key: 'tvla-side-channel-test-status-algos',
+    keyTokens: ['tvla', 'side', 'channel', 'test', 'status', 'algos'], primaryToken: 'algos',
+    module: null, value: mkRatio('31', '36')
+  };
+  const res = resolveClaim(claim, index, {});
+  assert.notStrictEqual(res.status, 'drift', '单 token 产出物 + 主词不命中 → 不许判漂移');
+  assert.ok(res.weakEvidence >= 1, '应记到弱证据');
+});
+
+test('绑定: 单 token 产出物在主语命中时仍然可比较（coverage 99.1）', () => {
+  const entry = {
+    source: 'a.json', path: 'coverage', keyTokens: ['coverage'], primaryToken: 'coverage',
+    module: null, value: mkValue('99.1', null), raw: '99.1'
+  };
+  const byToken = new Map([['coverage', [entry]]]);
+  const index = { byToken, presence: [], entries: [entry], fileLines: new Map() };
+  const claim = { kind: 'measure', key: 'coverage', keyTokens: ['coverage'], primaryToken: 'coverage', module: null, value: mkValue('99.1', null) };
+  const res = resolveClaim(claim, index, {});
+  assert.strictEqual(res.status, 'verified', '主词命中时必须还能核验通过');
+});
 
 // ---------- 单位测试 ----------
 
