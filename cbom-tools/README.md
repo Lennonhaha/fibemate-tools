@@ -287,6 +287,28 @@ of writing, so treat this as aligning with a proposed clarification rather than 
 one. `cbom-diff` keeps the distinction too: an omitted value and an explicit `0` are
 reported as a change, not as equal.
 
+### Field semantics in the emitted BOM
+
+`algorithmProperties.primitive` is always populated from `algo-metadata.json`
+(all 61 entries at the time of writing); it is a table lookup, not an inference
+made by the scanner.
+
+`oid` is absent because the metadata table has no OID column. Absence therefore
+means "not recorded in this table", not "this algorithm has no OID" and not
+"unknown algorithm". Adding OIDs is a data change, separate from the scanner.
+
+`nistQuantumSecurityLevel` is deliberately not emitted. A file-level scan cannot
+justify a NIST category for an algorithm, and `0` would assert that none of the
+categories is met; unknown/unassessed is the only defensible value. The
+machine-readable property above carries that meaning.
+
+These are symptoms of one shape (a valid CBOM that is less faithful than it could
+be), but not one cause. A .NET emitter that drops fields and this tool's missing
+`oid` both produce absent data; the former loses data it had, the latter never had
+an OID table. The absent `nistQuantumSecurityLevel` is a third case: deliberate
+omission, not data loss. Keeping the causes separate matters when deciding whether
+the fix belongs in the emitter or in the metadata source.
+
 ### How that lines up in time
 
 | Date | Event |
