@@ -120,6 +120,16 @@ const DEFAULT_RULES = {
     // Names that appear as data (config, CLI flag, registry key) rather
     // than as part of a known function name.
     { re: /\baes[-_]?(?:128|192|256)[-_]?gcm\b/gi, algs: ['AES-GCM'] },
+    // Classic block-cipher modes. Key size is collapsed for the same reason as
+    // GCM: algo-metadata.json has one AES entry, not one per key size. Without
+    // these five, a codebase that encrypts with aes-256-cbc produced a CBOM
+    // that read as "no AES here" -- the same false-clean failure mode as a
+    // silently bad --dir, and the one the GCM-only call-site filter had.
+    { re: /\baes[-_]?(?:128|192|256)[-_]?cbc\b/gi, algs: ['AES-CBC'] },
+    { re: /\baes[-_]?(?:128|192|256)[-_]?ctr\b/gi, algs: ['AES-CTR'] },
+    { re: /\baes[-_]?(?:128|192|256)[-_]?cfb\b/gi, algs: ['AES-CFB'] },
+    { re: /\baes[-_]?(?:128|192|256)[-_]?ofb\b/gi, algs: ['AES-OFB'] },
+    { re: /\baes[-_]?(?:128|192|256)[-_]?ecb\b/gi, algs: ['AES-ECB'] },
     { re: /\bchacha20[-_]?poly1305\b/gi, algs: ['ChaCha20-Poly1305'] },
     { re: /\bed25519\b/gi, algs: ['Ed25519'] },
     { re: /\bx25519\b/gi, algs: ['X25519'] },
@@ -247,6 +257,29 @@ function warn(message) {
 
 const CIPHER_CALL = '.createCipheriv(';
 
+// AES cipher names are a (key size, mode) pair. The key size is dropped
+// because algo-metadata.json has a single AES entry; the mode is kept in the
+// component name because that is what the existing AES-GCM component does.
+// A name outside this table stays unreported: guessing a mode from a name we
+// do not recognise would be worse than reporting nothing.
+const AES_CIPHER_MODES = new Map([
+  ['gcm', 'AES-GCM'],
+  ['cbc', 'AES-CBC'],
+  ['ctr', 'AES-CTR'],
+  ['cfb', 'AES-CFB'],
+  ['ofb', 'AES-OFB'],
+  ['ecb', 'AES-ECB'],
+]);
+
+// Separators are optional so that `aes256cbc` resolves the same way as the
+// bare-identifier rules above.
+const AES_CIPHER_RE = /^aes[-_]?(?:128|192|256)[-_]?(gcm|cbc|ctr|cfb|ofb|ecb)$/;
+
+function aesComponentFor(name) {
+  const m = AES_CIPHER_RE.exec(name);
+  return m ? AES_CIPHER_MODES.get(m[1]) : null;
+}
+
 function collectCipherCallSites(content) {
   const out = [];
   let from = 0;
@@ -266,8 +299,9 @@ function collectCipherCallSites(content) {
     const lit = readQuoted(content, i);
     if (!lit) continue;
     const name = decodeEscapes(lit.value).toLowerCase();
-    if (!name.includes('aes') || !name.includes('gcm')) continue;
-    out.push({ text: name, line: lineAt(content, at), index: at });
+    const algorithm = aesComponentFor(name);
+    if (!algorithm) continue;
+    out.push({ text: name, algorithm, line: lineAt(content, at), index: at });
   }
   return out;
 }
@@ -704,7 +738,7 @@ function scanSource(root, rules) {
       }
       // Call-site arguments, read lexically (see collectCipherCallSites).
       for (const site of collectCipherCallSites(content)) {
-        addOcc('AES-GCM', full, site.line, site.text, { start: site.index, end: site.index + CIPHER_CALL.length });
+        addOcc(site.algorithm, full, site.line, site.text, { start: site.index, end: site.index + CIPHER_CALL.length });
       }
       // Second pass over names assembled from literals (concat / join /
       // template / base64 / escaped bytes). Occurrences are reported at

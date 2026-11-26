@@ -109,6 +109,61 @@
       "level": "safe"
     }
   },
+  "AES-CBC": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "AES-CTR": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "AES-CFB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "AES-OFB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
+  "AES-ECB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "safe"
+    }
+  },
   "SLH-DSA": {
     "assetType": "algorithm",
     "algorithmProperties": {
