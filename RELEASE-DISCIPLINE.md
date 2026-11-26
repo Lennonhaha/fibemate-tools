@@ -88,12 +88,22 @@ not a standard.
 ## 5b. A label is not a gate until it is a required check
 
 `do-not-merge` in this repository is a check (workflow `do-not-merge`, job of the
-same name), but it is **not** in the ruleset for `main` yet — the required contexts
-are `ci-test`, `test`, `build-and-run`. So a red `do-not-merge` shows
-`mergeStateStatus: UNSTABLE`, exactly the state §5 is about: the ruleset will not
-stop you. Read it before merging, and do not wave through a PR whose own guard says
-it must not be merged.
+same name) and, since 2026-11-26, a **required** context: the ruleset for `main`
+now lists `ci-test`, `test`, `build-and-run`, `do-not-merge`. A red guard is a
+blocked merge, not an `UNSTABLE` advisory.
 
+Two things were checked before the context was added, because either one alone is
+not evidence:
+
+1. **The name matches at byte level.** Ruleset context `"do-not-merge"` (12 chars,
+   integration 15368); workflow `name: do-not-merge`; job id `do-not-merge` with a
+   job-level `name: do-not-merge`; and the real run reports job name
+   `"do-not-merge"` (run 45821998986). A context that is one character off pends
+   forever and blocks every PR, so "it looks right" is not the test.
+2. **It can go both red and green.** On #230, head `e2ec13e`: with the label a
+   `synchronize` run failed at 12:37:49; without it an `unlabeled` run passed at
+   12:39:35. A check that has never been green is a different failure mode from a
+   check that is not required, and the smoke run separates them.
 The same section records why the trigger is not the default one. `pull_request`
 without `types` fires only on opened / synchronize / reopened, so a label added a
 few seconds after opening lands after the workflow started and the guard passes on
