@@ -280,6 +280,43 @@ function aesComponentFor(name) {
   return m ? AES_CIPHER_MODES.get(m[1]) : null;
 }
 
+// The language a project implements an algorithm in is a property of the hit,
+// not of the algorithm. `algo-metadata.json` can only record where the
+// reference implementation lives (AES-GCM carries `c`), so emitting it
+// verbatim labelled a JavaScript call site as C. Derive the value from the
+// files the occurrences came from; the metadata value stays as the fallback
+// for a hit that is only known from a dependency manifest.
+const LANGUAGES_BY_EXT = new Map([
+  ['.js', 'javascript'],
+  ['.cjs', 'javascript'],
+  ['.mjs', 'javascript'],
+  ['.jsx', 'javascript'],
+  ['.ts', 'typescript'],
+  ['.tsx', 'typescript'],
+  ['.py', 'python'],
+  ['.c', 'c'],
+  ['.h', 'c'],
+  ['.cpp', 'cpp'],
+  ['.hpp', 'cpp'],
+]);
+
+/**
+ * Languages implied by the extension of every source occurrence.
+ * @param {Array<{location?:string}>} occurrences
+ * @returns {string[]} sorted; empty when no occurrence has a known extension
+ */
+function languagesFromOccurrences(occurrences) {
+  const langs = new Set();
+  for (const o of occurrences) {
+    const location = o && typeof o.location === 'string' ? o.location : '';
+    const dot = location.lastIndexOf('.');
+    if (dot < 0) continue;
+    const lang = LANGUAGES_BY_EXT.get(location.slice(dot).toLowerCase());
+    if (lang) langs.add(lang);
+  }
+  return [...langs].sort();
+}
+
 function collectCipherCallSites(content) {
   const out = [];
   let from = 0;
@@ -899,8 +936,12 @@ function mergeEvidence(fromDeps, fromSource, truncated) {
         algorithmProperties: meta.algorithmProperties,
       };
       const props = [];
-      if (meta.implementationPlatform) {
-        props.push({ name: 'fibemate:implementationLanguages', value: meta.implementationPlatform });
+      const languages = languagesFromOccurrences(occurrences);
+      const implementationLanguages = languages.length
+        ? languages.join(', ')
+        : meta.implementationPlatform;
+      if (implementationLanguages) {
+        props.push({ name: 'fibemate:implementationLanguages', value: implementationLanguages });
       }
       if (meta.certificationLevel) {
         props.push({ name: 'fibemate:testingStatus', value: meta.certificationLevel });
