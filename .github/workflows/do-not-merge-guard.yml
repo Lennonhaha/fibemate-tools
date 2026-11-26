@@ -6,9 +6,8 @@
 # it. That happened in the sibling repository (fibemate #733, 2026-11-26): the PR
 # carried `do-not-merge` and still reported 51 SUCCESS / 0 FAILURE.
 #
-# This workflow is ADVISORY until `do-not-merge` is added to the main ruleset.
-# RELEASE-DISCIPLINE.md §5b says so; read that before treating a green here as
-# permission to merge.
+# Required context on main since 2026-11-26 (ruleset 23053703).
+# RELEASE-DISCIPLINE.md §5b records the byte-level name check and the red/green evidence.
 
 name: do-not-merge
 
