@@ -85,7 +85,61 @@ function comparableShape(cmp) {
  * （例：文档 `23957ms` 对上 `assessment.ms.usageCount = 1`）。
  * 这种候选不参与绑定，直接丢弃。
  */
-function isWeakEvidence(claimValue, entryValue) {
+/**
+ * 键名是否自己写了这个单位。三种写法都要认：
+ *   `p95_ms`（分隔符）、`avgMs` / `p99Ms`（驼峰）、裸 token `ms`。
+ * 驼峰这条不能用「以 ms 结尾」了事：`algorithms` 也以 ms 结尾，那不是毫秒。
+ */
+const UNIT_ALIASES = {
+  'µs': ['us', 'µs', 'μs'],
+  'μs': ['us', 'µs', 'μs'],
+  '%': ['%', 'pct', 'percent', 'percentage'],
+};
+
+function unitNamedInKey(unit, entry) {
+  if (!unit) return false;
+  const alts = UNIT_ALIASES[String(unit).toLowerCase()] || [String(unit)];
+  const path = entry && entry.path ? String(entry.path) : '';
+  const tokens = (entry && entry.keyTokens) || [];
+  for (const alt of alts) {
+    const esc = String(alt).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const separated = new RegExp('[._-]' + esc + '$', 'i');
+    const camel = new RegExp('[a-z0-9]' + esc.charAt(0).toUpperCase() + esc.slice(1) + '$');
+    if (path && (separated.test(path) || camel.test(path))) return true;
+    if (tokens.some((t) => String(t).toLowerCase() === String(alt).toLowerCase())) return true;
+  }
+  return false;
+}
+
+/**
+ * 弱证据过滤：几乎肯定是「键同名但度量不同」的候选，不参与绑定，直接丢弃。
+ *
+ * 判据三条，与数值大小无关：
+ *   1. 两侧量纲都明确且不同（time vs size）→ 不可比。
+ *   2. 一侧量纲明确、另一侧未知（JSON 里的裸数字没有单位）→ 只有当另一侧的键名
+ *      自己写了这个单位才允许绑定（`latency.p95_ms = 81.2` 的键名带 ms，可以跟文档
+ *      的 78.5 ms 比；`max_score = 100` 的键名不提单位 → 不可比）。
+ *   3. 旧例 `23957ms` 对上 `usageCount = 1` 也由第 2 条覆盖：键名没有 ms。
+ *
+ * 为什么不再用「无单位小整数 <= 50」：`max_score = 100` 是分数上限，100 不是「小整数」
+ * 却同样不是延迟，于是被绑成 drift（2026-11-26 实测
+ * `fibemate/docs/deploy-evidence/2d1e75c.md:70`，见 fibemate-tools#228）。
+ */
+/**
+ * 单 token 产出物只在主词命中时才可比较。
+ * overlapCoefficient 的分母是两者较短的一侧，于是「产出物只有 1 个 token」时
+ * 任何提到这个词的声明都能拿满分：文档里的 `tvla … 31/36` 就这样绑到了
+ * `scripts/hooks/forbidden-literals.txt#tvla = 36/36`，判成漂移。
+ * 见 fibemate-tools#228 修复过程中发现（原文案未被绑定，修好句界后才暴露）。
+ */
+function underSpecified(claim, entry) {
+  const et = (entry && entry.keyTokens) || [];
+  if (et.length >= 2) return false;
+  const pt = claim && claim.primaryToken;
+  return !(pt && et.indexOf(pt) >= 0);
+}
+
+function isWeakEvidence(claimValue, entryValue, claim, entry) {
   if (!claimValue || !entryValue) return true;
   if (claimValue.type !== entryValue.type) return true;
   if (claimValue.type === 'ratio') {
@@ -101,9 +155,9 @@ function isWeakEvidence(claimValue, entryValue) {
   }
   const cd = claimValue.dim, ed = entryValue.dim;
   if (cd === ed) return false;
-  const smallInt = (v) => v.dim == null && v.number != null && Number.isInteger(v.number) && Math.abs(v.number) <= 50;
-  if (smallInt(claimValue) && ed) return true;
-  if (smallInt(entryValue) && cd) return true;
+  if (cd && ed) return true;
+  if (cd && !ed) return !unitNamedInKey(claimValue.unit, entry);
+  if (ed && !cd) return !unitNamedInKey(entryValue.unit, claim);
   return false;
 }
 
@@ -192,11 +246,13 @@ function resolveClaim(claim, index, opts) {
   const scored = [];
   let weak = 0;
   for (const e of all) {
-    if (isWeakEvidence(claim.value, e.value)) { weak++; continue; }
+    if (isWeakEvidence(claim.value, e.value, claim, e)) { weak++; continue; }
+    if (underSpecified(claim, e)) { weak++; continue; }
     if (magnitudeGuard(claim.value, e.value)) { weak++; continue; }
     const s = score(claim, e);
     if (s < minScore) { belowNotes.push(s); continue; }
-    if (isWeakEvidence(claim.value, e.value)) { weak++; continue; }
+    if (isWeakEvidence(claim.value, e.value, claim, e)) { weak++; continue; }
+    if (underSpecified(claim, e)) { weak++; continue; }
     if (unknownUnitConflict(claim.value, e.value)) continue;   // 10,000 rounds vs 6 tests
     const cmp = compareValues(claim.value, e.value, cmpOpts);
     if (!comparableShape(cmp)) continue;          // 形状不可比 → 直接丢弃候选
@@ -304,4 +360,4 @@ function explain(res) {
   }
 }
 
-module.exports = { resolveClaim, score, overlapCoefficient, candidatesFor, explain, comparableShape };
+module.exports = { resolveClaim, score, overlapCoefficient, candidatesFor, explain, comparableShape, isWeakEvidence };
