@@ -65,6 +65,11 @@ const HIERARCHY = {
   // ── symmetric ────────────────────────────────────────────────────
   'AES':          { family: 'AES', params: null },
   'AES-GCM':      { family: 'AES', params: 'GCM' },
+  'AES-CBC':      { family: 'AES', params: 'CBC' },
+  'AES-CTR':      { family: 'AES', params: 'CTR' },
+  'AES-CFB':      { family: 'AES', params: 'CFB' },
+  'AES-OFB':      { family: 'AES', params: 'OFB' },
+  'AES-ECB':      { family: 'AES', params: 'ECB' },
   'DES':          { family: 'DES', params: null },
   '3DES':         { family: '3DES', params: null },
   'Blowfish':     { family: 'Blowfish', params: null },

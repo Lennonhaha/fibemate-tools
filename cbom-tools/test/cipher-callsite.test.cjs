@@ -90,6 +90,61 @@ test('whitespace and newline between the paren and the argument are tolerated', 
 
 // ---------- 负例：静态分析的边界，写出来而不是假装不存在 ----------
 
+// ---------- 模式覆盖：GCM 之外的五种经典模式 ----------
+// 0.3.2 及以前，调用点收集器只接受 gcm，其余模式被静默丢弃，输出名还被
+// 无条件写成 AES-GCM。结果是「用 aes-256-cbc 加密的仓库被报成没有 AES」——
+// 正是本工具要防的假清白。下列用例把每种模式都钉在调用点路径上。
+
+for (const [literal, expected] of [
+  ['aes-256-cbc', 'AES-CBC'],
+  ['aes-128-cbc', 'AES-CBC'],
+  ['aes-256-ctr', 'AES-CTR'],
+  ['aes-192-cfb', 'AES-CFB'],
+  ['aes-128-ofb', 'AES-OFB'],
+  ['aes-256-ecb', 'AES-ECB'],
+]) {
+  test(`call site: createCipheriv('${literal}') is ${expected}, not AES-GCM`, () => {
+    withDir(
+      { 'm.js': `const c = require('crypto');\nconst x = c.createCipheriv('${literal}', k, iv);\n` },
+      (dir) => {
+        const names = algorithms(dir);
+        assert.ok(names.includes(expected), `${literal} 应被发现为 ${expected}`);
+        assert.ok(!names.includes('AES-GCM'), `${literal} 不应被误报为 AES-GCM`);
+      },
+    );
+  });
+}
+
+test('uppercase and separator-less spellings resolve to one AES-CBC component', () => {
+  withDir(
+    { 'u.js': "const c = require('crypto');\nc.createCipheriv('AES-256-CBC', k, iv);\nc.createCipheriv('aes256cbc', k, iv);\n" },
+    (dir) => {
+      const aesNames = algorithms(dir).filter((n) => /^AES/i.test(n)).sort();
+      assert.deepStrictEqual(aesNames, ['AES-CBC'], '两种写法应归一到同一个组件名');
+    },
+  );
+});
+
+test('a bare mode identifier outside a call site is reported too', () => {
+  withDir(
+    { 'config.js': "module.exports = { cipher: 'aes-256-cbc' };\n" },
+    (dir) => assert.ok(algorithms(dir).includes('AES-CBC')),
+  );
+});
+
+test('metadata for the classic modes carries a primitive, not a bare name', () => {
+  withDir(
+    { 'm.js': "const c = require('crypto');\nc.createCipheriv('aes-256-cbc', k, iv);\n" },
+    (dir) => {
+      const r = scanDir(dir);
+      assert.strictEqual(r.status, 0, `exit=${r.status} stderr=${r.stderr}`);
+      const comp = JSON.parse(r.stdout).components.find((c) => c.name === 'AES-CBC');
+      assert.ok(comp, 'AES-CBC 组件应存在');
+      assert.strictEqual(comp.cryptoProperties.algorithmProperties.primitive, 'block-cipher');
+    },
+  );
+});
+
 test('computed algorithm name is NOT reported, and that is documented', () => {
   withDir(
     { 'computed.js': "const c = require('crypto');\nconst ALGO = process.env.ALGO;\nc.createCipheriv(ALGO, k, iv);\n" },
