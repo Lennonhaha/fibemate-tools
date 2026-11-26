@@ -88,6 +88,12 @@ const HIERARCHY = {
   'SM2':          { family: 'SM2', params: null },
   'SM3':          { family: 'SM3', params: null },
   'SM4':          { family: 'SM4', params: null },
+  'SM4-GCM':      { family: 'SM4', params: 'GCM' },
+  'SM4-CBC':      { family: 'SM4', params: 'CBC' },
+  'SM4-CTR':      { family: 'SM4', params: 'CTR' },
+  'SM4-CFB':      { family: 'SM4', params: 'CFB' },
+  'SM4-OFB':      { family: 'SM4', params: 'OFB' },
+  'SM4-ECB':      { family: 'SM4', params: 'ECB' },
 
   // ── KDF / password hashing ───────────────────────────────────────
   'Argon2i':      { family: 'Argon2i', params: null },

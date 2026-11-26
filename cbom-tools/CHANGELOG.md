@@ -4,6 +4,64 @@ Entries start at 0.2.7; earlier releases predate this file. Versions follow
 [Semantic Versioning](https://semver.org/), and this tool is pre-1.0, so the
 minor number moves for behaviour changes.
 
+## Unreleased
+
+### Fixed
+
+- Five ordinary spellings of AES-CBC are now the same AES-CBC component.
+  A red test on 2026-11-26 ran the five ways a real codebase names the
+  cipher and found exactly one of them was visible:
+
+  | spelling | before | after |
+  | --- | --- | --- |
+  | `createCipheriv("aes-256-cbc")` | AES-CBC | AES-CBC |
+  | `Cipher.getInstance("AES/CBC/PKCS5Padding")` (.java) | — | AES-CBC |
+  | `cipher.NewCBCEncrypter(block, iv)` (.go) | — | AES-CBC |
+  | `AES.MODE_CBC` (.py) | — | AES-CBC |
+  | `cipher: AES_CBC` (.yaml) | — | AES-CBC |
+  | `"AES-CBC"` literal (.js) | — | AES-CBC |
+
+  Three separate causes, fixed separately: the extension gate never opened
+  `.java`, `.go`, `.yaml`, `.json` or `.toml`; the Node call-site reader was
+  the only shape understood; and the name rules all required a key size, so
+  the canonical spelling matched nothing.
+
+  The mode is only attached where it is real. `RSA/ECB/PKCS1Padding` reports
+  RSA and no AES-ECB, because that middle field is a padding scheme;
+  `DES.MODE_CBC` is not AES; a Go file that names both `aes.NewCipher` and
+  `sm4.NewCipher` reports neither as a mode, because the pairing is a guess.
+
+  Scan set: `.java`, `.go`, `.kt`, `.kts`, `.cs`, `.rs`, `.swift`, `.rb`,
+  `.php`, `.yaml`, `.yml`, `.json`, `.toml` added, plus `.cc`, `.cxx`, `.hh`
+  to match the comment stripper. Two categories are refused on purpose:
+  lockfiles (an `integrity: sha512-…` line is a tarball digest, not a use of
+  SHA-512) and dependency manifests (read by the manifest pass; scanning
+  them again would turn "depends on X" into "uses X"). A CycloneDX document
+  is skipped with a warning, otherwise a scanner pointed at a BOM reports its
+  own reflection.
+
+  SM4 gained the six mode components the JCE and config spellings need
+  (`SM4-CBC`, `-CTR`, `-CFB`, `-OFB`, `-ECB`, `-GCM`), so `SM4/CBC` no
+  longer degrades to a mode-less SM4.
+
+- `fibemate:implementationLanguages` follows the file the hit was found in.
+  A Java call site used to report `javascript` because the metadata table
+  records where the reference implementation lives, and the extension map
+  did not know `.java`. The metadata value is now only a fallback for a
+  component known from a dependency manifest, where no file was read; a hit
+  that exists only in a data file (`.yaml`, `.json`, `.toml`) claims no
+  language rather than borrowing one.
+
+- One fact, one occurrence. A mode rule sees `SM4/CBC` inside the JCE string
+  `SM4/CBC/PKCS5Padding`, and the JCE reader sees the whole literal; on the
+  same line the shorter symbol is dropped. The committed sample BOM is
+  regenerated accordingly (that is the only change to it).
+
+Known limits, stated rather than papered over: a JCE transformation held in
+a variable, and a Go mode call whose block cipher is named in another file,
+are both invisible. The Python rule covers `AES.MODE_*`; `cryptography.io`
+(`algorithms.AES(key), modes.CBC(iv)`) is not covered yet.
+
 ## 0.3.2 — 2026-11-23
 
 ### Fixed

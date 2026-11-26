@@ -269,6 +269,20 @@ All cryptographic information is derived from CycloneDX SBOM
 specification and public algorithm parameters. Static pattern matching
 only — no cryptographic computation is performed.
 
+The scan reads `.js/.cjs/.mjs/.ts/.tsx/.jsx`, `.c/.cc/.cpp/.cxx/.h/.hh/.hpp`,
+`.py`, `.java`, `.go`, `.kt`, `.kts`, `.cs`, `.rs`, `.swift`, `.rb`, `.php`,
+`.yaml/.yml`, `.json` and `.toml`. Lockfiles and dependency manifests are
+skipped: a checksum ledger is not a usage, and a dependency list is not an
+implementation. A CycloneDX document is skipped too — otherwise pointing the
+scanner at a BOM reports its own reflection.
+
+A name has to be written for the scanner to see it. A cipher chosen from a
+variable (`Cipher.getInstance(ALGO)`), a Go mode call whose block cipher is
+built in another file, and `cryptography.io`'s split `algorithms.AES(...)` +
+`modes.CBC(...)` are all invisible today. Each is a recall gap, not a clean
+result; they are listed here so a report that omits them is not mistaken for
+one that checked.
+
 ## Standards
 
 Emits the [CycloneDX 1.7](https://cyclonedx.org/specification/overview/) CBOM
@@ -290,7 +304,7 @@ reported as a change, not as equal.
 ### Field semantics in the emitted BOM
 
 `algorithmProperties.primitive` is always populated from `algo-metadata.json`
-(all 61 entries at the time of writing); it is a table lookup, not an inference
+(all 67 entries at the time of writing); it is a table lookup, not an inference
 made by the scanner.
 
 `oid` is absent because the metadata table has no OID column. Absence therefore

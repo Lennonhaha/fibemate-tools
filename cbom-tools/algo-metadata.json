@@ -98,6 +98,72 @@
       "level": "weak"
     }
   },
+  "SM4-CBC": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM4-CTR": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM4-CFB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM4-OFB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM4-ECB": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "block-cipher"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
+  "SM4-GCM": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "ae"
+    },
+    "implementationPlatform": "javascript",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "weak"
+    }
+  },
   "AES": {
     "assetType": "algorithm",
     "algorithmProperties": {

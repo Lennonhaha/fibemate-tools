@@ -130,6 +130,19 @@ const DEFAULT_RULES = {
     { re: /\baes[-_]?(?:128|192|256)[-_]?cfb\b/gi, algs: ['AES-CFB'] },
     { re: /\baes[-_]?(?:128|192|256)[-_]?ofb\b/gi, algs: ['AES-OFB'] },
     { re: /\baes[-_]?(?:128|192|256)[-_]?ecb\b/gi, algs: ['AES-ECB'] },
+    // The canonical spelling without a key size. `AES-CBC` is what JDK
+    // policies, config files and CBOM exporters write; the five rules above
+    // all require the key size, so a config that states exactly the
+    // algorithm name was invisible. The mode decides the component name, so
+    // the spelling in the file does not leak into it (canonicalModeName).
+    { re: /\bAES[-_](CBC|CTR|CFB|OFB|ECB|GCM)\b/gi, algs: ['AES-$1'] },
+    // SM4 mode names, including the JCE-style `SM4/CBC` that appears in
+    // policy files as well as in Java source.
+    { re: /\bSM4[-_/](CBC|CTR|CFB|OFB|ECB|GCM)\b/gi, algs: ['SM4-$1'] },
+    // PyCryptodome spells the mode as a constant on the module:
+    // `AES.new(key, AES.MODE_CBC, iv)`. The family prefix is what keeps
+    // `DES.MODE_CBC` from being reported as AES.
+    { re: /\bAES\s*\.\s*MODE_(CBC|CTR|CFB|OFB|GCM|ECB)\b/g, algs: ['AES-$1'] },
     { re: /\bchacha20[-_]?poly1305\b/gi, algs: ['ChaCha20-Poly1305'] },
     { re: /\bed25519\b/gi, algs: ['Ed25519'] },
     { re: /\bx25519\b/gi, algs: ['X25519'] },
@@ -215,7 +228,38 @@ const DEFAULT_RULES = {
 };
 
 const SKIP_DIRS = new Set(['node_modules', 'dist', 'build', 'coverage', '.git', '.cache']);
-const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|h|hpp|py)$/;
+// Extensions that hold crypto call sites or crypto *names as data*.
+//
+// The first version stopped at the JavaScript/TypeScript/C/Python set that
+// the fibemate tree happens to use. A red test on five ordinary spellings of
+// AES-CBC found that four were invisible, and two of those were invisible for
+// a reason that had nothing to do with the mode: the file was not scanned at
+// all. `Cipher.getInstance("AES/CBC/PKCS5Padding")` in a .java file and
+// `cipher: AES_CBC` in a .yaml policy are the same evidence as
+// `createCipheriv("aes-256-cbc")`; refusing to open the file is a recall bug
+// that looks like a clean result.
+const SCAN_EXT = /\.(cjs|mjs|js|ts|tsx|jsx|cpp|c|cc|cxx|h|hh|hpp|py|java|go|kt|kts|cs|rs|swift|rb|php|yaml|yml|json|toml)$/;
+
+// Lockfiles are checksum ledgers, not code. `"integrity": "sha512-…"` is a
+// digest of a tarball, not a use of SHA-512, and a lockfile scanned as source
+// reports every dependency hash as an algorithm. Matched by exact name so a
+// real config file that happens to live next to one is still scanned.
+const SKIP_FILE_NAMES = new Set([
+  'package-lock.json', 'npm-shrinkwrap.json', 'yarn.lock', 'pnpm-lock.yaml',
+  'bun.lockb', 'composer.lock', 'cargo.lock', 'poetry.lock', 'pipfile.lock',
+  'gemfile.lock', 'go.sum', 'packages.lock.json', 'mix.lock', 'flake.lock',
+]);
+
+// Dependency manifests are read by the manifest pass (see
+// analyzeManifests). Reading them again as source turns "this project
+// depends on a package called X" into "this project uses X", which is the
+// one distinction the merge policy is built on. Only npm manifests are
+// analysed today; the others are listed so that widening this scan set did
+// not silently invent a second, weaker source of evidence for them.
+const MANIFEST_NAMES = new Set([
+  'package.json', 'composer.json', 'pyproject.toml', 'cargo.toml',
+  'go.mod', 'pom.xml', 'build.gradle', 'build.gradle.kts',
+]);
 const MAX_OCC_PER_ALGO = 50;
 // A single generated bundle or vendored blob can be hundreds of megabytes.
 // Reading it whole buys nothing — the scan is textual and the file is not
@@ -280,6 +324,17 @@ function aesComponentFor(name) {
   return m ? AES_CIPHER_MODES.get(m[1]) : null;
 }
 
+// A mode written in lower case ("AES_CBC" in a policy file) names the same
+// component as the canonical form. Only the trailing mode token is
+// normalised: the rest of the name stays as found, because `Camellia-128`
+// and `Camellia` are different names on purpose.
+const TRAILING_MODE = /^(.*)-(cbc|ctr|cfb|ofb|ecb|gcm)$/i;
+
+function canonicalModeName(name) {
+  const m = TRAILING_MODE.exec(name);
+  return m ? m[1] + "-" + m[2].toUpperCase() : name;
+}
+
 // The language a project implements an algorithm in is a property of the hit,
 // not of the algorithm. `algo-metadata.json` can only record where the
 // reference implementation lives (AES-GCM carries `c`), so emitting it
@@ -298,13 +353,37 @@ const LANGUAGES_BY_EXT = new Map([
   ['.h', 'c'],
   ['.cpp', 'cpp'],
   ['.hpp', 'cpp'],
+  ['.cc', 'cpp'],
+  ['.cxx', 'cpp'],
+  ['.hh', 'cpp'],
+  ['.java', 'java'],
+  ['.go', 'go'],
+  ['.kt', 'kotlin'],
+  ['.kts', 'kotlin'],
+  ['.cs', 'csharp'],
+  ['.rs', 'rust'],
+  ['.swift', 'swift'],
+  ['.rb', 'ruby'],
+  ['.php', 'php'],
 ]);
+
+// Data files can name an algorithm ("cipher: AES_CBC") without being an
+// implementation of it. They are scanned, but they do not answer "which
+// language implements this", so they are not in the map above and an
+// occurrence that only lives in one of them reports no language at all.
+const DATA_EXT = new Set(['.yaml', '.yml', '.json', '.toml']);
 
 /**
  * Languages implied by the extension of every source occurrence.
  * @param {Array<{location?:string}>} occurrences
  * @returns {string[]} sorted; empty when no occurrence has a known extension
  */
+function extOf(location) {
+  const p = typeof location === 'string' ? location : '';
+  const dot = p.lastIndexOf('.');
+  return dot < 0 ? '' : p.slice(dot).toLowerCase();
+}
+
 function languagesFromOccurrences(occurrences) {
   const langs = new Set();
   for (const o of occurrences) {
@@ -339,6 +418,93 @@ function collectCipherCallSites(content) {
     const algorithm = aesComponentFor(name);
     if (!algorithm) continue;
     out.push({ text: name, algorithm, line: lineAt(content, at), index: at });
+  }
+  return out;
+}
+
+// ── JCE transformation strings ──────────────────────────────────────
+//
+// Java (and Kotlin/Scala on the JCE) names a cipher in one slash-separated
+// literal: `Cipher.getInstance("AES/CBC/PKCS5Padding")`. The receiver is
+// irrelevant and the name is a literal, so it is read the same way as the
+// Node call site: walk to the opening quote, then parse the string.
+//
+// The middle field is a mode only for block ciphers. In
+// `RSA/ECB/PKCS1Padding` it is the padding scheme; reporting AES-ECB or
+// RSA-ECB there would be a finding invented by the scanner.
+const JCE_GETINSTANCE = 'getInstance(';
+const JCE_RECEIVER = /Cipher\s*\.\s*$/;
+const JCE_BLOCK_FAMILIES = new Map([
+  ['AES', 'AES'],
+  ['SM4', 'SM4'],
+]);
+const CIPHER_MODES = new Set(['CBC', 'CTR', 'CFB', 'OFB', 'ECB', 'GCM']);
+
+function collectJceTransformations(content) {
+  const out = [];
+  let from = 0;
+  for (;;) {
+    const at = content.indexOf(JCE_GETINSTANCE, from);
+    if (at === -1) break;
+    from = at + JCE_GETINSTANCE.length;
+    if (!JCE_RECEIVER.test(content.slice(Math.max(0, at - 40), at))) continue;
+    let i = from;
+    while (i < content.length && /[ \t\r\n]/.test(content[i])) i++;
+    const quote = content[i];
+    if (quote !== '"' && quote !== "'") continue;
+    const lit = readQuoted(content, i);
+    if (!lit) continue;
+    const parts = decodeEscapes(lit.value).split('/');
+    if (parts.length < 2) continue;
+    const family = JCE_BLOCK_FAMILIES.get(parts[0].trim().toUpperCase());
+    const mode = parts[1].trim().toUpperCase();
+    if (!family || !CIPHER_MODES.has(mode)) continue;
+    out.push({
+      text: decodeEscapes(lit.value),
+      algorithm: family + '-' + mode,
+      line: lineAt(content, at),
+      index: at,
+    });
+  }
+  return out;
+}
+
+// ── Go: block cipher and mode are separate calls ────────────────────
+//
+// `cipher.NewCBCEncrypter(block, iv)` names a mode but not the cipher;
+// `aes.NewCipher(key)` names the cipher. Neither alone is a component. The
+// pairing is done per file and only when the file names exactly one block
+// cipher: guessing AES whenever a mode call appears is how a Go file that
+// builds an SM4 or a DES block ends up reported as AES.
+const GO_BLOCK_CIPHERS = [
+  { re: /\baes\.NewCipher\b/, family: 'AES' },
+  { re: /\bsm4\.NewCipher\b/, family: 'SM4' },
+];
+const GO_MODE_CALLS = [
+  { re: /\bcipher\.NewCBC(?:Encrypter|Decrypter)\b/g, mode: 'CBC' },
+  { re: /\bcipher\.NewCTR\b/g, mode: 'CTR' },
+  { re: /\bcipher\.NewCFB(?:Encrypter|Decrypter)\b/g, mode: 'CFB' },
+  { re: /\bcipher\.NewOFB\b/g, mode: 'OFB' },
+  { re: /\bcipher\.NewGCM(?:WithNonceSize|WithTagSize)?\b/g, mode: 'GCM' },
+];
+
+function collectGoModeCalls(content) {
+  const families = new Set();
+  for (const b of GO_BLOCK_CIPHERS) if (b.re.test(content)) families.add(b.family);
+  if (families.size !== 1) return [];
+  const family = [...families][0];
+  const out = [];
+  for (const { re, mode } of GO_MODE_CALLS) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(content)) !== null) {
+      out.push({
+        text: m[0],
+        algorithm: family + '-' + mode,
+        line: lineAt(content, m.index),
+        index: m.index,
+      });
+    }
   }
   return out;
 }
@@ -722,6 +888,7 @@ function scanSource(root, rules) {
   const truncated = new Map();
 
   function addOcc(algoName, file, line, symbol, span) {
+    algoName = canonicalModeName(algoName);
     if (!result.has(algoName)) result.set(algoName, []);
     const arr = result.get(algoName);
     const loc = path.relative(root, file).replace(/\\/g, '/');
@@ -729,6 +896,17 @@ function scanSource(root, rules) {
     // literal-derivation pass used to report the same hit twice: duplicates
     // shipped in the BOM and burned the per-algorithm budget (issue #186).
     if (arr.some(o => o.location === loc && o.line === line && o.symbol === symbol)) return;
+    // Same fact, two readers: a mode rule sees "SM4/CBC" inside the JCE
+    // string "SM4/CBC/PKCS5Padding" and the JCE reader sees the whole
+    // literal. Keep the longer symbol on that line; the shorter one is a
+    // substring of it and adds no evidence.
+    const lower = symbol.toLowerCase();
+    if (arr.some(o => o.location === loc && o.line === line
+      && o.symbol.length >= symbol.length && o.symbol.toLowerCase().includes(lower))) return;
+    for (let k = arr.length - 1; k >= 0; k--) {
+      const o = arr[k];
+      if (o.location === loc && o.line === line && lower.includes(o.symbol.toLowerCase())) arr.splice(k, 1);
+    }
     if (arr.length >= MAX_OCC_PER_ALGO) {
       truncated.set(algoName, (truncated.get(algoName) || 0) + 1);
       return;
@@ -748,6 +926,8 @@ function scanSource(root, rules) {
       const full = path.join(d, entry.name);
       if (entry.isDirectory()) { walk(full); continue; }
       if (!SCAN_EXT.test(entry.name)) continue;
+      if (SKIP_FILE_NAMES.has(entry.name.toLowerCase())) continue;
+      if (MANIFEST_NAMES.has(entry.name.toLowerCase())) continue;
       let content;
       try {
         const st = fs.statSync(full);
@@ -755,7 +935,15 @@ function scanSource(root, rules) {
           warn('skipped ' + path.relative(root, full) + ': ' + st.size + ' bytes exceeds ' + MAX_FILE_BYTES);
           continue;
         }
-        content = stripComments(fs.readFileSync(full, 'utf-8'), full);
+        const raw = fs.readFileSync(full, 'utf-8');
+        // A BOM is a statement about what a codebase uses, not a usage of
+        // it. Scanning one (ours or a vendor's) turns every component name
+        // into an "occurrence" and the tool reports its own reflection.
+        if (raw.slice(0, 400).includes('"bomFormat"')) {
+          warn('skipped ' + path.relative(root, full) + ': CycloneDX document, not source');
+          continue;
+        }
+        content = stripComments(raw, full);
       } catch (err) {
         warn('skipped ' + path.relative(root, full) + ': ' + (err.code || err.message));
         continue;
@@ -776,6 +964,12 @@ function scanSource(root, rules) {
       // Call-site arguments, read lexically (see collectCipherCallSites).
       for (const site of collectCipherCallSites(content)) {
         addOcc(site.algorithm, full, site.line, site.text, { start: site.index, end: site.index + CIPHER_CALL.length });
+      }
+      for (const site of collectJceTransformations(content)) {
+        addOcc(site.algorithm, full, site.line, site.text, { start: site.index, end: site.index + site.text.length });
+      }
+      for (const site of collectGoModeCalls(content)) {
+        addOcc(site.algorithm, full, site.line, site.text, { start: site.index, end: site.index + site.text.length });
       }
       // Second pass over names assembled from literals (concat / join /
       // template / base64 / escaped bytes). Occurrences are reported at
@@ -936,10 +1130,20 @@ function mergeEvidence(fromDeps, fromSource, truncated) {
         algorithmProperties: meta.algorithmProperties,
       };
       const props = [];
+      // The language is a property of the hit, not of the algorithm.
+      // `implementationPlatform` in the metadata table records where the
+      // *reference* implementation lives, so it is only a fallback for a
+      // component known from a dependency manifest, where no file was read.
+      // A component with occurrences in data files only has no observed
+      // language: saying "javascript" there would be a claim the scan did
+      // not check.
       const languages = languagesFromOccurrences(occurrences);
+      const noFileWasRead = !occurrences.some((o) => !DATA_EXT.has(extOf(o.location)));
       const implementationLanguages = languages.length
         ? languages.join(', ')
-        : meta.implementationPlatform;
+        : noFileWasRead
+          ? meta.implementationPlatform
+          : '';
       if (implementationLanguages) {
         props.push({ name: 'fibemate:implementationLanguages', value: implementationLanguages });
       }
