@@ -85,6 +85,22 @@ replacing only the first slash) nearly shipped in the release-audit tooling.
 wrong". Read the failing check before merging; a required-check list is a floor,
 not a standard.
 
+## 5b. A label is not a gate until it is a required check
+
+`do-not-merge` in this repository is a check (workflow `do-not-merge`, job of the
+same name), but it is **not** in the ruleset for `main` yet — the required contexts
+are `ci-test`, `test`, `build-and-run`. So a red `do-not-merge` shows
+`mergeStateStatus: UNSTABLE`, exactly the state §5 is about: the ruleset will not
+stop you. Read it before merging, and do not wave through a PR whose own guard says
+it must not be merged.
+
+The same section records why the trigger is not the default one. `pull_request`
+without `types` fires only on opened / synchronize / reopened, so a label added a
+few seconds after opening lands after the workflow started and the guard passes on
+a PR it must refuse. That happened in `fibemate` #733 (2026-11-26): labelled in the
+same minute it was opened, 51 SUCCESS / 0 FAILURE. The guard here lists
+`labeled`/`unlabeled` for that reason; a new guard that omits them is decorative.
+
 ## 6. A registry 404 is not proof that a publish failed
 
 After a successful `npm publish`, the packument and tarball URLs can keep
