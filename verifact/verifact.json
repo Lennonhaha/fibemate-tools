@@ -258,6 +258,21 @@
       "file": "**/performance-benchmarks-2026-07-18.md",
       "key": "sign",
       "why": "口径不同：JS benchmark vs 硬件基准"
+    },
+    {
+      "file": "**/docs/REMINDER.md",
+      "key": "db-sqlite-js",
+      "why": "提醒清单里的行号（src/db-sqlite.js:300）被模糊绑定到 pqc-ecosystem-scan 的 usageCount；score 恰好 0.45，属于误绑，不是待核数值"
+    },
+    {
+      "file": "**/docs/REMINDER.md",
+      "key": "websocket-manager-js",
+      "why": "同上：www/websocket-manager.js:123 是条目编号，不是该产物的数值声明"
+    },
+    {
+      "file": "**/docs/REMINDER.md",
+      "key": "daily-audit-js",
+      "why": "同上：scripts/daily-audit.js:173 是条目编号，不是该产物的数值声明"
     }
   ],
   "sealed": [
