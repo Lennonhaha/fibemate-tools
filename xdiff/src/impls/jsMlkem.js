@@ -16,6 +16,26 @@ function create(spec) {
     throw new ImplUnavailable('实现文件不存在', { id: spec.id, path: spec.path });
   }
 
+  const target = path.resolve(spec.path);
+  const root = fs.statSync(target).isDirectory() ? target : path.dirname(target);
+
+  // fibemate-core resolves globalThis.crypto once at module load and keeps the
+  // reference. Loading it before a seed shim is installed therefore pins the
+  // real RNG, and determinism silently stops being about the implementation.
+  // Re-require inside the seeded call, then drop it again so the next call
+  // cannot keep a dead shim.
+  function freshRequire() {
+    for (const k of Object.keys(require.cache)) {
+      if (k === target || k.startsWith(root + path.sep)) delete require.cache[k];
+    }
+    return require(target);
+  }
+  function dropFresh() {
+    for (const k of Object.keys(require.cache)) {
+      if (k === target || k.startsWith(root + path.sep)) delete require.cache[k];
+    }
+  }
+
   let mod;
   try {
     if (fs.existsSync(spec.path) && fs.statSync(spec.path).isDirectory()) {
@@ -41,15 +61,24 @@ function create(spec) {
     // 原语若被导出，可被 keySchedule 用例借作参考尺子（主仓版本导出了 sha3_512 等）
     module: mod,
     keygen() {
-      const k = mod.generateKeypair();
-      return { pk: U.toBuf(k.publicKey), sk: U.toBuf(k.secretKey) };
+      const m = freshRequire();
+      try {
+        const k = m.generateKeypair();
+        return { pk: U.toBuf(k.publicKey), sk: U.toBuf(k.secretKey) };
+      } finally { dropFresh(); }
     },
     encaps(pk) {
-      const e = mod.encapsulate(U.toBuf(pk));
-      return { ct: U.toBuf(e.ciphertext), ss: U.toBuf(e.sharedSecret) };
+      const m = freshRequire();
+      try {
+        const e = m.encapsulate(U.toBuf(pk));
+        return { ct: U.toBuf(e.ciphertext), ss: U.toBuf(e.sharedSecret) };
+      } finally { dropFresh(); }
     },
     decaps(sk, ct) {
-      return U.toBuf(mod.decapsulate(U.toBuf(sk), U.toBuf(ct)));
+      const m = freshRequire();
+      try {
+        return U.toBuf(m.decapsulate(U.toBuf(sk), U.toBuf(ct)));
+      } finally { dropFresh(); }
     },
     /**
      * KAT 对拍用：显式注入 (d, z) 做 keygen。
