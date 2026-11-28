@@ -59,7 +59,7 @@ function mk(name, files) {
 // Twelve legacy algorithms that an audit CBOM must never omit.
 const LEGACY = [
   'MD5', 'SHA-1', '3DES', 'Blowfish', 'Camellia-256', 'ARIA-256',
-  'Poly1305', 'Blake2b-512', 'Ed448', 'X448', 'DSA', 'RSA',
+  'Poly1305', 'Blake2b-512', 'EdDSA-Ed448', 'X448', 'DSA', 'RSA',
 ];
 
 // Positive control: detected before and after the change.

@@ -13,7 +13,7 @@
     "tools": [
       {
         "name": "cbom-scan",
-        "version": "0.3.2",
+        "version": "0.3.3",
         "vendor": "FIBEMATE"
       }
     ]
@@ -122,14 +122,14 @@
     },
     {
       "type": "cryptographic-asset",
-      "name": "Ed25519",
-      "bom-ref": "crypto:Ed25519",
+      "name": "EdDSA-Ed25519",
+      "bom-ref": "crypto:EdDSA-Ed25519",
       "evidence": {
         "identity": [
           {
             "field": "name",
             "confidence": 0.9,
-            "concludedValue": "Ed25519",
+            "concludedValue": "EdDSA-Ed25519",
             "methods": [
               {
                 "technique": "source-code-analysis",

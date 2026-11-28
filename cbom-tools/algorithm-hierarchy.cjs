@@ -107,6 +107,12 @@ const HIERARCHY = {
   // sets, so they stay `params: null` and never absorb one another.
   'Ed25519':      { family: 'EdDSA', params: null },
   'Ed448':        { family: 'EdDSA', params: null },
+  // Family-qualified spellings emitted for registered identifiers. The
+  // bare curve names above stay, because a source file may write
+  // `crypto_sign` (monocypher) or `ed25519-dalek` and nothing else.
+  'EdDSA':         { family: 'EdDSA', params: null },
+  'EdDSA-Ed25519': { family: 'EdDSA', params: 'Ed25519' },
+  'EdDSA-Ed448':   { family: 'EdDSA', params: 'Ed448' },
   'X25519':       { family: 'XDH', params: null },
   'X448':         { family: 'XDH', params: null },
 

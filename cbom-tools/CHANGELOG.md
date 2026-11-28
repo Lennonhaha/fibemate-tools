@@ -6,6 +6,60 @@ minor number moves for behaviour changes.
 
 ## Unreleased
 
+### Added
+
+- **Registered identifiers are now read as cryptography.** A TLS cipher suite,
+  a supported group, a curve name, an SSH/IKE group, a JWA `alg` value and a
+  signature scheme each name an algorithm without ever writing its canonical
+  name. 0.3.2 saw none of them. A new `registry-identifiers.cjs` decomposes
+  each identifier into the algorithms it names:
+
+  | identifier | reported as |
+  | --- | --- |
+  | `TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384` | `ECDH`, `RSA`, `AES` |
+  | `TLS_GROUP = "ffdhe2048"` | `DH-ffdhe2048` (size 2048) |
+  | `ssl_ecdh_curve secp384r1` | `EC-secp384r1`, `ECDH-secp384r1` |
+  | `PURPOSE_SIGN` + `secp384r1` | `EC-secp384r1`, `ECDSA` |
+  | `X25519MLKEM768` | `X25519`, `ML-KEM-768` |
+
+  A curve alone still reports as a curve (`EC-P-256`): only a key-agreement or
+  signing context on the same line adds the `ECDH`/`ECDSA` component, because
+  the curve does not choose the role. See `docs/adr-0002-registry-identifiers.md`.
+
+### Changed
+
+- **`Ed25519` and `Ed448` components are named `EdDSA-Ed25519` and
+  `EdDSA-Ed448`**, matching the `<family>-<parameter>` shape the rest of the
+  dictionary uses. A consumer that matched the old names must update; the
+  algorithm and its evidence are unchanged. The monocypher `crypto_sign` and
+  `crypto_check` rules emit the new spelling too.
+
+### Fixed
+
+- **A mention is no longer reported as a use.** Names inside comments, log and
+  print arguments, deny-lists (`BLOCKED_`, `REJECTED_`, `$rejected`), an off
+  switch keyed by the name (`{"Ed448": False}`), `#undef`, a preceding
+  `TODO`/`not`/`deprecated`, an excluded cipher-list element (`!ECDSA`,
+  `DEFAULT:-X25519MLKEM768`), and a JSON policy object whose `"Effect"` is
+  `Deny` are now silent. `hashlib.md5(data, usedforsecurity=False)` is still a
+  use: the switch is keyed on the *name*, and there the name is not the key.
+
+  CycloneDX has no not-a-use marker, so suppression is omission; the reasoning
+  is in ADR-0002 §2.2.
+
+### Measured
+
+Against the ShorList catalogue (0.3.1, 1,429 positive forms, 172 decoys, one
+scanner-error-free run):
+
+| | 0.3.2 | 0.3.3 |
+| --- | --- | --- |
+| positive forms recognised | 203 | 807 |
+| decoys reported as a use | 16 | 0 |
+| form on the literal's line, wrong family | 4 | 0 |
+| role correct (where a role is stated) | 160/181 | 581/714 |
+| size correct (where a size is stated) | 0/53 | 119/208 |
+
 ### Fixed
 
 - Five ordinary spellings of AES-CBC are now the same AES-CBC component.

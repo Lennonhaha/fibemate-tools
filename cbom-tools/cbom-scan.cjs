@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { HIERARCHY, lookup: algoLookup } = require('./algorithm-hierarchy.cjs');
+const { collectRegistrySites, registrySize } = require('./registry-identifiers.cjs');
 
 const ALGO_META = JSON.parse(fs.readFileSync(path.join(__dirname, 'algo-metadata.json'), 'utf-8'));
 const PKG = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf-8'));
@@ -89,8 +90,8 @@ const DEFAULT_RULES = {
     { re: /\bcrypto_lock\b/g, algs: ['ChaCha20-Poly1305'] },
     { re: /\bcrypto_unlock\b/g, algs: ['ChaCha20-Poly1305'] },
     { re: /\bcrypto_x25519/g, algs: ['X25519'] },
-    { re: /\bcrypto_sign/g, algs: ['Ed25519'] },
-    { re: /\bcrypto_check\b/g, algs: ['Ed25519'] },
+    { re: /\bcrypto_sign/g, algs: ['EdDSA-Ed25519'] },
+    { re: /\bcrypto_check\b/g, algs: ['EdDSA-Ed25519'] },
     { re: /\bcrypto_blake2b/g, algs: ['Blake2b'] },
     { re: /\bcrypto_argon2i\b/g, algs: ['Argon2i'] },
     { re: /\bcrypto_key_exchange\b/g, algs: ['X25519'] },
@@ -144,7 +145,7 @@ const DEFAULT_RULES = {
     // `DES.MODE_CBC` from being reported as AES.
     { re: /\bAES\s*\.\s*MODE_(CBC|CTR|CFB|OFB|GCM|ECB)\b/g, algs: ['AES-$1'] },
     { re: /\bchacha20[-_]?poly1305\b/gi, algs: ['ChaCha20-Poly1305'] },
-    { re: /\bed25519\b/gi, algs: ['Ed25519'] },
+    { re: /\bed25519\b/gi, algs: ['EdDSA-Ed25519'] },
     { re: /\bx25519\b/gi, algs: ['X25519'] },
     { re: /\becdh\b/gi, algs: ['ECDH'] },
     { re: /\brsa\b/gi, algs: ['RSA'] },
@@ -179,7 +180,8 @@ const DEFAULT_RULES = {
     // call that actually matters. Matched by call shape instead.
     { re: /\bdsa_(?:sign|verify|do_sign|do_verify)\s*\(/gi, algs: ['DSA'] },
     { re: /\becdsa\b/gi, algs: ['ECDSA'] },
-    { re: /\bed448\b/gi, algs: ['Ed448'] },
+    { re: /\bed448\b/gi, algs: ['EdDSA-Ed448'] },
+    { re: /\beddsa\b/gi, algs: ['EdDSA'] },
     { re: /\bx448\b/gi, algs: ['X448'] },
 
     // ── PQC families beyond ML-KEM / ML-DSA / SLH-DSA ─────────────
@@ -524,6 +526,19 @@ function decodeEscapes(text) {
       default: return seq;
     }
   });
+}
+
+function lineTextAt(content, line) {
+  let n = 1;
+  let i = 0;
+  while (n < line) {
+    const j = content.indexOf('\n', i);
+    if (j < 0) return '';
+    i = j + 1;
+    n++;
+  }
+  const end = content.indexOf('\n', i);
+  return content.slice(i, end < 0 ? content.length : end);
 }
 
 function lineAt(content, index) {
@@ -878,6 +893,111 @@ function suppressedByFamily(name, text, index) {
   return FAMILY_BEFORE_DSA.test(text.slice(Math.max(0, index - 12), index));
 }
 
+// ── Not-a-use context ───────────────────────────────────────────────
+//
+// A name in a comment, a log line, a deny-list or a `False` switch is a
+// mention, not a use. Reporting those is what produced 9 of the 16 false
+// alarms in the ShorList measured run — "SHA-1 is used here" for a line that
+// says SHA-1 is refused. The scanner cannot know intent. It can know these
+// shapes, and silence about them is the honest answer, because a CBOM has no
+// not-a-use marker to carry the distinction.
+const COMMENTED_EXT = new Set([
+  '.sh', '.bash', '.zsh', '.ksh', '.rb', '.php', '.pl', '.pm', '.ps1', '.bat', '.cmd',
+  '.yaml', '.yml', '.toml', '.conf', '.cnf', '.cfg', '.ini', '.properties',
+  '.tf', '.tfvars', '.xml', '.sql', '.mk', '.gradle',
+]);
+// Names of constructs that hold what must *not* be used.
+const DENY_NAME = /\b(?:BLOCKED|REJECTED|DENIED|FORBIDDEN|DISABLED|BANNED|DENYLIST|BLACKLIST|UNSUPPORTED|DEPRECATED|REMOVED|PREVIOUS|IGNORED)\w*/i;
+// Prose that says the name is not in force. Deliberately narrow: a word like
+// "legacy" or "weak" describes a thing without negating it, so it stays out.
+const NEGATED = /\b(?:undef|not|never|cannot|removed|removing|replaced|replaces|deprecated|disabled|denied|reject\w*|refus\w*|forbidden|blocked|banned|unsupported|unavailable|obsolete|skip\w*|TODO|FIXME|moved|do not|don't|without|no longer)\b/i;
+// A call that takes its argument as text: what it logs is not a use.
+const LOG_CALL = /\b(?:log|logger|logging|console|print|println|printf|fprintf|sprintf|puts|echo|warn|warning|error_log|eprintln|eprint|NSLog|syslog|alert|cerr|cout)\w*\s*[.(!<]/i;
+const COMMENT_START = /^\s*(?:#|;|--|\/\/|\/\*|<!--|%)/;
+// The switch has to belong to the name: `{"Ed448": False}` denies Ed448,
+// while `hashlib.md5(data, usedforsecurity=False)` is a use of MD5 with an
+// apology attached. Only the first is silence.
+const NAME_THEN_FALSE = /^(?:[^"']*["']\s*[:=]\s*(?:False|false|FALSE)|["']?\s*[:=]\s*(?:False|false|FALSE))\b/;
+// "DEFAULT:-X25519MLKEM768", "+AESGCM:!ECDSA": a leading '-' or '!' in a
+// colon-separated group list is an exclusion, and an exclusion is not a use.
+const EXCLUDED = /(?:^|[:\s])[-!][A-Za-z0-9]*$/;
+const JSON_DENY = /"Effect"\s*:\s*"Deny"/;
+const JSON_ALLOW = /"Effect"\s*:\s*"Allow"/;
+
+function lineContext(content, index) {
+  let from = index;
+  while (from > 0 && content[from - 1] !== '\n') from--;
+  let to = index;
+  while (to < content.length && content[to] !== '\n') to++;
+  return { text: content.slice(from, to), col: index - from };
+}
+
+// An IAM-style policy denies by statement, so the enclosing object decides:
+// `{"Effect": "Deny", ... "kms:SigningAlgorithm": "ECDSA_SHA_256"}` names an
+// algorithm in order to forbid it.
+function insideDeniedJsonStatement(content, index) {
+  // Walk out through every enclosing object. A deny statement may hold the
+  // algorithm two or three levels down (Statement -> Condition -> StringEquals
+  // -> key), and only an outer block carries the "Effect".
+  const opens = [];
+  let depth = 0;
+  for (let i = index; i >= 0; i--) {
+    if (content[i] === '}') depth++;
+    else if (content[i] === '{') {
+      if (depth === 0) opens.push(i);
+      else depth--;
+    }
+  }
+  for (const from of opens) {
+    let d = 0;
+    for (let j = from; j < content.length; j++) {
+      if (content[j] === '{') d++;
+      else if (content[j] === '}') {
+        d--;
+        if (d === 0) {
+          const block = content.slice(from, j + 1);
+          if (JSON_DENY.test(block) && !JSON_ALLOW.test(block)) return true;
+          break;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function isNotAUse(content, start, end, file) {
+  const { text, col } = lineContext(content, start);
+  const before = text.slice(0, col);
+  const after = text.slice(col + (end - start));
+  const ext = path.extname(file).toLowerCase();
+  // Comments: the C-like and Python ones were blanked by stripComments, so
+  // only the extensions it does not touch are checked here. A file name with
+  // no extension is config by convention (sshd_config).
+  if (!ext || COMMENTED_EXT.has(ext)) {
+    if (COMMENT_START.test(text)) return true;
+    if (/(?:^|\s)(?:#|\/\/|--|;)\s/.test(before)) return true;
+  }
+  if (DENY_NAME.test(before)) return true;
+  if (EXCLUDED.test(before)) return true;
+  if (NAME_THEN_FALSE.test(after)) return true;
+  if (LOG_CALL.test(before)) return true;
+  if (NEGATED.test(text)) return true;
+  if (ext === '.json' && insideDeniedJsonStatement(content, start)) return true;
+  return false;
+}
+
+// The derived-literal pass has no column to work from: the text it reports was
+// reassembled from source fragments. Judging the whole line is the honest
+// approximation, and it keeps a logged or commented-out reassembly quiet.
+function isNotAUseLine(text, file) {
+  const ext = path.extname(file).toLowerCase();
+  if ((!ext || COMMENTED_EXT.has(ext)) && COMMENT_START.test(text)) return true;
+  if (DENY_NAME.test(text)) return true;
+  if (LOG_CALL.test(text)) return true;
+  if (NEGATED.test(text)) return true;
+  return false;
+}
+
 // ── Source scanning ─────────────────────────────────────────────────
 
 function scanSource(root, rules) {
@@ -952,6 +1072,7 @@ function scanSource(root, rules) {
         re.lastIndex = 0;
         let m;
         while ((m = re.exec(content)) !== null) {
+          if (isNotAUse(content, m.index, m.index + m[0].length, full)) continue;
           const line = content.slice(0, m.index).split('\n').length;
           const span = { start: m.index, end: m.index + m[0].length };
           for (const a of algs) {
@@ -971,10 +1092,22 @@ function scanSource(root, rules) {
       for (const site of collectGoModeCalls(content)) {
         addOcc(site.algorithm, full, site.line, site.text, { start: site.index, end: site.index + site.text.length });
       }
+      // Registered identifiers: TLS cipher suites and groups, curve names,
+      // SSH/IKE/JWA names. These are read structurally, not from a word list
+      // of whole strings, so a suite the scanner has never seen still lands
+      // on the right families (see registry-identifiers.cjs).
+      for (const site of collectRegistrySites(content)) {
+        if (isNotAUse(content, site.index, site.end, full)) continue;
+        const line = content.slice(0, site.index).split('\n').length;
+        for (const a of site.algorithms) {
+          addOcc(a, full, line, site.symbol, { start: site.index, end: site.index + site.symbol.length });
+        }
+      }
       // Second pass over names assembled from literals (concat / join /
       // template / base64 / escaped bytes). Occurrences are reported at
       // the line where the literal is written.
       for (const lit of deriveLiterals(content)) {
+        if (isNotAUseLine(lineTextAt(content, lit.line), full)) continue;
         for (const { re, algs } of rules.sourcePatterns) {
           const scan = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
           let lm;
@@ -1124,6 +1257,16 @@ function mergeEvidence(fromDeps, fromSource, truncated) {
     };
 
     const meta = lookupMeta(name);
+    const regSize = meta ? null : registrySize(name);
+    if (!meta && regSize) {
+      // A curve or a finite-field group has no entry in algo-metadata.json,
+      // but the identifier itself states its size. Emitting only the size
+      // (and no level, no primitive) says exactly what was read.
+      comp.cryptoProperties = {
+        assetType: 'algorithm',
+        relatedCryptoMaterialProperties: { size: regSize },
+      };
+    }
     if (meta) {
       comp.cryptoProperties = {
         assetType: meta.assetType,
