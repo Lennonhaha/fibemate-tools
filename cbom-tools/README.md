@@ -13,6 +13,39 @@ moved yet.
 
 Zero external dependencies. Pure Node.js.
 
+Two properties make the output usable in a 密评 review rather than only as an
+inventory: every verdict points at a file and a line you can open, and the report
+refuses to produce a score (see [Compliance view](#3-compliance-view-密评-self-check-report)).
+
+## What it scans
+
+Files: `.js .mjs .cjs .ts .tsx .jsx`, `.c .cc .cpp .cxx .h .hh .hpp`, `.py`,
+`.java`, `.go`, `.kt .kts`, `.cs`, `.rs`, `.swift`, `.rb`, `.php`, plus data
+files `.yaml .yml .json .toml`.
+
+Where the algorithm is an argument rather than a word, the call site is read:
+
+| file | form | reported as |
+| --- | --- | --- |
+| JS / TS | `c.createCipheriv('aes-256-cbc', key, iv)` | AES-CBC |
+| Java | `Cipher.getInstance("AES/CBC/PKCS5Padding")` | AES-CBC |
+| Go | `aes.NewCipher(key)` + `cipher.NewCBCEncrypter(block, iv)` | AES-CBC |
+| Python | `AES.new(key, AES.MODE_CBC, iv)` (PyCryptodome) | AES-CBC |
+
+Everywhere else the name is matched as written: `AES-CBC`, `SM4/CBC`, `sha-256`,
+`chacha20-poly1305`, `RSA`, `MD5`. The mode decides the component name, so
+`AES/CBC/PKCS5Padding` and `aes-256-cbc` both land on `AES-CBC` instead of
+splitting into two entries nobody can diff.
+
+Known limits, stated rather than papered over: a JCE transformation held in a
+variable (`Cipher.getInstance(ALGO)`), a Go block cipher built in a different file
+from its mode call, a PyCryptodome `algorithms.AES(...)` / `modes.CBC(...)` split
+across two expressions, and any name assembled at runtime are not resolved.
+Lockfiles are skipped on purpose — an integrity digest is a tarball hash, not a
+use of SHA-512 — as are dependency manifests (read by the dependency pass, so
+"depends on" cannot turn into "uses") and CycloneDX documents (a CBOM is not
+source).
+
 ## What this tool does not do
 
 Three things that are easy to misread:
