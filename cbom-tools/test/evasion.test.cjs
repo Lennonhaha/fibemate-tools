@@ -60,7 +60,7 @@ const CASES = [
   ['base64', 'ML-KEM-768', 'base64 载荷'],
   ['hex-escaped', 'SHA-256', '十六进制转义字面量'],
   ['require-concat', 'SHA-512', "require('cry' + 'pto') + 别名接收者"],
-  ['destructure-alias', 'Ed25519', '解构导入 + 曲线名作数据'],
+  ['destructure-alias', 'EdDSA-Ed25519', '解构导入 + 曲线名作数据'],
   ['python-getattr', 'SHA-256', 'importlib + getattr 拼接'],
   ['macro-alias', 'SHA-256', 'C 宏重命名（对照组）'],
   ['split-lines', 'ML-KEM-768', '字符串被换行拆开'],

@@ -305,7 +305,7 @@ test('场景 6 C++ monocypher 源码：5 处调用对应 5 个算法', () => {
   });
   const cbom = scanDir(dir);
   const names = cbom.components.map(c => c.name).sort();
-  assert.deepStrictEqual(names, ['Argon2i', 'Blake2b', 'ChaCha20-Poly1305', 'Ed25519', 'X25519']);
+  assert.deepStrictEqual(names, ['Argon2i', 'Blake2b', 'ChaCha20-Poly1305', 'EdDSA-Ed25519', 'X25519']);
   for (const c of cbom.components) {
     assert.ok(c.evidence, c.name + ' should have evidence');
     assert.strictEqual(c.evidence.occurrences[0].location, 'crypto.cpp');

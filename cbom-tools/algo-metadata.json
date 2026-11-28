@@ -735,5 +735,38 @@
     "quantumSecurity": {
       "level": "weak"
     }
+  },
+  "EdDSA": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "EdDSA-Ed25519": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
+  },
+  "EdDSA-Ed448": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+      "primitive": "signature"
+    },
+    "implementationPlatform": "c, javascript, python",
+    "certificationLevel": "known-answer-tested",
+    "quantumSecurity": {
+      "level": "vulnerable"
+    }
   }
 }
